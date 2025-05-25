@@ -42,23 +42,17 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
 
   {ID}            {
                     if (!strncasecmp ("QUOTE", yytext, yyleng + 1))
-                      {
-                        return QUOTE;
-                      }
+                      return QUOTE;
                     if (!strncasecmp ("LAMBDA", yytext, yyleng + 1))
-                      {
-                        return LAMBDA;
-                      }
-                    else if (!strncasecmp ("IF", yytext, yyleng + 1))
-                      {
-                        return IF;
-                      }
-                    else
-                      {
-                        yylval.symbol.len = yyleng;
-                        yylval.symbol.str = sym_save (&CTX_SYMTAB(ctx), yytext, yyleng);
-                        return SYMBOL;
-                      }
+                      return LAMBDA;
+
+                    yylval.symbol.len = yyleng;
+                    yylval.symbol.str = sym_save (&CTX_SYMTAB(ctx), yytext, yyleng);
+
+                    if (!strncasecmp ("IF", yytext, yyleng + 1))
+                      return IF;
+
+                    return SYMBOL;
                   }
 
   [+\-*/><]       {

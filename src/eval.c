@@ -21,43 +21,28 @@
     }                                                                         \
   while (0)
 
-static Node *append_inplace (Node *list1, Node *list2);
-static Node *append_list (Node *list1, Node *list2, Context *ctx);
+// funcalls
 static Node *funcall (Node *fn, Node *arglist, Context *ctx);
 static Node *funcall_builtin (Node *fn, Node *args, Context *ctx);
 static Node *funcall_lambda (Node *fn, Node *args, Context *ctx);
+
+// cond forms/expressions
+static Node *and_form (Node *form, Context *ctx);
+static Node *if_form (Node *form, Context *ctx);
+static Node *or_form (Node *form, Context *ctx);
+
+// list operations
+static Node *append_inplace (Node *list1, Node *list2);
+static Node *append_list (Node *list1, Node *list2, Context *ctx);
 static size_t length (Node *list);
-static Node *lookup (Node *node, Context *ctx);
 static Node *pair (Node *l1, Node *l2, Context *ctx);
 static Node *reverse (Node *list, Context *ctx);
+
+// context operations
+static Node *lookup (Node *node, Context *ctx);
 static Node *set (Node *car, Node *REST, Context *ctx);
 
-Node *
-append_inplace (Node *list1, Node *list2)
-{
-  if (IS_NIL (list1))
-    return list2;
-
-  Node *l1 = list1;
-
-  while (!IS_NIL (REST (l1)))
-    l1 = REST (l1);
-
-  RPLACD (l1, list2);
-
-  return list1;
-}
-
-Node *
-append_list (Node *list1, Node *list2, Context *ctx)
-{
-  if (IS_NIL (list1))
-    return list2;
-
-  return CONS (FIRST (list1), append_list (REST (list1), list2, ctx), ctx);
-}
-
-// (funcall f arg1 arg2 ...)
+// funcall & eval
 static Node *
 funcall (Node *fn, Node *arglist, Context *ctx)
 {
@@ -132,111 +117,7 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
       pairs = REST (pairs);
     }
 
-  return eval_program (GET_LAMBDA_BODY (fn), &new_ctx);
-}
-
-static size_t
-length (Node *list)
-{
-  if (!IS_LIST (list))
-    return 0;
-
-  size_t i = 1;
-
-  for (Node *cdr = REST (list); cdr != NIL; cdr = REST (cdr))
-    ++i;
-
-  return i;
-}
-
-static Node *
-lookup (Node *node, Context *ctx)
-{
-  const char *str = GET_SYMBOL (node).str;
-  size_t len = GET_SYMBOL (node).len;
-
-  Node *kywrd_node = keyword_lookup (str, len);
-  if (kywrd_node)
-    {
-      return kywrd_node;
-    }
-
-  rb_node *n = env_lookup (CTX_ENV (ctx), str);
-  if (!n)
-    {
-      raise (ERR_SYMBOL_NOT_FOUND, str);
-      return NULL;
-    }
-
-  return RB_VAL (n);
-}
-
-static Node *
-pair (Node *list1, Node *list2, Context *ctx)
-{
-  if (IS_NIL (list1) || IS_NIL (list2))
-    return NIL;
-
-  Node *first_pair = LIST2 (FIRST (list1), FIRST (list2), ctx);
-  Node *rest_pairs = pair (REST (list1), REST (list2), ctx);
-
-  return CONS (first_pair, rest_pairs, ctx);
-}
-
-Node *
-reverse (Node *list, Context *ctx)
-{
-  (void)ctx;
-
-  Node *result = NIL;
-
-  for (Node *l = list; l != NIL; l = REST (l))
-    {
-      result = CONS (FIRST (l), result, ctx);
-    }
-
-  return result;
-}
-
-static Node *
-set (Node *first, Node *rest, Context *ctx)
-{
-  if (!IS_SYMBOL (first))
-    {
-      raise (ERR_INVALID_ARG, "set");
-      return NULL;
-    }
-
-  const char *str = GET_SYMBOL (first).str;
-  size_t len = GET_SYMBOL (first).len;
-
-  if (keyword_lookup (str, len))
-    {
-      raise (ERR_INVALID_ARG, "set");
-      return NULL;
-    }
-
-  env_set (CTX_ENV (ctx), str, rest); // TODO: error handling
-  return rest;
-}
-
-Node *
-eval_append (Node *args, Context *ctx)
-{
-  if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "append");
-      return NULL;
-    }
-
-  Node *result = FIRST (args);
-
-  for (Node *list = REST (args); args != NIL; args = REST (args))
-    {
-      result = append_list (result, FIRST (list), ctx);
-    }
-
-  return result;
+  return eval_progn (GET_LAMBDA_BODY (fn), &new_ctx);
 }
 
 // (apply f arglist)
@@ -271,6 +152,294 @@ eval_apply (Node *arglist, Context *ctx)
 }
 
 Node *
+eval_funcall (Node *args, Context *ctx)
+{
+  Node *fn = eval (FIRST (args), ctx);
+  Node *arglist = eval_list (REST (args), ctx);
+  return funcall (fn, arglist, ctx);
+}
+
+Node *
+eval_list (Node *args, Context *ctx)
+{
+  if (IS_NIL (args))
+    return NIL;
+
+  Node *first = eval (FIRST (args), ctx);
+  Node *rest = eval_list (REST (args), ctx);
+
+  return CONS (first, rest, ctx);
+}
+
+Node *
+eval (Node *form, Context *ctx)
+{
+  // SYMBOLS
+  if (IS_SYMBOL (form))
+    return lookup (form, ctx);
+
+  // LITERALS: NUMBERS, STRINGS, ETC.
+  if (!LISTP (form))
+    return form;
+
+  if (LISTP (form))
+    {
+      if (IS_NIL (form))
+        return NIL;
+
+      Node *first = FIRST (form);
+      Node *rest = REST (form);
+
+      if (first == KEYWORD (QUOTE))
+        return FIRST (rest);
+
+      if (IS_LAMBDA (first))
+        {
+          GET_LAMBDA_ENV (first) = CTX_ENV (ctx);
+          return first;
+        }
+
+      Node *fn = eval (first, ctx);
+
+      if (IS_SPECIAL_FORM (fn))
+        {
+          if (fn == KEYWORD (APPLY))
+            return eval_apply (rest, ctx);
+
+          if (fn == KEYWORD (FUNCALL))
+            return eval_funcall (rest, ctx);
+
+          if (fn == KEYWORD (EVAL))
+            return eval (eval (FIRST (rest), ctx), ctx);
+
+          if (fn == KEYWORD (PROGN))
+            return eval_progn (rest, ctx);
+
+          if (fn == KEYWORD (AND))
+            return and_form (rest, ctx);
+
+          if (fn == KEYWORD (IF))
+            return if_form (rest, ctx);
+
+          if (fn == KEYWORD (OR))
+            return or_form (rest, ctx);
+
+          raise (ERR_INTERNAL, DEBUG_LOCATION);
+          return NULL;
+        }
+
+      Node *arglist = eval_list (rest, ctx);
+      return funcall (fn, arglist, ctx);
+    }
+
+  raise (ERR_INTERNAL, DEBUG_LOCATION);
+  return NULL;
+}
+
+Node *
+eval_progn (Node *program, Context *ctx)
+{
+  Node *result = NIL;
+  for (Node *forms = program; forms != NIL; forms = REST (forms))
+    {
+      Node *form = FIRST (forms);
+      result = eval (form, ctx);
+    }
+
+  return result;
+}
+
+// conditional forms/expressions
+static Node *
+and_form (Node *form, Context *ctx)
+{
+  Node *eval_result = T;
+  EqFn nil_eq_fn = type (NIL)->eq_fn;
+
+  while (!IS_NIL (form))
+    {
+      eval_result = eval (FIRST (form), ctx);
+
+      if (nil_eq_fn (NIL, eval_result))
+        {
+          return NIL;
+        }
+
+      form = REST (form);
+    }
+
+  return eval_result;
+}
+
+static Node *
+if_form (Node *form, Context *ctx)
+{
+  printf ("Here\n");
+  Node *pred_form = FIRST (form);
+
+  if (!IS_NIL (eval (pred_form, ctx)))
+    return eval (FIRST (REST (form)), ctx);
+  else
+    {
+      Node *else_form = FIRST (REST (REST (form)));
+      return else_form ? eval (else_form, ctx) : NIL;
+    }
+}
+
+static Node *
+or_form (Node *form, Context *ctx)
+{
+  Node *eval_result = NIL;
+  EqFn nil_eq_fn = type (NIL)->eq_fn;
+
+  while (!IS_NIL (form))
+    {
+      eval_result = eval (FIRST (form), ctx);
+
+      if (!nil_eq_fn (NIL, eval_result))
+        {
+          return eval_result;
+        }
+
+      form = REST (form);
+    }
+
+  return NIL;
+}
+
+static Node *
+append_inplace (Node *list1, Node *list2)
+{
+  if (IS_NIL (list1))
+    return list2;
+
+  Node *l1 = list1;
+
+  while (!IS_NIL (REST (l1)))
+    l1 = REST (l1);
+
+  RPLACD (l1, list2);
+
+  return list1;
+}
+
+static Node *
+append_list (Node *list1, Node *list2, Context *ctx)
+{
+  if (IS_NIL (list1))
+    return list2;
+
+  return CONS (FIRST (list1), append_list (REST (list1), list2, ctx), ctx);
+}
+
+static size_t
+length (Node *list)
+{
+  if (!IS_LIST (list))
+    return 0;
+
+  size_t i = 1;
+
+  for (Node *cdr = REST (list); cdr != NIL; cdr = REST (cdr))
+    ++i;
+
+  return i;
+}
+
+static Node *
+pair (Node *list1, Node *list2, Context *ctx)
+{
+  if (IS_NIL (list1) || IS_NIL (list2))
+    return NIL;
+
+  Node *first_pair = LIST2 (FIRST (list1), FIRST (list2), ctx);
+  Node *rest_pairs = pair (REST (list1), REST (list2), ctx);
+
+  return CONS (first_pair, rest_pairs, ctx);
+}
+
+Node *
+reverse (Node *list, Context *ctx)
+{
+  (void)ctx;
+
+  Node *result = NIL;
+
+  for (Node *l = list; l != NIL; l = REST (l))
+    {
+      result = CONS (FIRST (l), result, ctx);
+    }
+
+  return result;
+}
+
+// context operations
+static Node *
+lookup (Node *node, Context *ctx)
+{
+  const char *str = GET_SYMBOL (node).str;
+  size_t len = GET_SYMBOL (node).len;
+
+  Node *kywrd_node = keyword_lookup (str, len);
+  if (kywrd_node)
+    {
+      return kywrd_node;
+    }
+
+  rb_node *n = env_lookup (CTX_ENV (ctx), str);
+  if (!n)
+    {
+      raise (ERR_SYMBOL_NOT_FOUND, str);
+      return NULL;
+    }
+
+  return RB_VAL (n);
+}
+
+static Node *
+set (Node *first, Node *rest, Context *ctx)
+{
+  if (!IS_SYMBOL (first))
+    {
+      raise (ERR_INVALID_ARG, "set");
+      return NULL;
+    }
+
+  const char *str = GET_SYMBOL (first).str;
+  size_t len = GET_SYMBOL (first).len;
+
+  if (keyword_lookup (str, len))
+    {
+      raise (ERR_INVALID_ARG, "set");
+      return NULL;
+    }
+
+  env_set (CTX_ENV (ctx), str, rest); // TODO: error handling
+  return rest;
+}
+
+// other builtins
+
+Node *
+eval_append (Node *args, Context *ctx)
+{
+  if (!LISTP (args))
+    {
+      raise (ERR_INVALID_ARG, "append");
+      return NULL;
+    }
+
+  Node *result = FIRST (args);
+
+  for (Node *list = REST (args); args != NIL; args = REST (args))
+    {
+      result = append_list (result, FIRST (list), ctx);
+    }
+
+  return result;
+}
+
+Node *
 eval_cons (Node *args, Context *ctx)
 {
   return CONS (FIRST (args), FIRST (REST (args)), ctx);
@@ -289,14 +458,6 @@ eval_first (Node *args, Context *ctx)
 }
 
 Node *
-eval_funcall (Node *args, Context *ctx)
-{
-  Node *fn = eval (FIRST (args), ctx);
-  Node *arglist = eval_list (REST (args), ctx);
-  return funcall (fn, arglist, ctx);
-}
-
-Node *
 eval_len (Node *args, Context *ctx)
 {
   Node *first = FIRST (args);
@@ -307,18 +468,6 @@ eval_len (Node *args, Context *ctx)
       return NULL;
     }
   return cons_integer (&CTX_POOL (ctx), length (first));
-}
-
-Node *
-eval_list (Node *args, Context *ctx)
-{
-  if (IS_NIL (args))
-    return NIL;
-
-  Node *first = eval (FIRST (args), ctx);
-  Node *rest = eval_list (REST (args), ctx);
-
-  return CONS (first, rest, ctx);
 }
 
 Node *
@@ -384,89 +533,4 @@ Node *
 eval_str (Node *args, Context *ctx)
 {
   return cons_string (&CTX_POOL (ctx), type (args)->str_fn (args));
-}
-
-Node *
-eval (Node *form, Context *ctx)
-{
-  // SYMBOLS
-  if (IS_SYMBOL (form))
-    return lookup (form, ctx);
-
-  // LITERALS: NUMBERS, STRINGS, ETC.
-  if (!LISTP (form))
-    return form;
-
-  if (LISTP (form))
-    {
-      if (IS_NIL (form))
-        return NIL;
-
-      Node *first = FIRST (form);
-      Node *rest = REST (form);
-
-      if (first == KEYWORD (QUOTE))
-        return FIRST (rest);
-
-      if (first == KEYWORD (IF))
-        {
-          Node *pred_form = FIRST (rest);
-
-          if (!IS_NIL (eval (pred_form, ctx)))
-            return eval (FIRST (REST (rest)), ctx);
-          else
-            {
-              Node *else_form = FIRST (REST (REST (rest)));
-              return else_form ? eval (else_form, ctx) : NIL;
-            }
-        }
-
-      if (IS_LAMBDA (first))
-        {
-          GET_LAMBDA_ENV (first) = CTX_ENV (ctx);
-          return first;
-        }
-
-      Node *fn = eval (first, ctx);
-
-      if (IS_SPECIAL_FORM (fn))
-        {
-          if (fn == KEYWORD (APPLY))
-            return eval_apply (rest, ctx);
-
-          if (fn == KEYWORD (FUNCALL))
-            return eval_funcall (rest, ctx);
-
-          if (fn == KEYWORD (EVAL))
-            return eval (eval (FIRST (rest), ctx), ctx);
-
-          if (fn == KEYWORD (AND))
-            return eval_and (rest, ctx);
-
-          if (fn == KEYWORD (OR))
-            return eval_or (rest, ctx);
-
-          raise (ERR_INTERNAL, DEBUG_LOCATION);
-          return NULL;
-        }
-
-      Node *arglist = eval_list (rest, ctx);
-      return funcall (fn, arglist, ctx);
-    }
-
-  raise (ERR_INTERNAL, DEBUG_LOCATION);
-  return NULL;
-}
-
-Node *
-eval_program (Node *program, Context *ctx)
-{
-  Node *result = NIL;
-  for (Node *forms = program; forms != NIL; forms = REST (forms))
-    {
-      Node *form = FIRST (forms);
-      result = eval (form, ctx);
-    }
-
-  return result;
 }

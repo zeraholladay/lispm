@@ -19,27 +19,6 @@ eval_eq (Node *args, Context *ctx)
 }
 
 Node *
-eval_and (Node *args, Context *ctx)
-{
-  Node *eval_result = T;
-  EqFn nil_eq_fn = type (NIL)->eq_fn;
-
-  while (!IS_NIL (args))
-    {
-      eval_result = eval (FIRST (args), ctx);
-
-      if (nil_eq_fn (NIL, eval_result))
-        {
-          return NIL;
-        }
-
-      args = REST (args);
-    }
-
-  return eval_result;
-}
-
-Node *
 eval_not (Node *args, Context *ctx)
 {
   (void)ctx;
@@ -52,25 +31,4 @@ eval_not (Node *args, Context *ctx)
     }
 
   return nil_eq_fn (NIL, FIRST (args)) ? T : NIL;
-}
-
-Node *
-eval_or (Node *args, Context *ctx)
-{
-  Node *eval_result = NIL;
-  EqFn nil_eq_fn = type (NIL)->eq_fn;
-
-  while (!IS_NIL (args))
-    {
-      eval_result = eval (FIRST (args), ctx);
-
-      if (!nil_eq_fn (NIL, eval_result))
-        {
-          return eval_result;
-        }
-
-      args = REST (args);
-    }
-
-  return NIL;
 }

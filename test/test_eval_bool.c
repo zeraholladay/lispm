@@ -33,7 +33,7 @@ teardown (void)
 }
 
 static Node *
-run_eval_program (const char *input)
+run_eval_progn (const char *input)
 {
   yyin = fmemopen ((void *)input, strlen (input), "r");
 
@@ -41,7 +41,7 @@ run_eval_program (const char *input)
   ck_assert_int_eq (parse_status, 0);
 
   Node *program = CTX_PARSE_ROOT (&ctx);
-  Node *eval_result = eval_program (program, &ctx);
+  Node *eval_result = eval_progn (program, &ctx);
 
   yylex_destroy ();
   fclose (yyin);
@@ -55,77 +55,77 @@ START_TEST (test_eq)
   char *test_program;
 
   // True statements
-  eval_result = run_eval_program ("(eq T T)");
+  eval_result = run_eval_progn ("(eq T T)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(eq NIL NIL)");
+  eval_result = run_eval_progn ("(eq NIL NIL)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(eq 0 0)");
+  eval_result = run_eval_progn ("(eq 0 0)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(eq 42 42)");
+  eval_result = run_eval_progn ("(eq 42 42)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(eq '() '())");
+  eval_result = run_eval_progn ("(eq '() '())");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(eq 'foo 'foo)");
+  eval_result = run_eval_progn ("(eq 'foo 'foo)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
   test_program = "(set 'foo (lambda () ()))"
                  "(set 'bar foo)"
                  "(eq foo bar)";
-  eval_result = run_eval_program (test_program);
+  eval_result = run_eval_progn (test_program);
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
   test_program = "(set 'foo '(1 2 3 4))"
                  "(set 'bar foo)"
                  "(eq foo bar)";
-  eval_result = run_eval_program (test_program);
+  eval_result = run_eval_progn (test_program);
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(eq (str 'foo) (str 'foo))");
+  eval_result = run_eval_progn ("(eq (str 'foo) (str 'foo))");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(eq rest rest)");
+  eval_result = run_eval_progn ("(eq rest rest)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
   // False statements
-  eval_result = run_eval_program ("(eq T NIL)");
+  eval_result = run_eval_progn ("(eq T NIL)");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(eq NIL T)");
+  eval_result = run_eval_progn ("(eq NIL T)");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(eq 0 1)");
+  eval_result = run_eval_progn ("(eq 0 1)");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(eq -42 42)");
+  eval_result = run_eval_progn ("(eq -42 42)");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(eq '() '(1))");
+  eval_result = run_eval_progn ("(eq '() '(1))");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(eq 'foo 'bar)");
+  eval_result = run_eval_progn ("(eq 'foo 'bar)");
   ck_assert (IS_NIL (eval_result));
 
   test_program = "(set 'foo (lambda () ()))"
                  "(set 'bar (lambda () ()))"
                  "(eq foo bar)";
-  eval_result = run_eval_program (test_program);
+  eval_result = run_eval_progn (test_program);
   ck_assert (IS_NIL (eval_result));
 
   test_program = "(set 'foo '(1 2 3 4))"
                  "(set 'bar '(1 2 3 4))"
                  "(eq foo bar)";
-  eval_result = run_eval_program (test_program);
+  eval_result = run_eval_progn (test_program);
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(eq (str 'foo) (str 'bar))");
+  eval_result = run_eval_progn ("(eq (str 'foo) (str 'bar))");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(eq first rest)");
+  eval_result = run_eval_progn ("(eq first rest)");
   ck_assert (IS_NIL (eval_result));
 }
 END_TEST
@@ -134,10 +134,10 @@ START_TEST (test_not)
 {
   Node *eval_result = NULL;
 
-  eval_result = run_eval_program ("(not nil)");
+  eval_result = run_eval_progn ("(not nil)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(not T)");
+  eval_result = run_eval_progn ("(not T)");
   ck_assert (IS_NIL (eval_result));
 }
 END_TEST
@@ -146,19 +146,19 @@ START_TEST (test_and)
 {
   Node *eval_result = NULL;
 
-  eval_result = run_eval_program ("(and nil T)");
+  eval_result = run_eval_progn ("(and nil T)");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(and T nil)");
+  eval_result = run_eval_progn ("(and T nil)");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(and T T)");
+  eval_result = run_eval_progn ("(and T T)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(and)");
+  eval_result = run_eval_progn ("(and)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(and T T 'foobar)");
+  eval_result = run_eval_progn ("(and T T 'foobar)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foobar");
 }
 END_TEST
@@ -167,19 +167,19 @@ START_TEST (test_or)
 {
   Node *eval_result = NULL;
 
-  eval_result = run_eval_program ("(or nil nil)");
+  eval_result = run_eval_progn ("(or nil nil)");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(or T nil)");
+  eval_result = run_eval_progn ("(or T nil)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(or nil T)");
+  eval_result = run_eval_progn ("(or nil T)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_program ("(or)");
+  eval_result = run_eval_progn ("(or)");
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_program ("(or 'foobar T T)");
+  eval_result = run_eval_progn ("(or 'foobar T T)");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foobar");
 }
 END_TEST

@@ -43,6 +43,6 @@ Node *eval_set (Node *args, Context *ctx);
 Node *eval_str (Node *args, Context *ctx);
 Node *eval (Node *form, Context *ctx);
 Node *eval_list (Node *args, Context *ctx);
-Node *eval_program (Node *program, Context *ctx);
+Node *eval_progn (Node *program, Context *ctx);
 
 #endif
