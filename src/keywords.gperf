@@ -12,6 +12,7 @@
 static BuiltinFn builtin_and      = { .name = "and",     .is_sf = 1, .arity = -1, .fn = NULL         };
 static BuiltinFn builtin_append   = { .name = "append",  .is_sf = 0, .arity = -1, .fn = eval_append  };
 static BuiltinFn builtin_apply    = { .name = "apply",   .is_sf = 1, .arity = -1, .fn = eval_apply   };
+static BuiltinFn builtin_butlast  = { .name = "butlast", .is_sf = 0, .arity =  1, .fn = eval_butlast };
 static BuiltinFn builtin_cons     = { .name = "cons",    .is_sf = 0, .arity =  2, .fn = eval_cons    };
 static BuiltinFn builtin_eq       = { .name = "eq",      .is_sf = 0, .arity =  2, .fn = eval_eq      };
 static BuiltinFn builtin_eval     = { .name = "eval",    .is_sf = 1, .arity =  1, .fn = eval         };
@@ -21,7 +22,10 @@ static BuiltinFn builtin_funcall  = { .name = "funcall", .is_sf = 1, .arity = -1
 static BuiltinFn builtin_gt       = { .name = "gt",      .is_sf = 0, .arity = -1, .fn = eval_gt      };
 static BuiltinFn builtin_if       = { .name = "if",      .is_sf = 1, .arity = -1, .fn = NULL         };
 static BuiltinFn builtin_len      = { .name = "len",     .is_sf = 0, .arity =  1, .fn = eval_len     };
+static BuiltinFn builtin_last     = { .name = "last",    .is_sf = 0, .arity =  1, .fn = eval_last    };
+static BuiltinFn builtin_mapcar   = { .name = "mapcar",  .is_sf = 0, .arity = -1, .fn = eval_mapcar  };
 static BuiltinFn builtin_lt       = { .name = "lt",      .is_sf = 0, .arity = -1, .fn = eval_lt      };
+static BuiltinFn builtin_nth      = { .name = "nth" ,    .is_sf = 0, .arity =  2, .fn = eval_nth    };
 static BuiltinFn builtin_not      = { .name = "not",     .is_sf = 0, .arity =  1, .fn = eval_not     };
 static BuiltinFn builtin_list     = { .name = "list",    .is_sf = 0, .arity = -1, .fn = eval_list    };
 static BuiltinFn builtin_or       = { .name = "or",      .is_sf = 1, .arity = -1, .fn = NULL         };
@@ -56,6 +60,7 @@ LAMBDA,  { .type = TYPE_SYMBOL,     .as.symbol     = AS_SYM("LAMBDA")  },
 AND,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_and      },
 APPEND,  { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_append   },
 APPLY,   { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_apply    },
+BUTLAST, { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_butlast  },
 CONS,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_cons     },
 EQ,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_eq       },
 EVAL,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_eval     },
@@ -64,9 +69,12 @@ FUNCALL, { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_funcall  },
 GT,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_gt       },
 >,       { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_gt       },
 IF,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_if       },
+LAST,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_last     },
 LEN,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_len      },
 LT,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_lt       },
 <,       { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_lt       },
+MAPCAR,  { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_mapcar   },
+NTH,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_nth      },
 NOT,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_not      },
 LIST,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_list     },
 OR,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_or       },

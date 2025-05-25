@@ -10,6 +10,7 @@
 
 #define IS_NIL(node) (node == NIL)
 #define LISTP(node) (IS_NIL (node) || IS_LIST (node))
+#define CONSP(node) (IS_LIST (node))
 
 #define FIRST(node) ((node)->as.list.first)
 #define REST(node) ((node)->as.list.rest)
@@ -17,6 +18,14 @@
 #define CONS(first, rest, ctx) (cons_list (&CTX_POOL (ctx), first, rest))
 #define LIST1(item, ctx) (CONS (item, NIL, ctx))
 #define LIST2(first, rest, ctx) (CONS (first, LIST1 (rest, ctx), ctx))
+
+#define RPLACA(node, val)                                                     \
+  do                                                                          \
+    {                                                                         \
+      if (IS_LIST (node))                                                     \
+        FIRST (node) = val;                                                   \
+    }                                                                         \
+  while (0)
 
 #define RPLACD(node, val)                                                     \
   do                                                                          \
@@ -26,15 +35,21 @@
     }                                                                         \
   while (0)
 
+// index, butlast, last
+
 Node *eval_append (Node *args, Context *ctx);
 Node *eval_apply (Node *args, Context *ctx);
+Node *eval_butlast (Node *expr, Context *ctx);
 Node *eval_cons (Node *args, Context *ctx);
 Node *eval_first (Node *args, Context *ctx);
 Node *eval_funcall (Node *args, Context *ctx);
 Node *eval_if (Node *expr, Context *ctx);
 Node *eval_lambda (Node *expr, Context *ctx);
+Node *eval_last (Node *expr, Context *ctx);
 Node *eval_len (Node *args, Context *ctx);
 Node *eval_list (Node *args, Context *ctx);
+Node *eval_mapcar (Node *args, Context *ctx); // TODO
+Node *eval_nth (Node *expr, Context *ctx);
 Node *eval_pair (Node *args, Context *ctx);
 Node *eval_print (Node *args, Context *ctx);
 Node *eval_reverse (Node *args, Context *ctx);

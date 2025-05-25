@@ -34,7 +34,10 @@ static Node *or_form (Node *form, Context *ctx);
 // list operations
 static Node *append_inplace (Node *list1, Node *list2);
 static Node *append_list (Node *list1, Node *list2, Context *ctx);
+static Node *butlast (Node *args, Context *ctx);
+static Node *last (Node *args, Context *ctx);
 static size_t length (Node *list);
+static Node *mapcar (Node *fn, Node *arglist, Context *ctx);
 static Node *pair (Node *l1, Node *l2, Context *ctx);
 static Node *reverse (Node *list, Context *ctx);
 
@@ -274,7 +277,6 @@ and_form (Node *form, Context *ctx)
 static Node *
 if_form (Node *form, Context *ctx)
 {
-  printf ("Here\n");
   Node *pred_form = FIRST (form);
 
   if (!IS_NIL (eval (pred_form, ctx)))
@@ -332,6 +334,20 @@ append_list (Node *list1, Node *list2, Context *ctx)
   return CONS (FIRST (list1), append_list (REST (list1), list2, ctx), ctx);
 }
 
+static Node *
+butlast (Node *list, Context *ctx)
+{
+  Node *rev = reverse (list, ctx);
+  return reverse (REST (rev), ctx);
+}
+
+static Node *
+last (Node *list, Context *ctx)
+{
+  Node *rev = reverse (list, ctx);
+  return FIRST (rev);
+}
+
 static size_t
 length (Node *list)
 {
@@ -344,6 +360,15 @@ length (Node *list)
     ++i;
 
   return i;
+}
+
+static Node *
+mapcar (Node *fn, Node *arglist, Context *ctx)
+{
+  (void)fn;
+  (void)arglist;
+  (void)ctx;
+  return NIL; // TODO
 }
 
 static Node *
@@ -362,14 +387,12 @@ Node *
 reverse (Node *list, Context *ctx)
 {
   (void)ctx;
-
   Node *result = NIL;
 
   for (Node *l = list; l != NIL; l = REST (l))
     {
       result = CONS (FIRST (l), result, ctx);
     }
-
   return result;
 }
 
@@ -440,6 +463,17 @@ eval_append (Node *args, Context *ctx)
 }
 
 Node *
+eval_butlast (Node *args, Context *ctx)
+{
+  if (!LISTP (args))
+    {
+      raise (ERR_INVALID_ARG, "butlast");
+      return NULL;
+    }
+  return butlast (FIRST (args), ctx);
+}
+
+Node *
 eval_cons (Node *args, Context *ctx)
 {
   return CONS (FIRST (args), FIRST (REST (args)), ctx);
@@ -468,6 +502,53 @@ eval_len (Node *args, Context *ctx)
       return NULL;
     }
   return cons_integer (&CTX_POOL (ctx), length (first));
+}
+
+Node *
+eval_mapcar (Node *args, Context *ctx)
+{
+  Node *fn = FIRST (args);
+  Node *arglist = REST (args);
+  return mapcar (fn, arglist, ctx);
+}
+
+Node *
+eval_nth (Node *args, Context *ctx)
+{
+  (void) ctx;
+
+  if (!IS_LIST (args) || !IS_INTEGER (FIRST (args))
+      || !LISTP (FIRST (REST (args))))
+    {
+      raise (ERR_ARG_NOT_ITERABLE, "nth: i list");
+      return NULL;
+    }
+
+  Integer i = 0;
+  Integer nth = GET_INTEGER (FIRST (args));
+  Node *list = FIRST (REST (args));
+
+  do
+    {
+      if (i == nth)
+        return FIRST (list);
+      if (++i > nth)
+        break;
+      list = REST (list);
+    }
+  while (!IS_NIL (list));
+  return NIL;
+}
+
+Node *
+eval_last (Node *args, Context *ctx)
+{
+  if (!LISTP (args))
+    {
+      raise (ERR_INVALID_ARG, "last");
+      return NULL;
+    }
+  return last (FIRST (args), ctx);
 }
 
 Node *

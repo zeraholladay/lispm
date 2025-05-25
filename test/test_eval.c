@@ -287,18 +287,18 @@ START_TEST (test_lambda)
 
   // define 'foo and run
   eval_result = run_eval_progn ("(set 'foo (lambda () (cons 'a 'b)))"
-                                  "(foo)");
+                                "(foo)");
   ck_assert (IS_LIST (eval_result));
 
   // with parameters
   eval_result = run_eval_progn ("(set 'foo (lambda (a b) (cons a b)))"
-                                  "(foo 'bar 'biz)");
+                                "(foo 'bar 'biz)");
   ck_assert (IS_LIST (eval_result));
   ck_assert_str_eq (GET_SYMBOL (FIRST (eval_result)).str, "bar");
 
   // test lexical scope
   eval_result = run_eval_progn ("(set 'foo 'bar)"
-                                  "((lambda () foo))");
+                                "((lambda () foo))");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "bar");
 }
 END_TEST
