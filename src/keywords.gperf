@@ -1,0 +1,128 @@
+// clang-format off
+%{
+#include <string.h>
+
+#include "eval.h"
+#include "eval_bool.h"
+#include "eval_math.h"
+#include "keywords.h"
+
+#define AS_SYM(name) { .str   = name, .len = sizeof(name) - 1      }
+
+static const BuiltinFn builtin_and      = { .name = "and",     .is_sf = 1, .arity = -1, .fn = eval_and     };
+static const BuiltinFn builtin_append   = { .name = "append",  .is_sf = 0, .arity = -1, .fn = eval_append  };
+static const BuiltinFn builtin_apply    = { .name = "apply",   .is_sf = 1, .arity = -1, .fn = eval_apply   };
+static const BuiltinFn builtin_cons     = { .name = "cons",    .is_sf = 0, .arity =  2, .fn = eval_cons    };
+static const BuiltinFn builtin_eq       = { .name = "eq",      .is_sf = 0, .arity =  2, .fn = eval_eq      };
+static const BuiltinFn builtin_eval     = { .name = "eval",    .is_sf = 1, .arity =  1, .fn = eval         };
+static const BuiltinFn builtin_first    = { .name = "first",   .is_sf = 0, .arity =  1, .fn = eval_first   };
+static const BuiltinFn builtin_funcall  = { .name = "funcall", .is_sf = 1, .arity = -1, .fn = eval_funcall };
+static const BuiltinFn builtin_gt       = { .name = "gt",      .is_sf = 0, .arity = -1, .fn = eval_gt      };
+static const BuiltinFn builtin_len      = { .name = "len",     .is_sf = 0, .arity =  1, .fn = eval_len     };
+static const BuiltinFn builtin_lt       = { .name = "lt",      .is_sf = 0, .arity = -1, .fn = eval_lt      };
+static const BuiltinFn builtin_not      = { .name = "not",     .is_sf = 0, .arity =  1, .fn = eval_not     };
+static const BuiltinFn builtin_list     = { .name = "list",    .is_sf = 0, .arity = -1, .fn = eval_list    };
+static const BuiltinFn builtin_or       = { .name = "or",      .is_sf = 1, .arity = -1, .fn = eval_or      };
+static const BuiltinFn builtin_pair     = { .name = "pair",    .is_sf = 0, .arity =  2, .fn = eval_pair    };
+static const BuiltinFn builtin_print    = { .name = "print",   .is_sf = 0, .arity =  1, .fn = eval_print   };
+static const BuiltinFn builtin_rest     = { .name = "rest",    .is_sf = 0, .arity =  1, .fn = eval_rest    };
+static const BuiltinFn builtin_reverse  = { .name = "reverse", .is_sf = 0, .arity =  1, .fn = eval_reverse };
+static const BuiltinFn builtin_set      = { .name = "set",     .is_sf = 0, .arity =  2, .fn = eval_set     };
+static const BuiltinFn builtin_str      = { .name = "str",     .is_sf = 0, .arity =  1, .fn = eval_str     };
+static const BuiltinFn builtin_add      = { .name = "add",     .is_sf = 0, .arity = -1, .fn = eval_add     };
+static const BuiltinFn builtin_sub      = { .name = "sub",     .is_sf = 0, .arity = -1, .fn = eval_sub     };
+static const BuiltinFn builtin_mul      = { .name = "mul",     .is_sf = 0, .arity = -1, .fn = eval_mul     };
+static const BuiltinFn builtin_div      = { .name = "div",     .is_sf = 0, .arity = -1, .fn = eval_div     };
+
+// QUOTE,   { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_quote  },
+%}
+
+%includes
+%readonly-tables
+%global-table
+%define word-array-name keyword_table
+%struct-type
+%ignore-case
+%define initializer-suffix ,{0}
+%define slot-name name
+
+struct Keyword;
+
+%%
+NIL,     { .type = TYPE_NIL,        .as.list       = { .first = NULL,     .rest = NULL                }},
+T,       { .type = TYPE_SYMBOL,     .as.symbol     = AS_SYM("T")       },
+QUOTE,   { .type = TYPE_SYMBOL,     .as.symbol     = AS_SYM("QUOTE")   },
+',       { .type = TYPE_SYMBOL,     .as.symbol     = AS_SYM("'")       },
+LAMBDA,  { .type = TYPE_SYMBOL,     .as.symbol     = AS_SYM("LAMBDA")  },
+IF,      { .type = TYPE_SYMBOL,     .as.symbol     = AS_SYM("IF")      },
+AND,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_and      },
+APPEND,  { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_append   },
+APPLY,   { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_apply    },
+CONS,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_cons     },
+EQ,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_eq       },
+EVAL,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_eval     },
+FIRST,   { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_first    },
+FUNCALL, { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_funcall  },
+GT,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_gt       },
+>,       { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_gt       },
+LEN,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_len      },
+LT,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_lt       },
+<,       { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_lt       },
+NOT,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_not      },
+LIST,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_list     },
+OR,      { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_or       },
+PAIR,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_pair     },
+PRINT,   { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_print    },
+REST,    { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_rest     },
+REVERSE, { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_reverse  },
+SET,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_set      },
+STR,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_str      },
+ADD,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_add      },
+SUB,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_sub      },
+MUL,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_mul      },
+DIV,     { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_div      },
++,       { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_add      },
+-,       { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_sub      },
+*,       { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_mul      },
+/,       { .type = TYPE_BUILTIN_FN, .as.builtin_fn = &builtin_div      },
+%%
+
+#define PRIN_FN_TAB_NUM                                                       \
+  ((int)(sizeof (keyword_table) / sizeof (keyword_table[0])))
+
+struct Node *
+keyword_lookup (const char *str, size_t len)
+{
+  const Keyword *keyword = in_word_set(str, len);
+  if (keyword)
+    {
+      return (struct Node *)&keyword->node;  //FIXME
+    }
+  else
+    {
+      return NULL;
+    }
+}
+
+const char *
+is_keyword_strncmp (const char *text, int state)
+{
+  static int idx;
+  static size_t len;
+
+  if (state == 0)
+    {
+      idx = 0;
+      len = strlen (text);
+    }
+
+  while (idx < PRIN_FN_TAB_NUM)
+    {
+      const char *name = keyword_table[idx++].name;
+      if (!strncasecmp (name, text, len))
+        {
+          return name;
+        }
+    }
+  return NULL;
+}
