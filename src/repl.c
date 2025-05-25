@@ -41,6 +41,9 @@ extern jmp_buf eval_error_jmp;
 void
 lispm_init (Context *ctx)
 {
+  Node *nil = KEYWORD (NIL);
+  FIRST (nil) = REST (nil) = nil;
+
   static int sym_save_bool = 0;
 
   if (!sym_save_bool && (sym_save_bool = 1))

@@ -61,15 +61,12 @@ append_list (Node *list1, Node *list2, Context *ctx)
 static Node *
 funcall (Node *fn, Node *arglist, Context *ctx)
 {
-  // (fun arg1 arg2 ... )
   if (IS_BUILTIN_FN (fn))
     return funcall_builtin (fn, arglist, ctx);
 
-  // (fun arg1 arg2 ... )
   if (IS_LAMBDA (fn))
     return funcall_lambda (fn, arglist, ctx);
 
-  DEBUG (DEBUG_LOCATION);
   raise (ERR_NOT_A_FUNCTION, type (fn)->str_fn (fn));
   return NULL;
 }
@@ -103,9 +100,8 @@ funcall_builtin (Node *fn, Node *arglist, Context *ctx)
       return funcall (fn2, FIRST (REST (arglist)), ctx);
     }
 
-  // LIST is eval_list, so we're done.
   if (fn == KEYWORD (LIST))
-    return arglist;
+    return arglist; // LIST is eval_list, so we're done.
 
   return builtin_fn->fn (arglist, ctx);
 }
@@ -142,9 +138,12 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 static size_t
 length (Node *list)
 {
-  size_t i = 0;
+  if (!IS_LIST (list))
+    return 0;
 
-  for (Node *cdr = REST (list); cdr; cdr = REST (cdr))
+  size_t i = 1;
+
+  for (Node *cdr = REST (list); cdr != NIL; cdr = REST (cdr))
     ++i;
 
   return i;
@@ -286,10 +285,7 @@ eval_first (Node *args, Context *ctx)
       raise (ERR_INVALID_ARG, "first");
       return NULL;
     }
-
-  Node *first = FIRST (FIRST (args));
-
-  return first ? first : NIL;
+  return FIRST (FIRST (args));
 }
 
 Node *
@@ -333,7 +329,6 @@ eval_pair (Node *args, Context *ctx)
       raise (ERR_INVALID_ARG, "pair");
       return NULL;
     }
-
   return pair (FIRST (args), FIRST (REST (args)), ctx);
 }
 
@@ -341,13 +336,11 @@ Node *
 eval_print (Node *args, Context *ctx)
 {
   (void)ctx;
-
   if (!LISTP (args))
     {
       raise (ERR_INVALID_ARG, "print");
       return NULL;
     }
-
   return T;
 }
 
@@ -355,7 +348,6 @@ Node *
 eval_rest (Node *args, Context *ctx)
 {
   (void)ctx;
-
   Node *first = FIRST (args);
 
   if (!LISTP (first))
@@ -363,10 +355,7 @@ eval_rest (Node *args, Context *ctx)
       raise (ERR_INVALID_ARG, "rest");
       return NULL;
     }
-
-  Node *rest = REST (first);
-
-  return rest ? rest : NIL;
+  return REST (first);
 }
 
 Node *
@@ -417,18 +406,14 @@ eval (Node *form, Context *ctx)
       Node *rest = REST (form);
 
       if (first == KEYWORD (QUOTE))
-        {
-          return FIRST (rest);
-        }
+        return FIRST (rest);
 
       if (first == KEYWORD (IF))
         {
           Node *pred_form = FIRST (rest);
 
           if (!IS_NIL (eval (pred_form, ctx)))
-            {
-              return eval (FIRST (REST (rest)), ctx);
-            }
+            return eval (FIRST (REST (rest)), ctx);
           else
             {
               Node *else_form = FIRST (REST (REST (rest)));

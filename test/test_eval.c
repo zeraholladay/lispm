@@ -208,7 +208,7 @@ START_TEST (test_pair)
 {
   Node *eval_result = NULL;
 
-  eval_result = run_eval_program ("(pair '() '())");
+  eval_result = run_eval_program ("(len (pair '() '()))");
   ck_assert (GET_INTEGER (eval_result) == 0);
 
   eval_result = run_eval_program ("(len '(a))");

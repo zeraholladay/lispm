@@ -62,6 +62,12 @@ typedef struct
   size_t len;
 } Symbol;
 
+typedef struct
+{
+  Node *first;
+  Node *rest;
+} Cons;
+
 typedef struct Node *(*Fn) (struct Node *, struct Context *);
 
 typedef struct
@@ -87,14 +93,8 @@ struct Node
     Integer integer;
     char *string;
     Symbol symbol;
-
     // Composite structures
-    struct
-    {
-      Node *first;
-      Node *rest;
-    } list;
-
+    Cons list;
     // Function-like values
     const BuiltinFn *builtin_fn;
     Lambda lambda;
