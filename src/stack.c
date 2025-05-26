@@ -1,30 +1,23 @@
 #include <stdlib.h>
 
-#include "oom_handlers.h"
 #include "stack.h"
+#include "xalloc.h"
 
-extern oom_handler_t stack_oom_handler;
-
-static int
-stack_realloc (Stack *stack, size_t count)
+static void *
+stack_xrealloc (Stack *stack, size_t count)
 {
-  uintptr_t *new_ptr = realloc (stack->data, (count) * sizeof *(stack->data));
-  if (!new_ptr)
-    {
-      return 1;
-    }
+  uintptr_t *new_ptr = xrealloc (stack->data, (count) * sizeof *(stack->data));
   stack->data = new_ptr;
   stack->data_size = count;
-  return 0;
+  return new_ptr;
 }
 
-void
-stack_init (Stack *stack, size_t count)
+void *
+stack_xalloc (Stack *stack, size_t count)
 {
-  if (stack_realloc (stack, count))
-    stack_oom_handler (stack, OOM_LOCATION);
-  else
-    stack->sp = stack->fp = 0;
+  stack_xrealloc (stack, count);
+  stack->sp = stack->fp = 0;
+  return stack;
 }
 
 void
@@ -36,11 +29,9 @@ stack_free (Stack *stack)
 void
 stack_push (Stack *stack, void *value)
 {
-  if (stack->sp >= stack->data_size
-      && stack_realloc (stack, stack->data_size + STACK_GROWTH))
-    stack_oom_handler (stack, OOM_LOCATION);
-  else
-    stack->data[stack->sp++] = (uintptr_t)value;
+  if (stack->sp >= stack->data_size)
+    stack_xrealloc (stack, stack->data_size + STACK_GROWTH);
+  stack->data[stack->sp++] = (uintptr_t)value;
 }
 
 void *

@@ -5,12 +5,12 @@ Node *
 eval_eq (Node *args, Context *ctx)
 {
   (void)ctx;
-  Node *first = FIRST (args);
-  Node *second = FIRST (REST (args));
+  Node *car = CAR (args);
+  Node *card = CAR (CDR (args));
 
-  EqFn fn = type (first)->eq_fn;
+  EqFn fn = type (car)->eq_fn;
 
-  if (fn (FIRST (args), second))
+  if (fn (CAR (args), card))
     {
       return T;
     }
@@ -30,5 +30,5 @@ eval_not (Node *args, Context *ctx)
       return NULL;
     }
 
-  return nil_eq_fn (NIL, FIRST (args)) ? T : NIL;
+  return nil_eq_fn (NIL, CAR (args)) ? T : NIL;
 }

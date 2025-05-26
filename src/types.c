@@ -105,7 +105,7 @@ list_eq (Node *self, Node *other)
 {
   return type_eq (self, other)
          && ((IS_NIL (self) && IS_NIL (other))
-             || GET_LIST (self) == GET_LIST (other));
+             || GET_CONS (self) == GET_CONS (other));
 }
 
 static char *
@@ -115,23 +115,23 @@ list_tostr (Node *self)
   size_t total = 0;
   Node *cur;
 
-  list = list_alloc ();
+  list = list_xalloc ();
 
   if (!list)
     return NULL;
 
   total += list_append_strdup (list, "(");
 
-  for (cur = self; IS_LIST (cur); cur = REST (cur))
+  for (cur = self; IS_CONS (cur); cur = CDR (cur))
     {
-      Node *first = FIRST (cur);
-      Node *rest = REST (cur);
+      Node *car = CAR (cur);
+      Node *cdr = CDR (cur);
 
-      if (first)
+      if (car)
         {
-          total += list_append_strdup (list, type (first)->str_fn (first));
+          total += list_append_strdup (list, type (car)->str_fn (car));
 
-          if (FIRST (rest))
+          if (CAR (cdr))
             total += list_append_strdup (list, " ");
         }
     }
@@ -146,11 +146,8 @@ list_tostr (Node *self)
 
   // merge down into a single str
 
-  char *str = calloc (total + 1, sizeof *(str));
+  char *str = xcalloc (total + 1, sizeof *(str));
   char *dst = str;
-
-  if (!str)
-    return NULL;
 
   for (size_t i = 0; i < list->count; ++i)
     {
@@ -201,10 +198,7 @@ lambda_tostr (Node *self)
 
   size_t total = strlen (fmt) + params_len + body_len;
 
-  char *str = calloc (total, sizeof *str);
-
-  if (!str)
-    return NULL;
+  char *str = xcalloc (total, sizeof *str);
 
   int result = snprintf (str, total, fmt, params_str, body_str);
   if (result < 0 || (size_t)result >= total)
@@ -247,8 +241,8 @@ static Type type_tab[] = {
   = { .type_name = "SYMBOL", .str_fn = symbol_tostr, .eq_fn = symbol_eq },
 
   // Composite structures
-  [TYPE_LIST]
-  = { .type_name = "List", .str_fn = list_tostr, .eq_fn = list_eq },
+  [TYPE_CONS]
+  = { .type_name = "CONS", .str_fn = list_tostr, .eq_fn = list_eq },
 
   // Function-like values
   [TYPE_BUILTIN_FN] = { .type_name = "PRIMITIVE",
@@ -271,48 +265,48 @@ type (Node *self)
 Node *
 cons_lambda (Pool **p, Node *params, Node *body, Env *env)
 {
-  Node *node = pool_alloc_hier (p);
+  Node *node = pool_xalloc_hier (p);
   node->type = TYPE_LAMBDA;
-  node->as.lambda.params = params;
-  node->as.lambda.body = body;
-  node->as.lambda.env = env;
+  node->lambda.params = params;
+  node->lambda.body = body;
+  node->lambda.env = env;
   return node;
 }
 
 Node *
 cons_integer (Pool **p, Integer i)
 {
-  Node *node = pool_alloc_hier (p);
+  Node *node = pool_xalloc_hier (p);
   node->type = TYPE_INTEGER;
-  node->as.integer = i;
+  node->integer = i;
   return node;
 }
 
 Node *
-cons_list (Pool **p, Node *first, Node *rest)
+cons_cons (Pool **p, Node *car, Node *cdr)
 {
-  Node *node = pool_alloc_hier (p);
-  node->type = TYPE_LIST;
-  node->as.list.first = first;
-  node->as.list.rest = rest;
+  Node *node = pool_xalloc_hier (p);
+  node->type = TYPE_CONS;
+  CAR (node) = car;
+  CDR (node) = cdr;
   return node;
 }
 
 Node *
 cons_string (Pool **p, char *str)
 {
-  Node *node = pool_alloc_hier (p);
+  Node *node = pool_xalloc_hier (p);
   node->type = TYPE_STRING;
-  node->as.string = str;
+  node->string = str;
   return node;
 }
 
 Node *
 cons_symbol (Pool **p, const char *str, size_t len)
 {
-  Node *node = pool_alloc_hier (p);
+  Node *node = pool_xalloc_hier (p);
   node->type = TYPE_SYMBOL;
-  node->as.symbol.str = str;
-  node->as.symbol.len = len;
+  node->symbol.str = str;
+  node->symbol.len = len;
   return node;
 }

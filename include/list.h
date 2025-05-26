@@ -10,7 +10,7 @@ typedef struct
   void **items;
 } List;
 
-List *list_alloc (void);
+List *list_xalloc (void);
 void list_free (List *list);
 int list_append (List *list, void *item);
 void list_remove_index (List *list, size_t i);

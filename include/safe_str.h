@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "xalloc.h"
+
 #define STR_LITERAL_DUP(lit) safe_strndup (lit, sizeof (lit) - 1)
 
 inline static unsigned long
@@ -37,7 +39,7 @@ safe_strndup (char const *s, size_t n)
 {
   assert (s);
   size_t len = safe_strnlen (s, n);
-  char *new = (char *)malloc (len + 1);
+  char *new = (char *)xmalloc (len + 1);
 
   if (new == NULL)
     return NULL;

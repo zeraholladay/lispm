@@ -8,32 +8,32 @@
 #define NIL (KEYWORD (NIL))
 #define T (KEYWORD (T))
 
-#define IS_NIL(node) (node == NIL)
-#define LISTP(node) (IS_NIL (node) || IS_LIST (node))
-#define CONSP(node) (IS_LIST (node))
+#define IS_NIL(nptr) (nptr == NIL)
+#define LISTP(nptr) (IS_NIL (nptr) || CONSP (nptr))
+#define CONSP(nptr) (IS_CONS (nptr))
 
-#define CAR(node) ((node)->as.list.first) // Contents of the Address Register
-#define CDR(node) ((node)->as.list.rest)  // Contents of the Decrement Register
-#define FIRST(node) ((node)->as.list.first)
-#define REST(node) ((node)->as.list.rest)
+#define CAR(nptr) ((nptr)->cons.car)
+#define CDR(nptr) ((nptr)->cons.cdr)
+#define FIRST(nptr) ((nptr)->cons.car)
+#define REST(nptr) ((nptr)->cons.cdr)
 
-#define CONS(first, rest, ctx) (cons_list (&CTX_POOL (ctx), first, rest))
-#define LIST1(item, ctx) (CONS (item, NIL, ctx))
-#define LIST2(first, rest, ctx) (CONS (first, LIST1 (rest, ctx), ctx))
+#define CONS(car, cdr, ctx) (cons_cons (&CTX_POOL (ctx), car, cdr))
+#define LIST1(car, ctx) (CONS (car, NIL, ctx))
+#define LIST2(car, cdr, ctx) (CONS (car, LIST1 (cdr, ctx), ctx))
 
-#define RPLACA(node, val)                                                     \
+#define RPLACA(nptr, val)                                                     \
   do                                                                          \
     {                                                                         \
-      if (IS_LIST (node))                                                     \
-        FIRST (node) = val;                                                   \
+      if (CONSP (nptr))                                                       \
+        CAR (nptr) = val;                                                     \
     }                                                                         \
   while (0)
 
-#define RPLACD(node, val)                                                     \
+#define RPLACD(nptr, val)                                                     \
   do                                                                          \
     {                                                                         \
-      if (IS_LIST (node))                                                     \
-        REST (node) = val;                                                    \
+      if (CONSP (nptr))                                                       \
+        CDR (nptr) = val;                                                     \
     }                                                                         \
   while (0)
 
@@ -41,19 +41,19 @@ Node *eval_append (Node *args, Context *ctx);
 Node *eval_apply (Node *args, Context *ctx);
 Node *eval_butlast (Node *expr, Context *ctx);
 Node *eval_cons (Node *args, Context *ctx);
-Node *eval_first (Node *args, Context *ctx);
+Node *eval_car (Node *args, Context *ctx);
+Node *eval_cdr (Node *args, Context *ctx);
 Node *eval_funcall (Node *args, Context *ctx);
 Node *eval_if (Node *expr, Context *ctx);
 Node *eval_lambda (Node *expr, Context *ctx);
 Node *eval_last (Node *expr, Context *ctx);
 Node *eval_len (Node *args, Context *ctx);
 Node *eval_list (Node *args, Context *ctx);
-Node *eval_mapcar (Node *args, Context *ctx); // TODO
+Node *eval_mapcar (Node *args, Context *ctx);
 Node *eval_nth (Node *expr, Context *ctx);
 Node *eval_pair (Node *args, Context *ctx);
 Node *eval_print (Node *args, Context *ctx);
 Node *eval_reverse (Node *args, Context *ctx);
-Node *eval_rest (Node *args, Context *ctx);
 Node *eval_set (Node *args, Context *ctx);
 Node *eval_str (Node *args, Context *ctx);
 Node *eval (Node *form, Context *ctx);

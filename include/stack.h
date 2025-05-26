@@ -15,7 +15,7 @@ typedef struct Stack
   uintptr_t *data;
 } Stack;
 
-void stack_init (Stack *s_ptr, size_t count);
+void *stack_xalloc (Stack *s_ptr, size_t count);
 void stack_free (Stack *s_ptr);
 void stack_push (Stack *s_ptr, void *value);
 void *stack_pop (Stack *s_ptr);

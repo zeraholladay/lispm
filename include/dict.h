@@ -30,8 +30,8 @@ typedef struct
   int *bins;
 } Dict;
 
-Dict *dict_alloc_va_list (const char *key, ...);
-Dict *dict_alloc (const DictEntity *entity, size_t n);
+Dict *dict_xalloc_va_list (const char *key, ...);
+Dict *dict_xalloc (const DictEntity *entity, size_t n);
 void dict_destroy (Dict *dict);
 void dict_del (Dict *dict, const char *key);
 int dict_insert (Dict *dict, const char *key, void *val);

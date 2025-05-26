@@ -49,6 +49,8 @@ run_eval_progn (const char *input)
   return eval_result;
 }
 
+// should test based on https://jtra.cz/stuff/lisp/sclr/index.html
+
 // literals
 
 START_TEST (test_literal_expressions)
@@ -84,18 +86,18 @@ START_TEST (test_quote)
 
   eval_result = run_eval_progn ("'(foo)");
   ck_assert (!IS_NIL (eval_result));
-  car = FIRST (eval_result);
-  cdr = REST (eval_result);
+  car = CAR (eval_result);
+  cdr = CDR (eval_result);
   ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
   ck_assert (IS_NIL (cdr));
 
   eval_result = run_eval_progn ("'(foo bar)");
   ck_assert (!IS_NIL (eval_result));
-  car = FIRST (eval_result);
-  cdr = REST (eval_result);
+  car = CAR (eval_result);
+  cdr = CDR (eval_result);
   ck_assert (!IS_NIL (cdr));
   ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
-  ck_assert_str_eq (GET_SYMBOL (FIRST (cdr)).str, "bar");
+  ck_assert_str_eq (GET_SYMBOL (CAR (cdr)).str, "bar");
 }
 END_TEST
 
@@ -107,17 +109,17 @@ START_TEST (test_cons)
 
   eval_result = run_eval_progn ("(cons 'foo 'bar)");
   ck_assert (!IS_NIL (eval_result));
-  car = FIRST (eval_result);
-  cdr = REST (eval_result);
+  car = CAR (eval_result);
+  cdr = CDR (eval_result);
   ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
   ck_assert_str_eq (GET_SYMBOL (cdr).str, "bar");
 
   eval_result = run_eval_progn ("(cons 'foo '(bar))");
   ck_assert (!IS_NIL (eval_result));
-  car = FIRST (eval_result);
-  cdr = REST (eval_result);
+  car = CAR (eval_result);
+  cdr = CDR (eval_result);
   ck_assert (!IS_NIL (cdr));
-  ck_assert_str_eq (GET_SYMBOL (FIRST (cdr)).str, "bar");
+  ck_assert_str_eq (GET_SYMBOL (CAR (cdr)).str, "bar");
 }
 END_TEST
 
@@ -135,7 +137,7 @@ START_TEST (test_set_and_lookup)
   ck_assert (IS_SYMBOL (eval_result));
 
   eval_result = run_eval_progn ("(set 'bar '(1 2 3))");
-  ck_assert (IS_LIST (eval_result));
+  ck_assert (IS_CONS (eval_result));
 
   eval_result = run_eval_progn ("(set 'bar (lambda () ()))");
   ck_assert (IS_LAMBDA (eval_result));
@@ -173,9 +175,9 @@ START_TEST (test_rest)
   ck_assert (IS_NIL (eval_result));
 
   eval_result = run_eval_progn ("(rest '(foo bar))");
-  ck_assert (IS_LIST (eval_result));
-  ck_assert (IS_SYMBOL (FIRST (eval_result)));
-  ck_assert_str_eq (GET_SYMBOL (FIRST (eval_result)).str, "bar");
+  ck_assert (IS_CONS (eval_result));
+  ck_assert (IS_SYMBOL (CAR (eval_result)));
+  ck_assert_str_eq (GET_SYMBOL (CAR (eval_result)).str, "bar");
 
   if (setjmp (eval_error_jmp) == 0)
     {
@@ -248,20 +250,20 @@ START_TEST (test_list)
   ck_assert (IS_NIL (eval_result));
 
   eval_result = run_eval_progn ("(list 7)");
-  ck_assert_int_eq (GET_INTEGER (FIRST (eval_result)), 7);
-  ck_assert (IS_NIL (REST (eval_result)));
+  ck_assert_int_eq (GET_INTEGER (CAR (eval_result)), 7);
+  ck_assert (IS_NIL (CDR (eval_result)));
 
   eval_result = run_eval_progn ("(list 1 2 3)");
-  ck_assert_int_eq (GET_INTEGER (FIRST (eval_result)), 1);
-  ck_assert_int_eq (GET_INTEGER (FIRST (REST (eval_result))), 2);
-  ck_assert_int_eq (GET_INTEGER (FIRST (REST (REST (eval_result)))), 3);
-  ck_assert (IS_NIL (REST (REST (REST (eval_result)))));
+  ck_assert_int_eq (GET_INTEGER (CAR (eval_result)), 1);
+  ck_assert_int_eq (GET_INTEGER (CAR (CDR (eval_result))), 2);
+  ck_assert_int_eq (GET_INTEGER (CAR (CDR (CDR (eval_result)))), 3);
+  ck_assert (IS_NIL (CDR (CDR (CDR (eval_result)))));
 
   eval_result = run_eval_progn ("(list 'a 'b)");
-  Node *second = FIRST (REST (eval_result));
-  ck_assert_str_eq (GET_SYMBOL (FIRST (eval_result)).str, "a");
+  Node *second = CAR (CDR (eval_result));
+  ck_assert_str_eq (GET_SYMBOL (CAR (eval_result)).str, "a");
   ck_assert_str_eq (GET_SYMBOL (second).str, "b");
-  ck_assert (IS_NIL (REST (REST (eval_result))));
+  ck_assert (IS_NIL (CDR (CDR (eval_result))));
 }
 END_TEST
 
@@ -288,13 +290,13 @@ START_TEST (test_lambda)
   // define 'foo and run
   eval_result = run_eval_progn ("(set 'foo (lambda () (cons 'a 'b)))"
                                 "(foo)");
-  ck_assert (IS_LIST (eval_result));
+  ck_assert (IS_CONS (eval_result));
 
   // with parameters
   eval_result = run_eval_progn ("(set 'foo (lambda (a b) (cons a b)))"
                                 "(foo 'bar 'biz)");
-  ck_assert (IS_LIST (eval_result));
-  ck_assert_str_eq (GET_SYMBOL (FIRST (eval_result)).str, "bar");
+  ck_assert (IS_CONS (eval_result));
+  ck_assert_str_eq (GET_SYMBOL (CAR (eval_result)).str, "bar");
 
   // test lexical scope
   eval_result = run_eval_progn ("(set 'foo 'bar)"
@@ -317,8 +319,8 @@ START_TEST (test_apply)
   eval_result
       = run_eval_progn ("(apply (lambda (a b) (cons a b)) '(foo bar))");
   ck_assert (!IS_NIL (eval_result));
-  car = FIRST (eval_result);
-  cdr = REST (eval_result);
+  car = CAR (eval_result);
+  cdr = CDR (eval_result);
   ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
   ck_assert_str_eq (GET_SYMBOL (cdr).str, "bar");
 
@@ -351,8 +353,8 @@ START_TEST (test_funcall)
   eval_result
       = run_eval_progn ("(funcall (lambda (a b) (cons a b)) 'foo 'bar)");
   ck_assert (!IS_NIL (eval_result));
-  car = FIRST (eval_result);
-  cdr = REST (eval_result);
+  car = CAR (eval_result);
+  cdr = CDR (eval_result);
   ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
   ck_assert_str_eq (GET_SYMBOL (cdr).str, "bar");
 

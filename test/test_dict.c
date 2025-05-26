@@ -10,7 +10,7 @@ Dict *dict;
 void
 setup (void)
 {
-  dict = dict_alloc (NULL, 0);
+  dict = dict_xalloc (NULL, 0);
   ck_assert_ptr_nonnull (dict);
 }
 
@@ -115,7 +115,7 @@ START_TEST (test_initialization)
   Dict *local_dict;
   DictEntity *entity;
 
-  local_dict = dict_alloc (entities, 5);
+  local_dict = dict_xalloc (entities, 5);
   ck_assert_ptr_nonnull (local_dict);
 
   entity = dict_lookup (local_dict, "delta");
@@ -130,7 +130,7 @@ START_TEST (test_initialization_va_list)
   DictEntity *entity;
 
   Dict *local_dict
-      = dict_alloc_va_list ("foo", (intptr_t)-42, "bar", (intptr_t)42, NULL);
+      = dict_xalloc_va_list ("foo", (intptr_t)-42, "bar", (intptr_t)42, NULL);
   ck_assert_ptr_nonnull (local_dict);
 
   entity = dict_lookup (local_dict, "bar");
@@ -151,7 +151,7 @@ START_TEST (test_uuid_fuzz)
     char key[37];
     int val;
   } uuid_fuzz[N_FUZZ];
-  Dict *local_dict = dict_alloc (NULL, 0);
+  Dict *local_dict = dict_xalloc (NULL, 0);
   DictEntity *entity;
   uuid_t uuid;
 

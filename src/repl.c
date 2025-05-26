@@ -42,7 +42,7 @@ void
 lispm_init (Context *ctx)
 {
   Node *nil = KEYWORD (NIL);
-  FIRST (nil) = REST (nil) = nil;
+  CAR (nil) = CDR (nil) = nil;
 
   static int sym_save_bool = 0;
 
@@ -70,7 +70,7 @@ lispm_eval_progn (Context *ctx)
       Node *eval_result = eval_progn (CTX_PARSE_ROOT (ctx), ctx);
       Node *node = eval_str (eval_result, ctx);
       printf ("%s\n", GET_STRING (node));
-      free (node->as.string); // FIXME with GC
+      free (node->string); // FIXME with GC
       return 0;
     }
 

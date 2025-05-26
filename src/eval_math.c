@@ -7,7 +7,7 @@ eval_gt (Node *args, Context *ctx)
   (void)ctx;
   Node *result = T;
 
-  if (!IS_LIST (args))
+  if (!IS_CONS (args))
     {
       raise (ERR_ARG_NOT_ITERABLE, "gt: argument is not a list");
       return NULL;
@@ -19,28 +19,28 @@ eval_gt (Node *args, Context *ctx)
       return NULL;
     }
 
-  if (!IS_INTEGER (FIRST (args)))
+  if (!IS_INTEGER (CAR (args)))
     {
       raise (ERR_ARG_TYPE_MISMATCH, "gt: argument is not integer");
       return NULL;
     }
 
-  Node *prev = FIRST (args);
+  Node *prev = CAR (args);
 
-  for (Node *rest = REST (args); !IS_NIL (rest); rest = REST (rest))
+  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS_INTEGER (FIRST (rest)))
+      if (!IS_INTEGER (CAR (rest)))
         {
           raise (ERR_ARG_TYPE_MISMATCH, "gt: argument is not integer");
           return NULL;
         }
 
-      if (!(GET_INTEGER (prev) > GET_INTEGER (FIRST (rest))))
+      if (!(GET_INTEGER (prev) > GET_INTEGER (CAR (rest))))
         {
           return NIL;
         }
 
-      prev = FIRST (rest);
+      prev = CAR (rest);
     }
 
   return result;
@@ -52,7 +52,7 @@ eval_lt (Node *args, Context *ctx)
   (void)ctx;
   Node *result = T;
 
-  if (!IS_LIST (args))
+  if (!IS_CONS (args))
     {
       raise (ERR_ARG_NOT_ITERABLE, "lt: argument is not a list");
       return NULL;
@@ -64,28 +64,28 @@ eval_lt (Node *args, Context *ctx)
       return NULL;
     }
 
-  if (!IS_INTEGER (FIRST (args)))
+  if (!IS_INTEGER (CAR (args)))
     {
       raise (ERR_ARG_TYPE_MISMATCH, "lt: argument is not integer");
       return NULL;
     }
 
-  Node *prev = FIRST (args);
+  Node *prev = CAR (args);
 
-  for (Node *rest = REST (args); !IS_NIL (rest); rest = REST (rest))
+  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS_INTEGER (FIRST (rest)))
+      if (!IS_INTEGER (CAR (rest)))
         {
           raise (ERR_ARG_TYPE_MISMATCH, "lt: argument is not integer");
           return NULL;
         }
 
-      if (!(GET_INTEGER (prev) < GET_INTEGER (FIRST (rest))))
+      if (!(GET_INTEGER (prev) < GET_INTEGER (CAR (rest))))
         {
           return NIL;
         }
 
-      prev = FIRST (rest);
+      prev = CAR (rest);
     }
 
   return result;
@@ -97,7 +97,7 @@ eval_lt (Node *args, Context *ctx)
 Node *
 eval_add (Node *args, Context *ctx)
 {
-  if (!IS_LIST (args))
+  if (!IS_CONS (args))
     {
       raise (ERR_ARG_NOT_ITERABLE, "add: argument is not a list");
       return NULL;
@@ -109,23 +109,23 @@ eval_add (Node *args, Context *ctx)
       return NULL;
     }
 
-  if (!IS_INTEGER (FIRST (args)))
+  if (!IS_INTEGER (CAR (args)))
     {
       raise (ERR_ARG_TYPE_MISMATCH, "add: argument is not integer");
       return NULL;
     }
 
-  Integer sum = GET_INTEGER (FIRST (args));
+  Integer sum = GET_INTEGER (CAR (args));
 
-  for (Node *rest = REST (args); !IS_NIL (rest); rest = REST (rest))
+  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS_INTEGER (FIRST (rest)))
+      if (!IS_INTEGER (CAR (rest)))
         {
           raise (ERR_ARG_TYPE_MISMATCH, "add: argument is not integer");
           return NULL;
         }
 
-      sum += GET_INTEGER (FIRST (rest));
+      sum += GET_INTEGER (CAR (rest));
     }
 
   return cons_integer (&CTX_POOL (ctx), sum);
@@ -134,7 +134,7 @@ eval_add (Node *args, Context *ctx)
 Node *
 eval_sub (Node *args, Context *ctx)
 {
-  if (!IS_LIST (args))
+  if (!IS_CONS (args))
     {
       raise (ERR_ARG_NOT_ITERABLE, "sub: argument is not a list");
       return NULL;
@@ -146,23 +146,23 @@ eval_sub (Node *args, Context *ctx)
       return NULL;
     }
 
-  if (!IS_INTEGER (FIRST (args)))
+  if (!IS_INTEGER (CAR (args)))
     {
       raise (ERR_ARG_TYPE_MISMATCH, "sub: argument is not integer");
       return NULL;
     }
 
-  Integer total = GET_INTEGER (FIRST (args));
+  Integer total = GET_INTEGER (CAR (args));
 
-  for (Node *rest = REST (args); !IS_NIL (rest); rest = REST (rest))
+  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS_INTEGER (FIRST (rest)))
+      if (!IS_INTEGER (CAR (rest)))
         {
           raise (ERR_ARG_TYPE_MISMATCH, "sub: argument is not integer");
           return NULL;
         }
 
-      total -= GET_INTEGER (FIRST (rest));
+      total -= GET_INTEGER (CAR (rest));
     }
 
   return cons_integer (&CTX_POOL (ctx), total);
@@ -171,7 +171,7 @@ eval_sub (Node *args, Context *ctx)
 Node *
 eval_mul (Node *args, Context *ctx)
 {
-  if (!IS_LIST (args))
+  if (!IS_CONS (args))
     {
       raise (ERR_ARG_NOT_ITERABLE, "mul: argument is not a list");
       return NULL;
@@ -183,23 +183,23 @@ eval_mul (Node *args, Context *ctx)
       return NULL;
     }
 
-  if (!IS_INTEGER (FIRST (args)))
+  if (!IS_INTEGER (CAR (args)))
     {
       raise (ERR_ARG_TYPE_MISMATCH, "mul: argument is not integer");
       return NULL;
     }
 
-  Integer result = GET_INTEGER (FIRST (args));
+  Integer result = GET_INTEGER (CAR (args));
 
-  for (Node *rest = REST (args); !IS_NIL (rest); rest = REST (rest))
+  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS_INTEGER (FIRST (rest)))
+      if (!IS_INTEGER (CAR (rest)))
         {
           raise (ERR_ARG_TYPE_MISMATCH, "mul: argument is not integer");
           return NULL;
         }
 
-      result *= GET_INTEGER (FIRST (rest));
+      result *= GET_INTEGER (CAR (rest));
     }
 
   return cons_integer (&CTX_POOL (ctx), result);
@@ -208,7 +208,7 @@ eval_mul (Node *args, Context *ctx)
 Node *
 eval_div (Node *args, Context *ctx)
 {
-  if (!IS_LIST (args))
+  if (!IS_CONS (args))
     {
       raise (ERR_ARG_NOT_ITERABLE, "div: argument is not a list");
       return NULL;
@@ -220,29 +220,29 @@ eval_div (Node *args, Context *ctx)
       return NULL;
     }
 
-  if (!IS_INTEGER (FIRST (args)))
+  if (!IS_INTEGER (CAR (args)))
     {
       raise (ERR_ARG_TYPE_MISMATCH, "div: argument is not integer");
       return NULL;
     }
 
-  Integer result = GET_INTEGER (FIRST (args));
+  Integer result = GET_INTEGER (CAR (args));
 
-  for (Node *rest = REST (args); !IS_NIL (rest); rest = REST (rest))
+  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS_INTEGER (FIRST (rest)))
+      if (!IS_INTEGER (CAR (rest)))
         {
           raise (ERR_ARG_TYPE_MISMATCH, "div: argument is not integer");
           return NULL;
         }
 
-      if (GET_INTEGER (FIRST (rest)) == 0)
+      if (GET_INTEGER (CAR (rest)) == 0)
         {
           raise (ERR_DIVISION_BY_0, "div: argument is zero");
           return NULL;
         }
 
-      result /= GET_INTEGER (FIRST (rest));
+      result /= GET_INTEGER (CAR (rest));
     }
 
   return cons_integer (&CTX_POOL (ctx), result);

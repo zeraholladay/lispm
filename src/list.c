@@ -1,18 +1,16 @@
 #include <stdlib.h>
 
 #include "list.h"
-#include "oom_handlers.h"
 #include "safe_str.h"
+#include "xalloc.h"
 
 #ifndef HEAP_LIST_INIT_CAPACITY
 #define HEAP_LIST_INIT_CAPACITY 4
 #endif
 
-extern oom_handler_t list_oom_handler;
-
 // thanks python
 static int
-list_resize (List *list, size_t min_capacity)
+list_xresize (List *list, size_t min_capacity)
 {
   size_t new_capacity = list->capacity;
 
@@ -21,13 +19,7 @@ list_resize (List *list, size_t min_capacity)
       new_capacity += (new_capacity >> 3) + (new_capacity < 9 ? 3 : 6);
     }
 
-  void **new_nodes = realloc (list->items, new_capacity * sizeof (void *));
-
-  if (!new_nodes)
-    {
-      list_oom_handler (NULL, OOM_LOCATION);
-      return -1;
-    }
+  void **new_nodes = xrealloc (list->items, new_capacity * sizeof (void *));
 
   list->items = new_nodes;
   list->capacity = new_capacity;
@@ -36,24 +28,10 @@ list_resize (List *list, size_t min_capacity)
 }
 
 List *
-list_alloc (void)
+list_xalloc (void)
 {
-  List *list = calloc (1, sizeof (List));
-
-  if (!list)
-    {
-      list_oom_handler (NULL, OOM_LOCATION);
-      return NULL;
-    }
-
-  list->items = calloc (HEAP_LIST_INIT_CAPACITY, sizeof *(list->items));
-
-  if (!list->items)
-    {
-      free (list), list = NULL;
-      list_oom_handler (NULL, OOM_LOCATION);
-      return NULL;
-    }
+  List *list = xcalloc (1, sizeof (List));
+  list->items = xcalloc (HEAP_LIST_INIT_CAPACITY, sizeof *(list->items));
 
   list->capacity = HEAP_LIST_INIT_CAPACITY;
   list->count = 0;
@@ -74,11 +52,8 @@ int
 list_append (List *list, void *item)
 {
   if ((list->count >= list->capacity)
-      && (list_resize (list, list->count + 1) != 0))
-    {
-      list_oom_handler (NULL, OOM_LOCATION);
-      return -1;
-    }
+      && (list_xresize (list, list->count + 1) != 0))
+    return -1;
   list->items[list->count] = item;
   return list->count++; // ie index of append
 }

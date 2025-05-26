@@ -10,6 +10,7 @@
 #include "parser.h"
 #include "safe_str.h"
 #include "types.h"
+#include "xalloc.h"
 
 #define PRINT(node)                                                           \
   do                                                                          \
@@ -80,14 +81,14 @@ funcall_builtin (Node *fn, Node *arglist, Context *ctx)
   // so if we called them again, arglist would be eval'd 2x.
   if (fn == KEYWORD (FUNCALL))
     {
-      Node *fn2 = eval (FIRST (arglist), ctx);
-      return funcall (fn2, REST (arglist), ctx);
+      Node *fn2 = eval (CAR (arglist), ctx);
+      return funcall (fn2, CDR (arglist), ctx);
     }
 
   if (fn == KEYWORD (APPLY))
     {
-      Node *fn2 = eval (FIRST (arglist), ctx);
-      return funcall (fn2, FIRST (REST (arglist)), ctx);
+      Node *fn2 = eval (CAR (arglist), ctx);
+      return funcall (fn2, CAR (CDR (arglist)), ctx);
     }
 
   if (fn == KEYWORD (LIST))
@@ -117,9 +118,9 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 
   while (!IS_NIL (pairs))
     {
-      Node *pair = FIRST (pairs);
-      set (FIRST (pair), FIRST (REST (pair)), &new_ctx);
-      pairs = REST (pairs);
+      Node *pair = CAR (pairs);
+      set (CAR (pair), CAR (CDR (pair)), &new_ctx);
+      pairs = CDR (pairs);
     }
 
   return eval_progn (GET_LAMBDA_BODY (fn), &new_ctx);
@@ -134,19 +135,19 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 Node *
 eval_apply (Node *arglist, Context *ctx)
 {
-  Node *fn = eval (FIRST (arglist), ctx);
+  Node *fn = eval (CAR (arglist), ctx);
 
   Node *fixed_rev = NIL;
-  Node *fixd_args = butlast (REST (arglist), ctx);
+  Node *fixd_args = butlast (CDR (arglist), ctx);
 
   while (!IS_NIL (fixd_args))
     {
-      Node *eval_res = eval (FIRST (fixd_args), ctx);
+      Node *eval_res = eval (CAR (fixd_args), ctx);
       fixed_rev = CONS (eval_res, fixed_rev, ctx);
-      fixd_args = REST (fixd_args);
+      fixd_args = CDR (fixd_args);
     }
 
-  Node *last_arg_list = last (REST (arglist), ctx);
+  Node *last_arg_list = last (CDR (arglist), ctx);
   Node *tail_list = eval (last_arg_list, ctx);
 
   if (!LISTP (tail_list))
@@ -164,8 +165,8 @@ eval_apply (Node *arglist, Context *ctx)
 Node *
 eval_funcall (Node *args, Context *ctx)
 {
-  Node *fn = eval (FIRST (args), ctx);
-  Node *arglist = eval_list (REST (args), ctx);
+  Node *fn = eval (CAR (args), ctx);
+  Node *arglist = eval_list (CDR (args), ctx);
   return funcall (fn, arglist, ctx);
 }
 
@@ -175,10 +176,10 @@ eval_list (Node *args, Context *ctx)
   if (IS_NIL (args))
     return NIL;
 
-  Node *first = eval (FIRST (args), ctx);
-  Node *rest = eval_list (REST (args), ctx);
+  Node *car = eval (CAR (args), ctx);
+  Node *cdr = eval_list (CDR (args), ctx);
 
-  return CONS (first, rest, ctx);
+  return CONS (car, cdr, ctx);
 }
 
 Node *
@@ -197,48 +198,48 @@ eval (Node *form, Context *ctx)
       if (IS_NIL (form))
         return NIL;
 
-      Node *first = FIRST (form);
-      Node *rest = REST (form);
+      Node *car = CAR (form);
+      Node *cdr = CDR (form);
 
-      if (first == KEYWORD (QUOTE))
-        return FIRST (rest);
+      if (car == KEYWORD (QUOTE))
+        return CAR (cdr);
 
-      if (IS_LAMBDA (first))
+      if (IS_LAMBDA (car))
         {
-          GET_LAMBDA_ENV (first) = CTX_ENV (ctx);
-          return first;
+          GET_LAMBDA_ENV (car) = CTX_ENV (ctx);
+          return car;
         }
 
-      Node *fn = eval (first, ctx);
+      Node *fn = eval (car, ctx);
 
       if (IS_SPECIAL_FORM (fn))
         {
           if (fn == KEYWORD (APPLY))
-            return eval_apply (rest, ctx);
+            return eval_apply (cdr, ctx);
 
           if (fn == KEYWORD (FUNCALL))
-            return eval_funcall (rest, ctx);
+            return eval_funcall (cdr, ctx);
 
           if (fn == KEYWORD (EVAL))
-            return eval (eval (FIRST (rest), ctx), ctx);
+            return eval (eval (CAR (cdr), ctx), ctx);
 
           if (fn == KEYWORD (PROGN))
-            return eval_progn (rest, ctx);
+            return eval_progn (cdr, ctx);
 
           if (fn == KEYWORD (AND))
-            return and_form (rest, ctx);
+            return and_form (cdr, ctx);
 
           if (fn == KEYWORD (IF))
-            return if_form (rest, ctx);
+            return if_form (cdr, ctx);
 
           if (fn == KEYWORD (OR))
-            return or_form (rest, ctx);
+            return or_form (cdr, ctx);
 
           raise (ERR_INTERNAL, DEBUG_LOCATION);
           return NULL;
         }
 
-      Node *arglist = eval_list (rest, ctx);
+      Node *arglist = eval_list (cdr, ctx);
       return funcall (fn, arglist, ctx);
     }
 
@@ -251,9 +252,9 @@ eval_progn (Node *program, Context *ctx)
 {
   Node *result = NIL;
 
-  for (Node *forms = program; forms != NIL; forms = REST (forms))
+  for (Node *forms = program; forms != NIL; forms = CDR (forms))
     {
-      Node *form = FIRST (forms);
+      Node *form = CAR (forms);
       result = eval (form, ctx);
     }
 
@@ -269,12 +270,12 @@ and_form (Node *form, Context *ctx)
 
   while (!IS_NIL (form))
     {
-      eval_res = eval (FIRST (form), ctx);
+      eval_res = eval (CAR (form), ctx);
       if (nil_eq_fn (NIL, eval_res))
         {
           return NIL;
         }
-      form = REST (form);
+      form = CDR (form);
     }
 
   return eval_res;
@@ -283,13 +284,13 @@ and_form (Node *form, Context *ctx)
 static Node *
 if_form (Node *form, Context *ctx)
 {
-  Node *pred_form = FIRST (form);
+  Node *pred_form = CAR (form);
 
   if (!IS_NIL (eval (pred_form, ctx)))
-    return eval (FIRST (REST (form)), ctx);
+    return eval (CAR (CDR (form)), ctx);
   else
     {
-      Node *else_form = FIRST (REST (REST (form)));
+      Node *else_form = CAR (CDR (CDR (form)));
       return else_form ? eval (else_form, ctx) : NIL;
     }
 }
@@ -302,14 +303,14 @@ or_form (Node *form, Context *ctx)
 
   while (!IS_NIL (form))
     {
-      eval_res = eval (FIRST (form), ctx);
+      eval_res = eval (CAR (form), ctx);
 
       if (!nil_eq_fn (NIL, eval_res))
         {
           return eval_res;
         }
 
-      form = REST (form);
+      form = CDR (form);
     }
   return NIL;
 }
@@ -324,8 +325,8 @@ append_inplace (Node *list1, Node *list2)
 
   Node *l1 = list1;
 
-  while (!IS_NIL (REST (l1)))
-    l1 = REST (l1);
+  while (!IS_NIL (CDR (l1)))
+    l1 = CDR (l1);
 
   RPLACD (l1, list2);
 
@@ -338,32 +339,32 @@ append_list (Node *list1, Node *list2, Context *ctx)
   if (IS_NIL (list1))
     return list2;
 
-  return CONS (FIRST (list1), append_list (REST (list1), list2, ctx), ctx);
+  return CONS (CAR (list1), append_list (CDR (list1), list2, ctx), ctx);
 }
 
 static Node *
 butlast (Node *list, Context *ctx)
 {
   Node *rev = reverse (list, ctx);
-  return reverse (REST (rev), ctx);
+  return reverse (CDR (rev), ctx);
 }
 
 static Node *
 last (Node *list, Context *ctx)
 {
   Node *rev = reverse (list, ctx);
-  return FIRST (rev);
+  return CAR (rev);
 }
 
 static size_t
 length (Node *list)
 {
-  if (!IS_LIST (list))
+  if (!IS_CONS (list))
     return 0;
 
   size_t i = 1;
 
-  for (Node *cdr = REST (list); cdr != NIL; cdr = REST (cdr))
+  for (Node *cdr = CDR (list); cdr != NIL; cdr = CDR (cdr))
     ++i;
 
   return i;
@@ -375,9 +376,9 @@ mapcar (Node *fn, Node *arglist, Context *ctx)
   Node *zip_args = zip (arglist, ctx);
   Node *rev = NIL;
 
-  for (Node *l = zip_args; !IS_NIL (l); l = REST (l))
+  for (Node *l = zip_args; !IS_NIL (l); l = CDR (l))
     {
-      Node *res = funcall (fn, FIRST (l), ctx);
+      Node *res = funcall (fn, CAR (l), ctx);
       rev = CONS (res, rev, ctx);
     }
 
@@ -390,10 +391,10 @@ pair (Node *list1, Node *list2, Context *ctx)
   if (IS_NIL (list1) || IS_NIL (list2))
     return NIL;
 
-  Node *first_pair = LIST2 (FIRST (list1), FIRST (list2), ctx);
-  Node *rest_pairs = pair (REST (list1), REST (list2), ctx);
+  Node *car_pair = LIST2 (CAR (list1), CAR (list2), ctx);
+  Node *cdr_pairs = pair (CDR (list1), CDR (list2), ctx);
 
-  return CONS (first_pair, rest_pairs, ctx);
+  return CONS (car_pair, cdr_pairs, ctx);
 }
 
 static Node *
@@ -403,10 +404,10 @@ nth (size_t idx, Node *list)
     {
       if (IS_NIL (list))
         return NIL;
-      list = REST (list);
+      list = CDR (list);
     }
 
-  return (IS_NIL (list)) ? NIL : FIRST (list);
+  return (IS_NIL (list)) ? NIL : CAR (list);
 }
 
 static Node *
@@ -415,25 +416,21 @@ reverse (Node *list, Context *ctx)
   (void)ctx;
   Node *result = NIL;
 
-  for (Node *l = list; l != NIL; l = REST (l))
-    {
-      result = CONS (FIRST (l), result, ctx);
-    }
+  for (Node *l = list; l != NIL; l = CDR (l))
+    result = CONS (CAR (l), result, ctx);
   return result;
 }
 
 static Node *
 zip (Node *lists, Context *ctx)
 {
+  scratch_t s;
+
   size_t len = length (lists);
   if (len == 0)
     return NIL;
 
-  Node **heads = calloc (len, sizeof *heads);
-  if (!heads)
-    {
-      return NIL; // FIXME
-    }
+  Node **heads = xalloc_scratch (&s, len * sizeof *heads);
 
   for (size_t i = 0; i < len; i++)
     heads[i] = nth (i, lists);
@@ -457,14 +454,14 @@ zip (Node *lists, Context *ctx)
 
       for (size_t i = 0; i < len; i++)
         {
-          row_rev = CONS (FIRST (heads[i]), row_rev, ctx);
-          heads[i] = REST (heads[i]);
+          row_rev = CONS (CAR (heads[i]), row_rev, ctx);
+          heads[i] = CDR (heads[i]);
         }
 
       out_rev = CONS (reverse (row_rev, ctx), out_rev, ctx);
     }
 
-  free (heads);
+  xfree_scratch (&s);
   return reverse (out_rev, ctx);
 }
 
@@ -492,16 +489,16 @@ lookup (Node *node, Context *ctx)
 }
 
 static Node *
-set (Node *first, Node *rest, Context *ctx)
+set (Node *car, Node *cdr, Context *ctx)
 {
-  if (!IS_SYMBOL (first))
+  if (!IS_SYMBOL (car))
     {
       raise (ERR_INVALID_ARG, "set");
       return NULL;
     }
 
-  const char *str = GET_SYMBOL (first).str;
-  size_t len = GET_SYMBOL (first).len;
+  const char *str = GET_SYMBOL (car).str;
+  size_t len = GET_SYMBOL (car).len;
 
   if (keyword_lookup (str, len))
     {
@@ -509,8 +506,8 @@ set (Node *first, Node *rest, Context *ctx)
       return NULL;
     }
 
-  env_set (CTX_ENV (ctx), str, rest); // TODO: error handling
-  return rest;
+  env_set (CTX_ENV (ctx), str, cdr); // TODO: error handling
+  return cdr;
 }
 
 // other builtins
@@ -524,11 +521,11 @@ eval_append (Node *args, Context *ctx)
       return NULL;
     }
 
-  Node *result = FIRST (args);
+  Node *result = CAR (args);
 
-  for (Node *list = REST (args); args != NIL; args = REST (args))
+  for (Node *list = CDR (args); args != NIL; args = CDR (args))
     {
-      result = append_list (result, FIRST (list), ctx);
+      result = append_list (result, CAR (list), ctx);
     }
 
   return result;
@@ -542,45 +539,59 @@ eval_butlast (Node *args, Context *ctx)
       raise (ERR_INVALID_ARG, "butlast");
       return NULL;
     }
-  return butlast (FIRST (args), ctx);
+  return butlast (CAR (args), ctx);
 }
 
 Node *
 eval_cons (Node *args, Context *ctx)
 {
-  return CONS (FIRST (args), FIRST (REST (args)), ctx);
+  return CONS (CAR (args), CAR (CDR (args)), ctx);
 }
 
 Node *
-eval_first (Node *args, Context *ctx)
+eval_car (Node *args, Context *ctx)
 {
   (void)ctx;
-  if (!LISTP (FIRST (args)))
+  if (!LISTP (CAR (args)))
     {
-      raise (ERR_INVALID_ARG, "first");
+      raise (ERR_INVALID_ARG, "car");
       return NULL;
     }
-  return FIRST (FIRST (args));
+  return CAR (CAR (args));
+}
+
+Node *
+eval_cdr (Node *args, Context *ctx)
+{
+  (void)ctx;
+  Node *car = CAR (args);
+
+  if (!LISTP (car))
+    {
+      raise (ERR_INVALID_ARG, "cdr");
+      return NULL;
+    }
+  return CDR (car);
 }
 
 Node *
 eval_len (Node *args, Context *ctx)
 {
-  Node *first = FIRST (args);
+  Node *car = CAR (args);
 
   if (!LISTP (args))
     {
       raise (ERR_INVALID_ARG, "len");
       return NULL;
     }
-  return cons_integer (&CTX_POOL (ctx), length (first));
+  return cons_integer (&CTX_POOL (ctx), length (car));
 }
 
 Node *
 eval_mapcar (Node *args, Context *ctx)
 {
-  Node *fn = FIRST (args);
-  Node *arglist = REST (args);
+  Node *fn = CAR (args);
+  Node *arglist = CDR (args);
   return mapcar (fn, arglist, ctx);
 }
 
@@ -589,14 +600,13 @@ eval_nth (Node *args, Context *ctx)
 {
   (void)ctx;
 
-  if (!IS_LIST (args) || !IS_INTEGER (FIRST (args))
-      || !LISTP (FIRST (REST (args))))
+  if (!IS_CONS (args) || !IS_INTEGER (CAR (args)) || !LISTP (CAR (CDR (args))))
     {
       raise (ERR_ARG_NOT_ITERABLE, "nth: i list");
       return NULL;
     }
-  size_t idx = (size_t)GET_INTEGER (FIRST (args));
-  Node *list = FIRST (REST (args));
+  size_t idx = (size_t)GET_INTEGER (CAR (args));
+  Node *list = CAR (CDR (args));
   return nth (idx, list);
 }
 
@@ -608,18 +618,18 @@ eval_last (Node *args, Context *ctx)
       raise (ERR_INVALID_ARG, "last");
       return NULL;
     }
-  return last (FIRST (args), ctx);
+  return last (CAR (args), ctx);
 }
 
 Node *
 eval_pair (Node *args, Context *ctx)
 {
-  if (!LISTP (FIRST (args)) || !LISTP (FIRST (REST (args))))
+  if (!LISTP (CAR (args)) || !LISTP (CAR (CDR (args))))
     {
       raise (ERR_INVALID_ARG, "pair");
       return NULL;
     }
-  return pair (FIRST (args), FIRST (REST (args)), ctx);
+  return pair (CAR (args), CAR (CDR (args)), ctx);
 }
 
 Node *
@@ -631,22 +641,8 @@ eval_print (Node *args, Context *ctx)
       raise (ERR_INVALID_ARG, "print");
       return NULL;
     }
-  PRINT (FIRST (args));
+  PRINT (CAR (args));
   return T;
-}
-
-Node *
-eval_rest (Node *args, Context *ctx)
-{
-  (void)ctx;
-  Node *first = FIRST (args);
-
-  if (!LISTP (first))
-    {
-      raise (ERR_INVALID_ARG, "rest");
-      return NULL;
-    }
-  return REST (first);
 }
 
 Node *
@@ -654,21 +650,21 @@ eval_reverse (Node *args, Context *ctx)
 {
   if (!LISTP (args))
     {
-      raise (ERR_INVALID_ARG, "rest");
+      raise (ERR_INVALID_ARG, "cdr");
       return NULL;
     }
-  return reverse (FIRST (args), ctx);
+  return reverse (CAR (args), ctx);
 }
 
 Node *
 eval_set (Node *args, Context *ctx)
 {
-  if (!IS_SYMBOL (FIRST (args)))
+  if (!IS_SYMBOL (CAR (args)))
     {
       raise (ERR_INVALID_ARG, "set");
       return NULL;
     }
-  return set (FIRST (args), FIRST (REST (args)), ctx);
+  return set (CAR (args), CAR (CDR (args)), ctx);
 }
 
 Node *
