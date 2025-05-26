@@ -124,22 +124,28 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 }
 
 // (apply f arglist)
+// (define (apply f . args)
+//   (let* ((fixed-args   (butlast args))   ; all but the last element
+//          (last-arg-list (last args))     ; the final element, as a list
+//          (all-args     (append fixed-args last-arg-list)))
+//     (funcall f all-args)))
 Node *
 eval_apply (Node *arglist, Context *ctx)
 {
   Node *fn = eval (FIRST (arglist), ctx);
 
   Node *fixed_rev = NIL;
-  Node *walk = REST (arglist);
+  Node *fixd_args = butlast (REST (arglist), ctx);
 
-  // FIXME: mapcar, last, butlast
-  while (REST (walk) != NIL)
+  while (REST (fixd_args) != NIL)
     {
-      fixed_rev = CONS (eval (FIRST (walk), ctx), fixed_rev, ctx);
-      walk = REST (walk);
+      Node *eval_res = eval (FIRST (fixd_args), ctx);
+      fixed_rev = CONS (eval_res, fixed_rev, ctx);
+      fixd_args = REST (fixd_args);
     }
 
-  Node *tail_list = eval (FIRST (walk), ctx);
+  Node *last_arg_list = last (REST (arglist), ctx);
+  Node *tail_list = eval (last_arg_list, ctx);
 
   if (!LISTP (tail_list))
     {
@@ -148,8 +154,7 @@ eval_apply (Node *arglist, Context *ctx)
     }
 
   Node *fixed = reverse (fixed_rev, ctx);
-  Node *all = append_list (fixed, tail_list, ctx);
-  // FIXME END
+  Node *all = append_inplace (fixed, tail_list);
 
   return funcall (fn, all, ctx);
 }
@@ -243,6 +248,7 @@ Node *
 eval_progn (Node *program, Context *ctx)
 {
   Node *result = NIL;
+
   for (Node *forms = program; forms != NIL; forms = REST (forms))
     {
       Node *form = FIRST (forms);
@@ -256,22 +262,20 @@ eval_progn (Node *program, Context *ctx)
 static Node *
 and_form (Node *form, Context *ctx)
 {
-  Node *eval_result = T;
+  Node *eval_res = T;
   EqFn nil_eq_fn = type (NIL)->eq_fn;
 
   while (!IS_NIL (form))
     {
-      eval_result = eval (FIRST (form), ctx);
-
-      if (nil_eq_fn (NIL, eval_result))
+      eval_res = eval (FIRST (form), ctx);
+      if (nil_eq_fn (NIL, eval_res))
         {
           return NIL;
         }
-
       form = REST (form);
     }
 
-  return eval_result;
+  return eval_res;
 }
 
 static Node *
@@ -291,21 +295,20 @@ if_form (Node *form, Context *ctx)
 static Node *
 or_form (Node *form, Context *ctx)
 {
-  Node *eval_result = NIL;
+  Node *eval_res = NIL;
   EqFn nil_eq_fn = type (NIL)->eq_fn;
 
   while (!IS_NIL (form))
     {
-      eval_result = eval (FIRST (form), ctx);
+      eval_res = eval (FIRST (form), ctx);
 
-      if (!nil_eq_fn (NIL, eval_result))
+      if (!nil_eq_fn (NIL, eval_res))
         {
-          return eval_result;
+          return eval_res;
         }
 
       form = REST (form);
     }
-
   return NIL;
 }
 
@@ -515,7 +518,7 @@ eval_mapcar (Node *args, Context *ctx)
 Node *
 eval_nth (Node *args, Context *ctx)
 {
-  (void) ctx;
+  (void)ctx;
 
   if (!IS_LIST (args) || !IS_INTEGER (FIRST (args))
       || !LISTP (FIRST (REST (args))))
