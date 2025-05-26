@@ -390,10 +390,40 @@ START_TEST (test_eval)
 }
 END_TEST
 
+START_TEST (test_last)
+{
+  Node *eval_result = NULL;
+
+  eval_result = run_eval_progn ("(last '(1 2 3 42))");
+  ck_assert (GET_INTEGER (eval_result) == 42);
+}
+END_TEST
+
+START_TEST (test_butlast)
+{
+  Node *eval_result = NULL;
+
+  eval_result = run_eval_progn ("(apply + (BUTLAST '(1 2 3 4)))");
+  ck_assert (GET_INTEGER (eval_result) == 6);
+}
+END_TEST
+
 // (mapcar (lambda (x) (+ x 10)) '(1 2 3 4)) => (11 12 13 14)
 // (mapcar #'round '(1.3 2.7 3.4 4.5)) => (1 3 3 4)
 // (mapcar #'list '(123 symbol "string" 345) '(1 2 3)) => ((123 1) (SYMBOL 2)
 // ("string" 3)) (mapcar #'* '(3 4 5) '(4 5 6)) => (12 20 30)
+START_TEST (test_mapcar)
+{
+  Node *eval_result = NULL;
+
+  eval_result
+      = run_eval_progn ("(apply + (mapcar (lambda (x) (+ x 10)) '(1 2 3 4)))");
+  ck_assert (GET_INTEGER (eval_result) == 50);
+
+  eval_result = run_eval_progn ("(apply + (mapcar * '(3 4 5) '(4 5 6)))");
+  ck_assert (GET_INTEGER (eval_result) == 62);
+}
+END_TEST
 
 Suite *
 eval_suite (void)
@@ -417,6 +447,9 @@ eval_suite (void)
   tcase_add_test (tc_core, test_apply);
   tcase_add_test (tc_core, test_funcall);
   tcase_add_test (tc_core, test_eval);
+  tcase_add_test (tc_core, test_last);
+  tcase_add_test (tc_core, test_butlast);
+  tcase_add_test (tc_core, test_mapcar);
 
   suite_add_tcase (s, tc_core);
   return s;

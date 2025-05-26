@@ -42,6 +42,7 @@ static Node *mapcar (Node *fn, Node *arglist, Context *ctx);
 static Node *nth (size_t idx, Node *list);
 static Node *pair (Node *l1, Node *l2, Context *ctx);
 static Node *reverse (Node *list, Context *ctx);
+static Node *reverse_inplace (Node *list);
 static Node *zip (Node *lists, Context *ctx);
 
 // context operations
@@ -156,7 +157,7 @@ eval_apply (Node *arglist, Context *ctx)
       return NULL;
     }
 
-  Node *fixed = reverse (fixed_rev, ctx);
+  Node *fixed = reverse_inplace (fixed_rev);
   Node *all = append_inplace (fixed, tail_list);
 
   return funcall (fn, all, ctx);
@@ -345,15 +346,20 @@ append_list (Node *list1, Node *list2, Context *ctx)
 static Node *
 butlast (Node *list, Context *ctx)
 {
-  Node *rev = reverse (list, ctx);
-  return reverse (CDR (rev), ctx);
+  Node *rev = reverse_inplace (list);
+  Node *btl = reverse (CDR (rev), ctx);
+  reverse_inplace (rev);
+  return btl;
 }
 
 static Node *
 last (Node *list, Context *ctx)
 {
-  Node *rev = reverse (list, ctx);
-  return CAR (rev);
+  (void)ctx;
+  Node *rev = reverse_inplace (list);
+  Node *last = CAR (rev);
+  reverse_inplace (rev);
+  return last;
 }
 
 static size_t
@@ -382,19 +388,13 @@ mapcar (Node *fn, Node *arglist, Context *ctx)
       rev = CONS (res, rev, ctx);
     }
 
-  return reverse (rev, ctx);
+  return reverse_inplace (rev);
 }
 
 static Node *
 pair (Node *list1, Node *list2, Context *ctx)
 {
-  if (IS_NIL (list1) || IS_NIL (list2))
-    return NIL;
-
-  Node *car_pair = LIST2 (CAR (list1), CAR (list2), ctx);
-  Node *cdr_pairs = pair (CDR (list1), CDR (list2), ctx);
-
-  return CONS (car_pair, cdr_pairs, ctx);
+  return mapcar (KEYWORD (LIST), LIST2 (list1, list2, ctx), ctx);
 }
 
 static Node *
@@ -418,7 +418,25 @@ reverse (Node *list, Context *ctx)
 
   for (Node *l = list; l != NIL; l = CDR (l))
     result = CONS (CAR (l), result, ctx);
+
   return result;
+}
+
+static Node *
+reverse_inplace (Node *list)
+{
+  Node *prev = NIL;
+  Node *cur = list;
+
+  while (!IS_NIL (cur))
+    {
+      Node *next = CDR (cur);
+      RPLACD (cur, prev);
+      prev = cur;
+      cur = next;
+    }
+
+  return prev;
 }
 
 static Node *
@@ -458,11 +476,11 @@ zip (Node *lists, Context *ctx)
           heads[i] = CDR (heads[i]);
         }
 
-      out_rev = CONS (reverse (row_rev, ctx), out_rev, ctx);
+      out_rev = CONS (reverse_inplace (row_rev), out_rev, ctx);
     }
 
   xfree_scratch (&s);
-  return reverse (out_rev, ctx);
+  return reverse_inplace (out_rev);
 }
 
 // context operations
