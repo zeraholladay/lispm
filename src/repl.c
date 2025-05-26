@@ -41,6 +41,9 @@ extern jmp_buf eval_error_jmp;
 void
 lispm_init (Context *ctx)
 {
+  Node *nil = KEYWORD (NIL);
+  CAR (nil) = CDR (nil) = nil;
+
   static int sym_save_bool = 0;
 
   if (!sym_save_bool && (sym_save_bool = 1))
@@ -60,14 +63,14 @@ lispm_destroy (Context *ctx)
 }
 
 int
-lispm_eval_program (Context *ctx)
+lispm_eval_progn (Context *ctx)
 {
   if (setjmp (eval_error_jmp) == 0)
     {
-      Node *eval_result = eval_program (CTX_PARSE_ROOT (ctx), ctx);
+      Node *eval_result = eval_progn (CTX_PARSE_ROOT (ctx), ctx);
       Node *node = eval_str (eval_result, ctx);
       printf ("%s\n", GET_STRING (node));
-      free (node->as.string); // FIXME with GC
+      free (node->string); // FIXME with GC
       return 0;
     }
 
@@ -104,7 +107,7 @@ lispm_repl (Context *ctx)
           continue; // TODO: syntax error
         }
 
-      lispm_eval_program (ctx);
+      lispm_eval_progn (ctx);
     }
 
   return 0;
@@ -160,7 +163,7 @@ lispm_main (int argc, char **argv)
           break; // TODO: syntax error
         }
 
-      int eval_status = lispm_eval_program (&ctx);
+      int eval_status = lispm_eval_progn (&ctx);
 
       if (eval_status)
         {

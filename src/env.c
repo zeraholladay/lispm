@@ -1,26 +1,17 @@
 #include <stdlib.h>
 
 #include "env.h"
-#include "oom_handlers.h"
 #include "safe_str.h"
+#include "xalloc.h"
 
 #ifndef ENV_STR_MAX
 #define ENV_STR_MAX 256
 #endif
 
-extern oom_handler_t env_oom_handler;
-
 Env *
 env_new (Env *parent)
 {
-  struct Env *env = calloc (1, sizeof *(env));
-
-  if (!env)
-    {
-      env_oom_handler (NULL, OOM_LOCATION);
-      return NULL;
-    }
-
+  Env *env = xcalloc (1, sizeof *(env));
   env->parent = parent;
   return env;
 }
@@ -57,13 +48,7 @@ env_set (Env *env, const char *sym, void *addr)
         }
     }
 
-  rb_node *n = rb_alloc (); // FIXME
-
-  if (!n)
-    {
-      env_oom_handler (NULL, OOM_LOCATION);
-      return -1;
-    }
+  rb_node *n = rb_xalloc (); // FIXME
 
   RB_KEY (n) = sym;
   RB_KEY_LEN (n) = len;

@@ -19,8 +19,8 @@ typedef struct Pool
 Pool *pool_init (size_t count, size_t size);
 void pool_destroy (Pool **p);
 void pool_destroy_hier (Pool **head);
-void *pool_alloc (Pool *p);
-void *pool_alloc_hier (Pool **head);
+void *pool_xalloc (Pool *p);
+void *pool_xalloc_hier (Pool **head);
 void pool_free (Pool *p, void *ptr);
 void pool_reset_all (Pool *p);
 

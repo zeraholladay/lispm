@@ -9,7 +9,7 @@
 rb_node *
 make_node (const char *key, size_t len)
 {
-  rb_node *n = rb_alloc ();
+  rb_node *n = rb_xalloc ();
 
   RB_KEY (n) = safe_strndup (key, len);
   RB_KEY_LEN (n) = len;

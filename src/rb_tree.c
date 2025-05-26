@@ -241,13 +241,9 @@ rb_insert (rb_node **root, rb_node *n)
 }
 
 rb_node *
-rb_alloc (void)
+rb_xalloc (void)
 {
-  rb_node *n = calloc (1, sizeof (*n));
-
-  if (!n)
-    return NULL;
-
+  rb_node *n = xcalloc (1, sizeof (*n));
   return n;
 }
 

@@ -5,7 +5,7 @@
 
 void lispm_init (Context *ctx);
 void lispm_destroy (Context *ctx);
-int lispm_eval_program (Context *ctx);
+int lispm_eval_progn (Context *ctx);
 int lispm_repl (Context *ctx);
 int lispm_main (int argc, char **argv);
 

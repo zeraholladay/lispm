@@ -16,7 +16,7 @@ typedef struct rb_node
   void *val;
 } rb_node;
 
-rb_node *rb_alloc (void);
+rb_node *rb_xalloc (void);
 void rb_insert (rb_node **root, rb_node *n);
 rb_node *rb_lookup (rb_node *root, const char *key, size_t key_len);
 rb_node *rb_remove (rb_node **root, rb_node *n);

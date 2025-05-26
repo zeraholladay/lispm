@@ -1,6 +1,8 @@
 #include "dict.h"
 #include "safe_str.h"
 
+#include "xalloc.h"
+
 #define EMPTY -1
 #define TOMBSTONE -2
 
@@ -44,13 +46,9 @@ get_bins_idx (Dict *dict, size_t hash_key, const char *key, size_t len)
 }
 
 static int *
-alloc_bins (size_t capacity)
+xalloc_bins (size_t capacity)
 {
-  int *bins = malloc (capacity * sizeof *(bins));
-  if (!bins)
-    {
-      return NULL;
-    }
+  int *bins = xmalloc (capacity * sizeof *(bins));
 
   for (size_t i = 0; i < capacity; ++i)
     bins[i] = EMPTY;
@@ -59,17 +57,13 @@ alloc_bins (size_t capacity)
 }
 
 static int
-grow_bins (Dict *dict)
+xgrow_bins (Dict *dict)
 {
   int *old_bins, old_bin_val;
   size_t new_capacity = dict->capacity * 2;
   size_t old_capacity;
 
-  int *new_bins = alloc_bins (new_capacity);
-  if (!new_bins)
-    {
-      return -1;
-    }
+  int *new_bins = xalloc_bins (new_capacity);
 
   old_capacity = dict->capacity;
   dict->capacity = new_capacity;
@@ -103,9 +97,9 @@ grow_bins (Dict *dict)
 }
 
 Dict *
-dict_alloc_va_list (const char *key, ...)
+dict_xalloc_va_list (const char *key, ...)
 {
-  Dict *dict = dict_alloc (NULL, 0);
+  Dict *dict = dict_xalloc (NULL, 0);
   va_list ap;
 
   va_start (ap, key);
@@ -119,31 +113,15 @@ dict_alloc_va_list (const char *key, ...)
 }
 
 Dict *
-dict_alloc (const DictEntity *entities, size_t n)
+dict_xalloc (const DictEntity *entities, size_t n)
 {
-  Dict *dict = malloc (sizeof *(dict));
-  if (!dict)
-    {
-      return NULL;
-    }
+  Dict *dict = xmalloc (sizeof *(dict));
 
   dict->count = 0;
   dict->capacity = DICT_INIT_CAP;
 
-  dict->bins = alloc_bins (dict->capacity);
-  if (!dict->bins)
-    {
-      free (dict);
-      return NULL;
-    }
-
-  dict->list = list_alloc ();
-  if (!dict->list)
-    {
-      free (dict->bins);
-      free (dict);
-      return NULL;
-    }
+  dict->bins = xalloc_bins (dict->capacity);
+  dict->list = list_xalloc ();
 
   for (size_t i = 0; i < n; i++)
     {
@@ -189,12 +167,7 @@ int
 dict_insert (Dict *dict, const char *key, void *val)
 {
   if ((dict->count + 1) * 5 > dict->capacity * 4) // 80% >
-    {
-      if (grow_bins (dict))
-        {
-          return -1;
-        }
-    }
+    xgrow_bins (dict);
 
   size_t hash_key = HASH (key);
   size_t len = safe_strnlen (key, DICT_STR_MAX_LEN);
@@ -209,12 +182,7 @@ dict_insert (Dict *dict, const char *key, void *val)
     }
 
   // new
-  DictEntity *entity = malloc (sizeof *(entity));
-
-  if (!entity)
-    {
-      return -1;
-    }
+  DictEntity *entity = xmalloc (sizeof *(entity));
 
   entity->hash_key = hash_key;
   entity->key = key;

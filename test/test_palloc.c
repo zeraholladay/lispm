@@ -16,7 +16,7 @@ START_TEST (test_palloc)
 
   for (size_t i = 0; i < count + 1; ++i)
     {
-      ck_assert (pool_alloc (pool));
+      ck_assert (pool_xalloc (pool));
     }
 
   // never reached
@@ -38,7 +38,7 @@ START_TEST (test_palloc_hier)
     {
       for (size_t j = 0; j < count + 1; ++j)
         {
-          ck_assert (pool_alloc_hier (&pool));
+          ck_assert (pool_xalloc_hier (&pool));
         }
     }
 

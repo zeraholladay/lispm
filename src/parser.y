@@ -18,7 +18,6 @@ int yylex (Context * ctx);
 void yyerror_handler (Context * ctx, const char *s);
 
 extern int yylineno;
-// clang-format off
 %}
 
 %code requires
@@ -50,16 +49,14 @@ Context *ctx
 
 %token ERROR
 %token <integer> INTEGER
-%token <symbol>  SYMBOL
-%token IF
-%token QUOTE
-%token LAMBDA
+%token <symbol>  IF SYMBOL
+%token LAMBDA QUOTE
 
 %type <node>
   program
   forms
   form
-  if
+  if_
   symbol
   symbol_list
   param_list
@@ -95,11 +92,11 @@ form
       {
         $$ = LIST1 (cons_lambda (&CTX_POOL (ctx), $3, $4, NULL), ctx);
       }
-    | '(' if form form ')'
+    | '(' if_ form form ')'
       {
         $$ = CONS ($2, LIST2 ($3, $4, ctx), ctx);
       }
-    | '(' if form form form ')'
+    | '(' if_ form form form ')'
       {
         $$ = CONS ($2, CONS ( $3, LIST2 ($4, $5, ctx), ctx), ctx);
       }
@@ -149,15 +146,19 @@ symbol_list
 
 symbol
   : SYMBOL
-      {
-        $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
-      }
+    {
+      $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
+    }
+  | QUOTE
+    {
+      $$ = KEYWORD (QUOTE);
+    }
   ;
 
-if
+if_
   : IF
     {
-      $$ = KEYWORD (IF);
+      $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
     }
   ;
 

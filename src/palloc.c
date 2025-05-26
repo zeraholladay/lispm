@@ -1,8 +1,8 @@
 #include <stdalign.h>
 #include <stddef.h>
 
-#include "oom_handlers.h"
 #include "palloc.h"
+#include "xalloc.h"
 
 #define STRIDE(size)                                                          \
   (((size) + alignof (max_align_t) - 1) & ~(alignof (max_align_t) - 1))
@@ -10,29 +10,14 @@
 #define INDEX(base, index, stride)                                            \
   ((Wrapper *)((char *)(base) + ((index) * (stride))))
 
-extern oom_handler_t palloc_oom_handler;
-
 Pool *
 pool_init (size_t count, size_t size)
 {
-  Pool *p = calloc (1, sizeof *(p));
+  Pool *p = xcalloc (1, sizeof *(p));
   size_t stride
       = STRIDE (sizeof (Wrapper) + size); // array-aligned Wrapper and size
 
-  if (!p)
-    {
-      palloc_oom_handler (NULL, OOM_LOCATION);
-      return NULL;
-    }
-
-  p->pool = calloc (count, stride);
-
-  if (!p->pool)
-    {
-      free (p), p = NULL;
-      palloc_oom_handler (NULL, OOM_LOCATION);
-      return NULL;
-    }
+  p->pool = xcalloc (count, stride);
 
   p->count = count;
   p->stride = stride;
@@ -66,13 +51,10 @@ pool_destroy_hier (Pool **head)
 }
 
 void *
-pool_alloc (Pool *p)
+pool_xalloc (Pool *p)
 {
   if (!p->free_list)
-    {
-      palloc_oom_handler (p, OOM_LOCATION "free_list empty");
-      return NULL;
-    }
+    return oom_handler_die (p, OOM_LOCATION "free_list empty");
 
   Wrapper *wrapper = p->free_list;
   p->free_list = wrapper->next_free;
@@ -81,29 +63,21 @@ pool_alloc (Pool *p)
 }
 
 void *
-pool_alloc_hier (Pool **head)
+pool_xalloc_hier (Pool **head)
 {
   Pool *cur = *head;
 
   if (cur->free_list)
-    {
-      return pool_alloc (cur);
-    }
+    return pool_xalloc (cur);
 
   Pool *new_pool = pool_init (cur->count, cur->size);
-
-  if (!new_pool)
-    {
-      palloc_oom_handler (NULL, OOM_LOCATION);
-      return NULL;
-    }
 
   new_pool->prev = NULL;
   new_pool->next = *head;
   cur->prev = new_pool;
   *head = new_pool;
 
-  return pool_alloc (new_pool);
+  return pool_xalloc (new_pool);
 }
 
 void

@@ -17,7 +17,7 @@
 #define DEBUG(msg)                                                            \
   do                                                                          \
     {                                                                         \
-      if (LISPM_DEBUG_ENABLED)                                                 \
+      if (LISPM_DEBUG_ENABLED)                                                \
         fprintf (stderr, "[%s:%d] %s(): %s\n", __FILE__, __LINE__, __func__,  \
                  msg);                                                        \
     }                                                                         \
