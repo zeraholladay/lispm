@@ -12,6 +12,8 @@
 #define LISTP(node) (IS_NIL (node) || IS_LIST (node))
 #define CONSP(node) (IS_LIST (node))
 
+#define CAR(node) ((node)->as.list.first) // Contents of the Address Register
+#define CDR(node) ((node)->as.list.rest)  // Contents of the Decrement Register
 #define FIRST(node) ((node)->as.list.first)
 #define REST(node) ((node)->as.list.rest)
 
@@ -34,8 +36,6 @@
         REST (node) = val;                                                    \
     }                                                                         \
   while (0)
-
-// index, butlast, last
 
 Node *eval_append (Node *args, Context *ctx);
 Node *eval_apply (Node *args, Context *ctx);

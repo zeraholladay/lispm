@@ -312,6 +312,8 @@ START_TEST (test_apply)
   eval_result = run_eval_progn ("(apply (lambda () ()) '())");
   ck_assert (IS_NIL (eval_result));
 
+  // (apply #'+ 1 2 3 '(4 5 6))
+
   eval_result
       = run_eval_progn ("(apply (lambda (a b) (cons a b)) '(foo bar))");
   ck_assert (!IS_NIL (eval_result));
@@ -385,6 +387,11 @@ START_TEST (test_eval)
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foo");
 }
 END_TEST
+
+// (mapcar (lambda (x) (+ x 10)) '(1 2 3 4)) => (11 12 13 14)
+// (mapcar #'round '(1.3 2.7 3.4 4.5)) => (1 3 3 4)
+// (mapcar #'list '(123 symbol "string" 345) '(1 2 3)) => ((123 1) (SYMBOL 2)
+// ("string" 3)) (mapcar #'* '(3 4 5) '(4 5 6)) => (12 20 30)
 
 Suite *
 eval_suite (void)
