@@ -10,7 +10,7 @@ Dict *dict;
 void
 setup (void)
 {
-  dict = dict_xalloc (NULL, 0);
+  dict = dict_create (NULL, 0);
   ck_assert_ptr_nonnull (dict);
 }
 
@@ -27,7 +27,7 @@ START_TEST (test_insert_and_lookup)
 {
   DictEntity *entity;
 
-  ck_assert (dict_insert (dict, "foo", (void *)(intptr_t)42) >= 0);
+  ck_assert (dict_insert (dict, "foo", (void *)(intptr_t)42));
   entity = dict_lookup (dict, "foo");
   ck_assert_ptr_nonnull (entity);
   ck_assert_int_eq ((intptr_t)entity->val, 42);
@@ -42,13 +42,13 @@ START_TEST (test_insert_override)
 {
   DictEntity *entity;
 
-  ck_assert (dict_insert (dict, "foo", (void *)(intptr_t)42) >= 0);
+  ck_assert (dict_insert (dict, "foo", (void *)(intptr_t)42));
   entity = dict_lookup (dict, "foo");
   ck_assert_ptr_nonnull (entity);
   ck_assert_int_eq ((intptr_t)entity->val, 42);
 
   // Insert same key with new value
-  ck_assert (dict_insert (dict, "foo", (void *)(intptr_t)7) >= 0);
+  ck_assert (dict_insert (dict, "foo", (void *)(intptr_t)7));
   entity = dict_lookup (dict, "foo");
   ck_assert_ptr_nonnull (entity);
   ck_assert_int_eq ((intptr_t)entity->val, 7);
@@ -59,7 +59,7 @@ START_TEST (test_delete_existing)
 {
   DictEntity *entity;
 
-  ck_assert (dict_insert (dict, "foo", (void *)(intptr_t)42) >= 0);
+  ck_assert (dict_insert (dict, "foo", (void *)(intptr_t)42));
   entity = dict_lookup (dict, "foo");
   ck_assert_ptr_nonnull (entity);
   ck_assert_int_eq ((intptr_t)entity->val, 42);
@@ -90,7 +90,7 @@ START_TEST (test_multiple_entries)
 
   for (size_t i = 0; i < 4; i++)
     {
-      ck_assert (dict_insert (dict, keys[i], &vals_int[i]) >= 0);
+      ck_assert (dict_insert (dict, keys[i], &vals_int[i]));
     }
 
   for (size_t i = 0; i < 4; i++)
@@ -115,7 +115,7 @@ START_TEST (test_initialization)
   Dict *local_dict;
   DictEntity *entity;
 
-  local_dict = dict_xalloc (entities, 5);
+  local_dict = dict_create (entities, 5);
   ck_assert_ptr_nonnull (local_dict);
 
   entity = dict_lookup (local_dict, "delta");
@@ -130,7 +130,7 @@ START_TEST (test_initialization_va_list)
   DictEntity *entity;
 
   Dict *local_dict
-      = dict_xalloc_va_list ("foo", (intptr_t)-42, "bar", (intptr_t)42, NULL);
+      = dict_create_va_list ("foo", (intptr_t)-42, "bar", (intptr_t)42, NULL);
   ck_assert_ptr_nonnull (local_dict);
 
   entity = dict_lookup (local_dict, "bar");
@@ -151,7 +151,7 @@ START_TEST (test_uuid_fuzz)
     char key[37];
     int val;
   } uuid_fuzz[N_FUZZ];
-  Dict *local_dict = dict_xalloc (NULL, 0);
+  Dict *local_dict = dict_create (NULL, 0);
   DictEntity *entity;
   uuid_t uuid;
 
@@ -163,8 +163,7 @@ START_TEST (test_uuid_fuzz)
       uuid_unparse_lower (uuid, uuid_fuzz[i].key);
       uuid_fuzz[i].val = i;
       ck_assert (
-          dict_insert (local_dict, uuid_fuzz[i].key, (void *)(intptr_t)i)
-          >= 0);
+          dict_insert (local_dict, uuid_fuzz[i].key, (void *)(intptr_t)i));
     }
 
   for (int i = 0; i < N_FUZZ; ++i)

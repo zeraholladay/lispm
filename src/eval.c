@@ -23,35 +23,35 @@
   while (0)
 
 // funcalls
-static Node *funcall (Node *fn, Node *arglist, Context *ctx);
-static Node *funcall_builtin (Node *fn, Node *args, Context *ctx);
-static Node *funcall_lambda (Node *fn, Node *args, Context *ctx);
+static Node *funcall (Node *fn, Node *arglist, Ctx *ctx);
+static Node *funcall_builtin (Node *fn, Node *args, Ctx *ctx);
+static Node *funcall_lambda (Node *fn, Node *args, Ctx *ctx);
 
 // cond forms/expressions
-static Node *and_form (Node *form, Context *ctx);
-static Node *if_form (Node *form, Context *ctx);
-static Node *or_form (Node *form, Context *ctx);
+static Node *and_form (Node *form, Ctx *ctx);
+static Node *if_form (Node *form, Ctx *ctx);
+static Node *or_form (Node *form, Ctx *ctx);
 
 // sequence operations
 static Node *append_inplace (Node *list1, Node *list2);
-static Node *append_list (Node *list1, Node *list2, Context *ctx);
-static Node *butlast (Node *args, Context *ctx);
-static Node *last (Node *args, Context *ctx);
+static Node *append_list (Node *list1, Node *list2, Ctx *ctx);
+static Node *butlast (Node *args, Ctx *ctx);
+static Node *last (Node *args, Ctx *ctx);
 static size_t length (Node *list);
-static Node *mapcar (Node *fn, Node *arglist, Context *ctx);
+static Node *mapcar (Node *fn, Node *arglist, Ctx *ctx);
 static Node *nth (size_t idx, Node *list);
-static Node *pair (Node *l1, Node *l2, Context *ctx);
-static Node *reverse (Node *list, Context *ctx);
+static Node *pair (Node *l1, Node *l2, Ctx *ctx);
+static Node *reverse (Node *list, Ctx *ctx);
 static Node *reverse_inplace (Node *list);
-static Node *zip (Node *lists, Context *ctx);
+static Node *zip (Node *lists, Ctx *ctx);
 
 // context operations
-static Node *lookup (Node *node, Context *ctx);
-static Node *set (Node *car, Node *REST, Context *ctx);
+static Node *lookup (Node *node, Ctx *ctx);
+static Node *set (Node *car, Node *REST, Ctx *ctx);
 
 // funcall & eval
 static Node *
-funcall (Node *fn, Node *arglist, Context *ctx)
+funcall (Node *fn, Node *arglist, Ctx *ctx)
 {
   if (IS_BUILTIN_FN (fn))
     return funcall_builtin (fn, arglist, ctx);
@@ -64,7 +64,7 @@ funcall (Node *fn, Node *arglist, Context *ctx)
 }
 
 static Node *
-funcall_builtin (Node *fn, Node *arglist, Context *ctx)
+funcall_builtin (Node *fn, Node *arglist, Ctx *ctx)
 {
   int received = (int)length (arglist);
   const BuiltinFn *builtin_fn = GET_BUILTIN_FN (fn);
@@ -99,7 +99,7 @@ funcall_builtin (Node *fn, Node *arglist, Context *ctx)
 }
 
 static Node *
-funcall_lambda (Node *fn, Node *args, Context *ctx)
+funcall_lambda (Node *fn, Node *args, Ctx *ctx)
 {
   size_t expected = length (GET_LAMBDA_PARAMS (fn));
   size_t received = length (args);
@@ -112,19 +112,27 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
       return NULL;
     }
 
-  Context new_ctx = *ctx;
-  CTX_ENV (&new_ctx) = env_new (GET_LAMBDA_ENV (fn));
-
   Node *pairs = pair (GET_LAMBDA_PARAMS (fn), args, ctx);
 
+  // TODO: FIXME set() can throw error
+  ctx_env_enter_frame (ctx);
+
+  // (mapcar #'set  '(a b c) '(1 2 3))
   while (!IS_NIL (pairs))
     {
       Node *pair = CAR (pairs);
-      set (CAR (pair), CAR (CDR (pair)), &new_ctx);
+
+      set (CAR (pair), CADR (pair), ctx);
+
       pairs = CDR (pairs);
     }
+  // TODO: FIXME set() can throw error
 
-  return eval_progn (GET_LAMBDA_BODY (fn), &new_ctx);
+  Node *eval_res = eval_progn (GET_LAMBDA_BODY (fn), ctx);
+
+  ctx_env_exit_fram (ctx);
+
+  return eval_res;
 }
 
 // (apply f arglist)
@@ -134,7 +142,7 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 //          (all-args     (append fixed-args last-arg-list)))
 //     (funcall f all-args)))
 Node *
-eval_apply (Node *arglist, Context *ctx)
+eval_apply (Node *arglist, Ctx *ctx)
 {
   Node *fn = eval (CAR (arglist), ctx);
 
@@ -164,7 +172,7 @@ eval_apply (Node *arglist, Context *ctx)
 }
 
 Node *
-eval_funcall (Node *args, Context *ctx)
+eval_funcall (Node *args, Ctx *ctx)
 {
   Node *fn = eval (CAR (args), ctx);
   Node *arglist = eval_list (CDR (args), ctx);
@@ -172,7 +180,7 @@ eval_funcall (Node *args, Context *ctx)
 }
 
 Node *
-eval_list (Node *args, Context *ctx)
+eval_list (Node *args, Ctx *ctx)
 {
   if (IS_NIL (args))
     return NIL;
@@ -184,7 +192,7 @@ eval_list (Node *args, Context *ctx)
 }
 
 Node *
-eval (Node *form, Context *ctx)
+eval (Node *form, Ctx *ctx)
 {
   // SYMBOLS
   if (IS_SYMBOL (form))
@@ -249,7 +257,7 @@ eval (Node *form, Context *ctx)
 }
 
 Node *
-eval_progn (Node *program, Context *ctx)
+eval_progn (Node *program, Ctx *ctx)
 {
   Node *result = NIL;
 
@@ -264,7 +272,7 @@ eval_progn (Node *program, Context *ctx)
 
 // conditional forms/expressions
 static Node *
-and_form (Node *form, Context *ctx)
+and_form (Node *form, Ctx *ctx)
 {
   Node *eval_res = T;
   EqFn nil_eq_fn = type (NIL)->eq_fn;
@@ -283,7 +291,7 @@ and_form (Node *form, Context *ctx)
 }
 
 static Node *
-if_form (Node *form, Context *ctx)
+if_form (Node *form, Ctx *ctx)
 {
   Node *pred_form = CAR (form);
 
@@ -297,7 +305,7 @@ if_form (Node *form, Context *ctx)
 }
 
 static Node *
-or_form (Node *form, Context *ctx)
+or_form (Node *form, Ctx *ctx)
 {
   Node *eval_res = NIL;
   EqFn nil_eq_fn = type (NIL)->eq_fn;
@@ -335,7 +343,7 @@ append_inplace (Node *list1, Node *list2)
 }
 
 static Node *
-append_list (Node *list1, Node *list2, Context *ctx)
+append_list (Node *list1, Node *list2, Ctx *ctx)
 {
   if (IS_NIL (list1))
     return list2;
@@ -344,7 +352,7 @@ append_list (Node *list1, Node *list2, Context *ctx)
 }
 
 static Node *
-butlast (Node *list, Context *ctx)
+butlast (Node *list, Ctx *ctx)
 {
   Node *rev = reverse_inplace (list);
   Node *btl = reverse (CDR (rev), ctx);
@@ -353,7 +361,7 @@ butlast (Node *list, Context *ctx)
 }
 
 static Node *
-last (Node *list, Context *ctx)
+last (Node *list, Ctx *ctx)
 {
   (void)ctx;
   Node *rev = reverse_inplace (list);
@@ -377,12 +385,12 @@ length (Node *list)
 }
 
 static Node *
-mapcar (Node *fn, Node *arglist, Context *ctx)
+mapcar (Node *fn, Node *arglist, Ctx *ctx)
 {
-  Node *zip_args = zip (arglist, ctx);
+  Node *zipped_args = zip (arglist, ctx);
   Node *rev = NIL;
 
-  for (Node *l = zip_args; !IS_NIL (l); l = CDR (l))
+  for (Node *l = zipped_args; !IS_NIL (l); l = CDR (l))
     {
       Node *res = funcall (fn, CAR (l), ctx);
       rev = CONS (res, rev, ctx);
@@ -392,7 +400,7 @@ mapcar (Node *fn, Node *arglist, Context *ctx)
 }
 
 static Node *
-pair (Node *list1, Node *list2, Context *ctx)
+pair (Node *list1, Node *list2, Ctx *ctx)
 {
   return mapcar (KEYWORD (LIST), LIST2 (list1, list2, ctx), ctx);
 }
@@ -411,7 +419,7 @@ nth (size_t idx, Node *list)
 }
 
 static Node *
-reverse (Node *list, Context *ctx)
+reverse (Node *list, Ctx *ctx)
 {
   (void)ctx;
   Node *result = NIL;
@@ -440,7 +448,7 @@ reverse_inplace (Node *list)
 }
 
 static Node *
-zip (Node *lists, Context *ctx)
+zip (Node *lists, Ctx *ctx)
 {
   scratch_t s;
 
@@ -485,7 +493,7 @@ zip (Node *lists, Context *ctx)
 
 // context operations
 static Node *
-lookup (Node *node, Context *ctx)
+lookup (Node *node, Ctx *ctx)
 {
   const char *str = GET_SYMBOL (node).str;
   size_t len = GET_SYMBOL (node).len;
@@ -507,7 +515,7 @@ lookup (Node *node, Context *ctx)
 }
 
 static Node *
-set (Node *car, Node *cdr, Context *ctx)
+set (Node *car, Node *cdr, Ctx *ctx)
 {
   if (!IS_SYMBOL (car))
     {
@@ -531,7 +539,7 @@ set (Node *car, Node *cdr, Context *ctx)
 // other builtins
 
 Node *
-eval_append (Node *args, Context *ctx)
+eval_append (Node *args, Ctx *ctx)
 {
   if (!LISTP (args))
     {
@@ -550,7 +558,7 @@ eval_append (Node *args, Context *ctx)
 }
 
 Node *
-eval_butlast (Node *args, Context *ctx)
+eval_butlast (Node *args, Ctx *ctx)
 {
   if (!LISTP (args))
     {
@@ -561,13 +569,13 @@ eval_butlast (Node *args, Context *ctx)
 }
 
 Node *
-eval_cons (Node *args, Context *ctx)
+eval_cons (Node *args, Ctx *ctx)
 {
   return CONS (CAR (args), CAR (CDR (args)), ctx);
 }
 
 Node *
-eval_car (Node *args, Context *ctx)
+eval_car (Node *args, Ctx *ctx)
 {
   (void)ctx;
   if (!LISTP (CAR (args)))
@@ -579,7 +587,7 @@ eval_car (Node *args, Context *ctx)
 }
 
 Node *
-eval_cdr (Node *args, Context *ctx)
+eval_cdr (Node *args, Ctx *ctx)
 {
   (void)ctx;
   Node *car = CAR (args);
@@ -593,7 +601,7 @@ eval_cdr (Node *args, Context *ctx)
 }
 
 Node *
-eval_len (Node *args, Context *ctx)
+eval_len (Node *args, Ctx *ctx)
 {
   Node *car = CAR (args);
 
@@ -602,11 +610,11 @@ eval_len (Node *args, Context *ctx)
       raise (ERR_INVALID_ARG, "len");
       return NULL;
     }
-  return cons_integer (&CTX_POOL (ctx), length (car));
+  return cons_integer (length (car), ctx);
 }
 
 Node *
-eval_mapcar (Node *args, Context *ctx)
+eval_mapcar (Node *args, Ctx *ctx)
 {
   Node *fn = CAR (args);
   Node *arglist = CDR (args);
@@ -614,7 +622,7 @@ eval_mapcar (Node *args, Context *ctx)
 }
 
 Node *
-eval_nth (Node *args, Context *ctx)
+eval_nth (Node *args, Ctx *ctx)
 {
   (void)ctx;
 
@@ -629,7 +637,7 @@ eval_nth (Node *args, Context *ctx)
 }
 
 Node *
-eval_last (Node *args, Context *ctx)
+eval_last (Node *args, Ctx *ctx)
 {
   if (!LISTP (args))
     {
@@ -640,7 +648,7 @@ eval_last (Node *args, Context *ctx)
 }
 
 Node *
-eval_pair (Node *args, Context *ctx)
+eval_pair (Node *args, Ctx *ctx)
 {
   if (!LISTP (CAR (args)) || !LISTP (CAR (CDR (args))))
     {
@@ -651,7 +659,7 @@ eval_pair (Node *args, Context *ctx)
 }
 
 Node *
-eval_print (Node *args, Context *ctx)
+eval_print (Node *args, Ctx *ctx)
 {
   (void)ctx;
   if (!LISTP (args))
@@ -664,7 +672,7 @@ eval_print (Node *args, Context *ctx)
 }
 
 Node *
-eval_reverse (Node *args, Context *ctx)
+eval_reverse (Node *args, Ctx *ctx)
 {
   if (!LISTP (args))
     {
@@ -675,7 +683,7 @@ eval_reverse (Node *args, Context *ctx)
 }
 
 Node *
-eval_set (Node *args, Context *ctx)
+eval_set (Node *args, Ctx *ctx)
 {
   if (!IS_SYMBOL (CAR (args)))
     {
@@ -686,7 +694,7 @@ eval_set (Node *args, Context *ctx)
 }
 
 Node *
-eval_str (Node *args, Context *ctx)
+eval_str (Node *args, Ctx *ctx)
 {
-  return cons_string (&CTX_POOL (ctx), type (args)->str_fn (args));
+  return cons_string (type (args)->str_fn (args), ctx);
 }

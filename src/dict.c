@@ -97,9 +97,9 @@ xgrow_bins (Dict *dict)
 }
 
 Dict *
-dict_xalloc_va_list (const char *key, ...)
+dict_create_va_list (const char *key, ...)
 {
-  Dict *dict = dict_xalloc (NULL, 0);
+  Dict *dict = dict_create (NULL, 0);
   va_list ap;
 
   va_start (ap, key);
@@ -113,7 +113,7 @@ dict_xalloc_va_list (const char *key, ...)
 }
 
 Dict *
-dict_xalloc (const DictEntity *entities, size_t n)
+dict_create (const DictEntity *entities, size_t n)
 {
   Dict *dict = xmalloc (sizeof *(dict));
 
@@ -125,9 +125,9 @@ dict_xalloc (const DictEntity *entities, size_t n)
 
   for (size_t i = 0; i < n; i++)
     {
-      int res = dict_insert (dict, entities[i].key, entities[i].val);
+      bool res = dict_insert (dict, entities[i].key, entities[i].val);
 
-      if (res < 0)
+      if (!res)
         {
           return NULL;
         }
@@ -163,7 +163,7 @@ dict_del (Dict *dict, const char *key)
     }
 }
 
-int
+bool
 dict_insert (Dict *dict, const char *key, void *val)
 {
   if ((dict->count + 1) * 5 > dict->capacity * 4) // 80% >
@@ -194,13 +194,13 @@ dict_insert (Dict *dict, const char *key, void *val)
   if (list_idx < 0)
     {
       free (entity);
-      return -1;
+      return false;
     }
 
   dict->bins[bin_idx] = list_idx;
   ++dict->count;
 
-  return dict->count;
+  return true;
 }
 
 DictEntity *

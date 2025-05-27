@@ -10,13 +10,13 @@
 #include "types.h"
 
 extern FILE *yyin;
-extern int yyparse (Context *ctx);
+extern int yyparse (Node *ast_root, Ctx *ctx);
 extern void yylex_destroy (void);
 
-extern void lispm_init (Context *ctx);
-extern void lispm_destroy (Context *ctx);
+extern void lispm_init (Ctx *ctx);
+extern void lispm_destroy (Ctx *ctx);
 
-static Context ctx = {};
+static Ctx ctx = {};
 
 jmp_buf eval_error_jmp;
 

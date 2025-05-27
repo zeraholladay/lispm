@@ -2,7 +2,7 @@
 #include "eval.h"
 
 Node *
-eval_eq (Node *args, Context *ctx)
+eval_eq (Node *args, Ctx *ctx)
 {
   (void)ctx;
   Node *car = CAR (args);
@@ -19,7 +19,7 @@ eval_eq (Node *args, Context *ctx)
 }
 
 Node *
-eval_not (Node *args, Context *ctx)
+eval_not (Node *args, Ctx *ctx)
 {
   (void)ctx;
   EqFn nil_eq_fn = type (NIL)->eq_fn;

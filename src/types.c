@@ -263,9 +263,9 @@ type (Node *self)
 }
 
 Node *
-cons_lambda (Pool **p, Node *params, Node *body, Env *env)
+cons_lambda (Node *params, Node *body, Env *env, Ctx *ctx)
 {
-  Node *node = pool_xalloc_hier (p);
+  Node *node = ctx_create_node (ctx);
   node->type = TYPE_LAMBDA;
   node->lambda.params = params;
   node->lambda.body = body;
@@ -274,18 +274,18 @@ cons_lambda (Pool **p, Node *params, Node *body, Env *env)
 }
 
 Node *
-cons_integer (Pool **p, Integer i)
+cons_integer (Integer i, Ctx *ctx)
 {
-  Node *node = pool_xalloc_hier (p);
+  Node *node = ctx_create_node (ctx);
   node->type = TYPE_INTEGER;
   node->integer = i;
   return node;
 }
 
 Node *
-cons_cons (Pool **p, Node *car, Node *cdr)
+cons_cons (Node *car, Node *cdr, Ctx *ctx)
 {
-  Node *node = pool_xalloc_hier (p);
+  Node *node = ctx_create_node (ctx);
   node->type = TYPE_CONS;
   CAR (node) = car;
   CDR (node) = cdr;
@@ -293,18 +293,18 @@ cons_cons (Pool **p, Node *car, Node *cdr)
 }
 
 Node *
-cons_string (Pool **p, char *str)
+cons_string (char *str, Ctx *ctx)
 {
-  Node *node = pool_xalloc_hier (p);
+  Node *node = ctx_create_node (ctx);
   node->type = TYPE_STRING;
   node->string = str;
   return node;
 }
 
 Node *
-cons_symbol (Pool **p, const char *str, size_t len)
+cons_symbol (const char *str, size_t len, Ctx *ctx)
 {
-  Node *node = pool_xalloc_hier (p);
+  Node *node = ctx_create_node (ctx);
   node->type = TYPE_SYMBOL;
   node->symbol.str = str;
   node->symbol.len = len;

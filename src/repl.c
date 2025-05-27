@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "ctx.h"
 #include "eval.h"
 #include "parser.h"
 #include "readline.h"
@@ -33,53 +34,43 @@ extern Node *const const_false;
 extern Node *const const_true;
 
 extern FILE *yyin;
-extern int yyparse (Context *ctx);
+extern int yyparse (Node *ast_root, Ctx *ctx);
 extern void yylex_destroy (void);
 
 extern jmp_buf eval_error_jmp;
 
-void
-lispm_init (Context *ctx)
+Ctx *
+lispm_init ()
 {
   Node *nil = KEYWORD (NIL);
   CAR (nil) = CDR (nil) = nil;
-
-  static int sym_save_bool = 0;
-
-  if (!sym_save_bool && (sym_save_bool = 1))
-    sym_save_init ();
-
-  CTX_POOL (ctx) = pool_init (OBJ_POOL_CAPACITY, sizeof (Node));
-  CTX_ENV (ctx) = env_new (NULL);
-  reset_parse_context (ctx);
+  return ctx_create ();
 }
 
 void
-lispm_destroy (Context *ctx)
+lispm_destroy (Ctx *ctx)
 {
-  reset_parse_context (ctx);
-  free (CTX_ENV (ctx)), CTX_ENV (ctx) = NULL;
-  pool_destroy_hier (&CTX_POOL (ctx));
+  ctx_destroy (ctx);
 }
 
 int
-lispm_eval_progn (Context *ctx)
+lispm_eval_progn (Node *progn, Ctx *ctx)
 {
   if (setjmp (eval_error_jmp) == 0)
     {
-      Node *eval_result = eval_progn (CTX_PARSE_ROOT (ctx), ctx);
+      Node *eval_result = eval_progn (progn, ctx);
       Node *node = eval_str (eval_result, ctx);
       printf ("%s\n", GET_STRING (node));
       free (node->string); // FIXME with GC
       return 0;
     }
-
   return 1;
 }
 
-int
-lispm_repl (Context *ctx)
+void
+lispm_repl (Ctx *ctx)
 {
+  Node *progn = NIL;
   rl_init ();
 
   char full_input[REPL_BUF_SIZ];
@@ -89,14 +80,11 @@ lispm_repl (Context *ctx)
       int len = rl_readline (full_input, sizeof (full_input));
 
       if (len < 0)
-        {
-          break; // TODO: Something on error
-        }
+        break; // TODO: Something on error
 
       yyin = fmemopen ((void *)full_input, len, "r");
 
-      reset_parse_context (ctx);
-      int parse_status = yyparse (ctx);
+      int parse_status = yyparse (progn, ctx);
 
       yylex_destroy ();
       fclose (yyin);
@@ -106,8 +94,8 @@ lispm_repl (Context *ctx)
           perror ("Parse failed");
           continue; // TODO: syntax error
         }
-
-      lispm_eval_progn (ctx);
+      else
+        lispm_eval_progn (progn, ctx);
     }
 
   return 0;
@@ -140,8 +128,7 @@ lispm_main (int argc, char **argv)
   if (!argc)
     run_repl = 1;
 
-  Context ctx = {};
-  lispm_init (&ctx);
+  Ctx *ctx = lispm_init ();
 
   for (int i = 0; i < argc; ++i)
     {
@@ -153,7 +140,8 @@ lispm_main (int argc, char **argv)
           return 1;
         }
 
-      int parse_status = yyparse (&ctx);
+      Node *progn = NIL;
+      int parse_status = yyparse (progn, ctx);
 
       fclose (yyin);
 
@@ -163,7 +151,7 @@ lispm_main (int argc, char **argv)
           break; // TODO: syntax error
         }
 
-      int eval_status = lispm_eval_progn (&ctx);
+      int eval_status = lispm_eval_progn (progn, ctx);
 
       if (eval_status)
         {

@@ -2,7 +2,7 @@
 #include "eval.h"
 
 Node *
-eval_gt (Node *args, Context *ctx)
+eval_gt (Node *args, Ctx *ctx)
 {
   (void)ctx;
   Node *result = T;
@@ -47,7 +47,7 @@ eval_gt (Node *args, Context *ctx)
 }
 
 Node *
-eval_lt (Node *args, Context *ctx)
+eval_lt (Node *args, Ctx *ctx)
 {
   (void)ctx;
   Node *result = T;
@@ -95,7 +95,7 @@ eval_lt (Node *args, Context *ctx)
 // TODO: check for over/underflow someday
 
 Node *
-eval_add (Node *args, Context *ctx)
+eval_add (Node *args, Ctx *ctx)
 {
   if (!IS_CONS (args))
     {
@@ -128,11 +128,11 @@ eval_add (Node *args, Context *ctx)
       sum += GET_INTEGER (CAR (rest));
     }
 
-  return cons_integer (&CTX_POOL (ctx), sum);
+  return cons_integer (sum, ctx);
 }
 
 Node *
-eval_sub (Node *args, Context *ctx)
+eval_sub (Node *args, Ctx *ctx)
 {
   if (!IS_CONS (args))
     {
@@ -165,11 +165,11 @@ eval_sub (Node *args, Context *ctx)
       total -= GET_INTEGER (CAR (rest));
     }
 
-  return cons_integer (&CTX_POOL (ctx), total);
+  return cons_integer (total, ctx);
 }
 
 Node *
-eval_mul (Node *args, Context *ctx)
+eval_mul (Node *args, Ctx *ctx)
 {
   if (!IS_CONS (args))
     {
@@ -202,11 +202,11 @@ eval_mul (Node *args, Context *ctx)
       result *= GET_INTEGER (CAR (rest));
     }
 
-  return cons_integer (&CTX_POOL (ctx), result);
+  return cons_integer (result, ctx);
 }
 
 Node *
-eval_div (Node *args, Context *ctx)
+eval_div (Node *args, Ctx *ctx)
 {
   if (!IS_CONS (args))
     {
@@ -245,5 +245,5 @@ eval_div (Node *args, Context *ctx)
       result /= GET_INTEGER (CAR (rest));
     }
 
-  return cons_integer (&CTX_POOL (ctx), result);
+  return cons_integer (result, ctx);
 }

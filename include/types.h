@@ -4,9 +4,8 @@
 #include <limits.h>
 #include <stddef.h>
 
+#include "ctx.h"
 #include "env.h"
-#include "eval_ctx.h"
-#include "palloc.h"
 
 #define IS_TYPE(nptr, kind) ((nptr) != NULL && (nptr)->type == (kind))
 
@@ -67,7 +66,7 @@ typedef struct
   Node *cdr; // Contents of the Decrement Register
 } Cons;
 
-typedef struct Node *(*Fn) (struct Node *, struct Context *);
+typedef struct Node *(*Fn) (struct Node *, struct ctx *);
 
 typedef struct
 {
@@ -101,10 +100,10 @@ struct Node
 };
 
 const Type *type (Node *self);
-Node *cons_lambda (Pool **p, Node *params, Node *body, Env *env);
-Node *cons_integer (Pool **p, Integer i);
-Node *cons_cons (Pool **p, Node *car, Node *cdr);
-Node *cons_string (Pool **p, char *str);
-Node *cons_symbol (Pool **p, const char *str, size_t len);
+Node *cons_lambda (Node *params, Node *body, Env *env, Ctx *ctx);
+Node *cons_integer (Integer i, Ctx *ctx);
+Node *cons_cons (Node *car, Node *cdr, Ctx *ctx);
+Node *cons_string (char *str, Ctx *ctx);
+Node *cons_symbol (const char *str, size_t len, Ctx *ctx);
 
 #endif

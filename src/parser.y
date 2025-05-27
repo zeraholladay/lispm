@@ -2,40 +2,16 @@
 %{
 #include <stdio.h>
 
-#include "eval.h"
+#include "ctx.h"
 #include "parser.h"
 #include "types.h"
 
-#define yyerror(ctx, s)                                                       \
-  do                                                                          \
-    {                                                                         \
-      yyerror_handler (ctx, s);                                               \
-      YYABORT;                                                                \
-    }                                                                         \
-  while (0)
-
-int yylex (Context * ctx);
-void yyerror_handler (Context * ctx, const char *s);
-
+int yylex (Ctx * ctx);
 extern int yylineno;
 %}
 
-%code requires
-{
-#include "types.h"
-
-void reset_parse_context(Context *ctx);
-}
-
-%lex-param
-{
-Context *ctx
-}
-
-%parse-param
-{
-Context *ctx
-}
+%parse-param {Node *progn} {Ctx *ctx}
+%lex-param {Ctx *ctx}
 
 %union
 {
@@ -65,13 +41,11 @@ Context *ctx
 program
   : forms
     {
-      CTX_PARSE_ROOT (ctx) = $1;
+      progn = $1;
       YYACCEPT;
     }
   | forms error
     {
-      CTX_PARSE_ROOT (ctx) = NIL;
-      yyerror (ctx, "Parse error\n");
       YYABORT;
     }
   ;
@@ -90,7 +64,7 @@ forms
 form
     : '(' LAMBDA param_list forms ')'
       {
-        $$ = LIST1 (cons_lambda (&CTX_POOL (ctx), $3, $4, NULL), ctx);
+        $$ = LIST1 (cons_lambda ($3, $4, NULL, ctx), ctx);
       }
     | '(' if_ form form ')'
       {
@@ -106,7 +80,7 @@ form
       }
     | INTEGER
       {
-        $$ = cons_integer (&CTX_POOL (ctx), $1);
+        $$ = cons_integer ($1, ctx);
       }
     | '\'' form
       {
@@ -147,7 +121,7 @@ symbol_list
 symbol
   : SYMBOL
     {
-      $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
+      $$ = cons_symbol ($1.str, $1.len, ctx);
     }
   | QUOTE
     {
@@ -158,23 +132,8 @@ symbol
 if_
   : IF
     {
-      $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
+      $$ = cons_symbol ($1.str, $1.len, ctx);
     }
   ;
 
 %%
-void
-reset_parse_context (Context *ctx)
-{
-  /* assumes pool has already been allocated. */
-  CTX_PARSE_ROOT (ctx) = NIL;
-}
-
-void
-yyerror_handler (Context *ctx, const char *s)
-{
-  fprintf (stderr, "Syntax error: line %d: %s\n", yylineno, s);
-  reset_parse_context (ctx);
-}
-
-// clang-format off

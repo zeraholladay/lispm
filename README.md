@@ -238,7 +238,7 @@ Examples:
 In no particular order:
 
 1. Internal call stack.
-1. Environment should be methods on Context.
+1. Environment should be methods on Ctx.
 1. Environment should be a hashed dictionary and not a tree.
 1. Generic type-based allocator
 1. Add and mul should return 1 when no args.
