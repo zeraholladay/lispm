@@ -3,8 +3,16 @@
 #include "stack.h"
 #include "xalloc.h"
 
+struct stack
+{
+  uintptr_t sp;
+  uintptr_t fp;
+  size_t data_size;
+  uintptr_t *data;
+};
+
 static void *
-stack_xrealloc (Stack *stack, size_t count)
+stack_xgrow (Stack *stack, size_t count)
 {
   uintptr_t *new_ptr = xrealloc (stack->data, (count) * sizeof *(stack->data));
   stack->data = new_ptr;
@@ -12,25 +20,27 @@ stack_xrealloc (Stack *stack, size_t count)
   return new_ptr;
 }
 
-void *
-stack_xalloc (Stack *stack, size_t count)
+Stack *
+stack_create (void)
 {
-  stack_xrealloc (stack, count);
+  Stack *stack = xmalloc (sizeof *(stack));
+  stack_xgrow (stack, 0);
   stack->sp = stack->fp = 0;
   return stack;
 }
 
 void
-stack_free (Stack *stack)
+stack_destroy (Stack *stack)
 {
   free (stack->data), stack->data = NULL;
+  free (stack);
 }
 
 void
 stack_push (Stack *stack, void *value)
 {
   if (stack->sp >= stack->data_size)
-    stack_xrealloc (stack, stack->data_size + STACK_GROWTH);
+    stack_xgrow (stack, stack->data_size + STACK_GROWTH);
   stack->data[stack->sp++] = (uintptr_t)value;
 }
 

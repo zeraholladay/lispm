@@ -7,16 +7,11 @@
 #define STACK_GROWTH 4096
 #endif
 
-typedef struct Stack
-{
-  uintptr_t sp;
-  uintptr_t fp;
-  size_t data_size;
-  uintptr_t *data;
-} Stack;
+struct stack;
+typedef struct stack Stack;
 
-void *stack_xalloc (Stack *s_ptr, size_t count);
-void stack_free (Stack *s_ptr);
+Stack *stack_create (void);
+void stack_destroy (Stack *s_ptr);
 void stack_push (Stack *s_ptr, void *value);
 void *stack_pop (Stack *s_ptr);
 void *stack_peek (Stack *s_ptr);
