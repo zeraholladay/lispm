@@ -6,7 +6,11 @@
 #include "env.h"
 #include "safe_str.h"
 
-static const char *test_env_similar_strings[]
+#define NUM_STRINGS ((int)(sizeof (test_strings) / sizeof (test_strings[0])))
+
+static Env *frame = NULL;
+
+static const char *test_strings[]
     = { "example",   "exomple",  "exampl",    "exampel",  "exampqle",
         "exmple",    "exaple",   "examnple",  "exmaple",  "examplex",
         "exapmle",   "examplor", "exampole",  "xample",   "examplely",
@@ -16,133 +20,72 @@ static const char *test_env_similar_strings[]
         "exampole",  "examplot", "exumpole",  "zample",   "exemplar",
         "exawple",   "eximpa",   "examplar",  "eximpyle", "example" };
 
-#define NUM_STRINGS                                                           \
-  ((int)(sizeof (test_env_similar_strings)                                    \
-         / sizeof (test_env_similar_strings[0])))
+static void
+setup (void)
+{
+  frame = env_create ();
+  ck_assert_ptr_nonnull (frame);
+
+  for (int i = 0; i < NUM_STRINGS; ++i)
+    {
+      const char *key = test_strings[i];
+      void *val = (void *)djb2 (key);
+
+      bool res = env_set (frame, key, val);
+      ck_assert (res);
+    }
+}
+
+static void
+teardown (void)
+{
+  env_destroy (frame);
+}
 
 START_TEST (test_env)
 {
-  Env *env = env_new (NULL);
-
   for (int i = 0; i < NUM_STRINGS; ++i)
     {
-      void *hash = (void *)djb2 (test_env_similar_strings[i]);
-      ck_assert_int_eq (env_set (env, test_env_similar_strings[i], hash), 0);
+      const char *key = test_strings[i];
+
+      bool has_key = env_has_key (frame, key);
+      ck_assert (has_key);
+
+      void *lkup_val = env_lookup (frame, key);
+      ck_assert_ptr_nonnull (lkup_val);
+      ck_assert_ptr_eq (lkup_val, (void *)djb2 (key));
     }
-
-  for (int i = 0; i < NUM_STRINGS; ++i)
-    {
-      unsigned long hash = djb2 (test_env_similar_strings[i]);
-      rb_node *n = env_lookup (env, test_env_similar_strings[i]);
-      ck_assert_str_eq (RB_KEY (n), test_env_similar_strings[i]);
-      ck_assert (RB_KEY_LEN (n) == strlen (test_env_similar_strings[i]));
-      ck_assert ((unsigned long)RB_VAL (n) == hash);
-    }
-
-  for (int i = NUM_STRINGS - 1; i > 0; --i)
-    {
-      unsigned long hash = djb2 (test_env_similar_strings[i]);
-      rb_node *n = env_lookup (env, test_env_similar_strings[i]);
-      ck_assert_str_eq (RB_KEY (n), test_env_similar_strings[i]);
-      ck_assert (RB_KEY_LEN (n) == strlen (test_env_similar_strings[i]));
-      ck_assert ((unsigned long)RB_VAL (n) == hash);
-    }
-
-  for (int i = 0; i < NUM_STRINGS; ++i)
-    {
-      for (int j = 0; j < NUM_STRINGS; ++j)
-        {
-          unsigned long hash_i = djb2 (test_env_similar_strings[i]);
-          rb_node *n_i = env_lookup (env, test_env_similar_strings[i]);
-
-          unsigned long hash_j = djb2 (test_env_similar_strings[j]);
-          rb_node *n_j = env_lookup (env, test_env_similar_strings[j]);
-
-          if (hash_i == hash_j)
-            ck_assert_str_eq (RB_KEY (n_i), RB_KEY (n_j));
-          else
-            {
-              ck_assert_msg (strcmp (RB_KEY (n_i), RB_KEY (n_j)),
-                             "Assertion failed: strings equal (\"%s\" == "
-                             "\"%s\") for %s and %s",
-                             RB_KEY (n_i), RB_KEY (n_j),
-                             test_env_similar_strings[i],
-                             test_env_similar_strings[j]);
-            }
-        }
-    }
-
-  // TODO: CLEANUP
 }
 END_TEST
 
-START_TEST (test_env_frame)
+START_TEST (test_env_fail) { ck_assert (!env_has_key (frame, "BOGUS")); }
+END_TEST
+
+START_TEST (test_child_override)
 {
-  Env *env_parent = env_new (NULL);
-  Env *env_child = env_new (env_parent);
-
-  for (int i = 0; i < NUM_STRINGS; ++i)
-    {
-      void *hash = (void *)djb2 (test_env_similar_strings[i]);
-      ck_assert_int_eq (
-          env_set (env_parent, test_env_similar_strings[i], hash), 0);
-    }
-
-  // fall through from child to parent
-  for (int i = 0; i < NUM_STRINGS; ++i)
-    {
-      unsigned long hash = djb2 (test_env_similar_strings[i]);
-      rb_node *n = env_lookup (env_child, test_env_similar_strings[i]);
-      ck_assert_str_eq (RB_KEY (n), test_env_similar_strings[i]);
-      ck_assert (RB_KEY_LEN (n) == strlen (test_env_similar_strings[i]));
-      ck_assert ((unsigned long)RB_VAL (n) == hash);
-    }
+  env_enter_frame (&frame);
 
   // child overrides
-  const char *child_override_key1 = test_env_similar_strings[1];
-  const char *child_override_key2 = test_env_similar_strings[NUM_STRINGS - 1];
+  const char *key = test_strings[0];
+  void *val = (void *)0xDEADBEEF;
 
-  char *child_val1 = "foo";
-  char *child_val2 = "bar";
+  bool res = env_set (frame, key, val);
+  ck_assert (res);
 
-  env_set (env_child, child_override_key1, child_val1);
-  env_set (env_child, child_override_key2, child_val2);
+  bool has_key = env_has_key (frame, key);
+  ck_assert (has_key);
 
-  rb_node *child_n1 = env_lookup (env_child, child_override_key1);
-  rb_node *child_n2 = env_lookup (env_child, child_override_key2);
+  void *lkup_val = env_lookup (frame, key);
+  ck_assert_ptr_nonnull (lkup_val);
+  ck_assert_ptr_eq (lkup_val, (void *)val);
 
-  ck_assert_str_eq (RB_VAL (child_n1), child_val1);
-  ck_assert_str_eq (RB_VAL (child_n2), child_val2);
+  // cleanup
+  env_leave_frame (&frame);
 
-  // TODO: CLEANUP
-}
-END_TEST
-
-START_TEST (test_env_fail)
-{
-  Env *env = env_new (NULL);
-
-  for (int i = 0; i < NUM_STRINGS; ++i)
-    {
-      void *hash = (void *)djb2 (test_env_similar_strings[i]);
-      ck_assert_int_eq (env_set (env, test_env_similar_strings[i], hash), 0);
-    }
-  const char *key_1 = "foo";
-  const char *key_2 = "bar";
-
-  void *val_1 = (void *)djb2 (key_1);
-  void *val_2 = (void *)djb2 (key_2);
-
-  env_set (env, key_1, val_1);
-  env_set (env, key_2, val_2);
-
-  rb_node *n1 = env_lookup (env, key_1);
-  rb_node *n2 = env_lookup (env, key_2);
-  rb_node *n3 = env_lookup (env, "BOGUS");
-
-  ck_assert (n1);
-  ck_assert (n2);
-  ck_assert (n3 == NULL);
+  // frame/parent should have a value but not this value
+  void *parent_lkup_val = env_lookup (frame, key);
+  ck_assert_ptr_nonnull (parent_lkup_val);
+  ck_assert_ptr_eq (parent_lkup_val, (void *)djb2 (key));
 }
 END_TEST
 
@@ -150,13 +93,11 @@ Suite *
 env_suite (void)
 {
   Suite *s = suite_create ("Env");
-
   TCase *tc_core = tcase_create ("Core");
-
+  tcase_add_checked_fixture (tc_core, setup, teardown);
   tcase_add_test (tc_core, test_env);
-  tcase_add_test (tc_core, test_env_frame);
   tcase_add_test (tc_core, test_env_fail);
-
+  tcase_add_test (tc_core, test_child_override);
   suite_add_tcase (s, tc_core);
   return s;
 }

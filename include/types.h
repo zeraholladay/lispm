@@ -4,8 +4,8 @@
 #include <limits.h>
 #include <stddef.h>
 
+#include "context.h"
 #include "env.h"
-#include "eval_ctx.h"
 #include "palloc.h"
 
 #define IS_TYPE(nptr, kind) ((nptr) != NULL && (nptr)->type == (kind))

@@ -1,12 +1,11 @@
-#ifndef EVAL_CTX_H
-#define EVAL_CTX_H
+#ifndef CONTEXT_H
+#define CONTEXT_H
 
 #include "env.h"
 #include "palloc.h"
 #include "rb_tree.h"
 
 #define CTX_POOL(ctx) ((ctx)->node_pool)
-#define CTX_ENV(ctx) ((ctx)->env)
 #define CTX_SYMTAB(ctx) ((ctx)->parser_ctx.sym_tab)
 #define CTX_PARSE_ROOT(ctx) ((ctx)->parser_ctx.root_node)
 

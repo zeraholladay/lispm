@@ -1,16 +1,20 @@
 #ifndef ENV_H
 #define ENV_H
 
-#include "rb_tree.h"
+#include <stdbool.h>
+#include <stdlib.h>
 
-typedef struct Env
-{
-  struct Env *parent;
-  rb_node *root;
-} Env;
+struct env;
+typedef struct env Env;
 
-Env *env_new (Env *parent);
-rb_node *env_lookup (Env *env, const char *sym);
-int env_set (Env *env, const char *sym, void *addr);
-
+Env *env_create (void);
+void env_destroy (Env *env);
+void env_leave_frame (Env **frame);
+// access
+bool env_has_key (Env *frame, const char *key);
+void *env_lookup (Env *frame, const char *key);
+bool env_set (Env *frame, const char *key, void *val);
+// frame ops
+void env_enter_frame (Env **frame);
+void env_leave_frame (Env **frame);
 #endif

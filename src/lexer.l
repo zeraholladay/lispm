@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include "debug.h"
-#include "eval_ctx.h"
+#include "context.h"
 #include "parser.h"
 #include "safe_str.h"
 #include "sym_save.h"

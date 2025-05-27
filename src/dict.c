@@ -97,9 +97,9 @@ xgrow_bins (Dict *dict)
 }
 
 Dict *
-dict_xalloc_va_list (const char *key, ...)
+dict_create_va_list (const char *key, ...)
 {
-  Dict *dict = dict_xalloc (NULL, 0);
+  Dict *dict = dict_create (NULL, 0);
   va_list ap;
 
   va_start (ap, key);
@@ -113,7 +113,7 @@ dict_xalloc_va_list (const char *key, ...)
 }
 
 Dict *
-dict_xalloc (const DictEntity *entities, size_t n)
+dict_create (const DictEntity *entities, size_t n)
 {
   Dict *dict = xmalloc (sizeof *(dict));
 
@@ -121,14 +121,15 @@ dict_xalloc (const DictEntity *entities, size_t n)
   dict->capacity = DICT_INIT_CAP;
 
   dict->bins = xalloc_bins (dict->capacity);
-  dict->list = list_xalloc ();
+  dict->list = list_create ();
 
   for (size_t i = 0; i < n; i++)
     {
-      int res = dict_insert (dict, entities[i].key, entities[i].val);
+      bool res = dict_insert (dict, entities[i].key, entities[i].val);
 
-      if (res < 0)
+      if (!res)
         {
+
           return NULL;
         }
     }
@@ -142,9 +143,7 @@ dict_destroy (Dict *dict)
   List *list = dict->list;
 
   for (size_t i = 0; i < list->count; ++i)
-    {
-      free (list->items[i]);
-    }
+    free (list->items[i]);
 
   free (dict);
 }
@@ -163,7 +162,19 @@ dict_del (Dict *dict, const char *key)
     }
 }
 
-int
+bool
+dict_has_key (Dict *dict, const char *key)
+{
+  size_t len = safe_strnlen (key, DICT_STR_MAX_LEN);
+  size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
+  int bin_val = dict->bins[bins_idx];
+
+  if (bin_val >= 0)
+    return true;
+  return false;
+}
+
+bool
 dict_insert (Dict *dict, const char *key, void *val)
 {
   if ((dict->count + 1) * 5 > dict->capacity * 4) // 80% >
@@ -181,7 +192,6 @@ dict_insert (Dict *dict, const char *key, void *val)
       return dict->count;
     }
 
-  // new
   DictEntity *entity = xmalloc (sizeof *(entity));
 
   entity->hash_key = hash_key;
@@ -189,18 +199,12 @@ dict_insert (Dict *dict, const char *key, void *val)
   entity->len = len;
   entity->val = val;
 
-  int list_idx = list_append (dict->list, entity);
+  list_append (dict->list, entity);
 
-  if (list_idx < 0)
-    {
-      free (entity);
-      return -1;
-    }
-
-  dict->bins[bin_idx] = list_idx;
+  dict->bins[bin_idx] = dict->list->count - 1;
   ++dict->count;
 
-  return dict->count;
+  return true;
 }
 
 DictEntity *
@@ -211,9 +215,6 @@ dict_lookup (Dict *dict, const char *key)
   int bin_val = dict->bins[bins_idx];
 
   if (bin_val >= 0)
-    {
-      return LIST_IDX (dict, bin_val);
-    }
-
+    return LIST_IDX (dict, bin_val);
   return NULL;
 }

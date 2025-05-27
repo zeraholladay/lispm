@@ -4,12 +4,10 @@
 #include "safe_str.h"
 #include "xalloc.h"
 
-#ifndef HEAP_LIST_INIT_CAPACITY
-#define HEAP_LIST_INIT_CAPACITY 4
-#endif
+static bool list_xresize (List *list, size_t min_capacity);
 
 // thanks python
-static int
+static bool
 list_xresize (List *list, size_t min_capacity)
 {
   size_t new_capacity = list->capacity;
@@ -24,15 +22,15 @@ list_xresize (List *list, size_t min_capacity)
   list->items = new_nodes;
   list->capacity = new_capacity;
 
-  return 0;
+  return true;
 }
 
 List *
-list_xalloc (void)
+list_create (void)
 {
   List *list = xcalloc (1, sizeof (List));
-  list->items = xcalloc (HEAP_LIST_INIT_CAPACITY, sizeof *(list->items));
 
+  list->items = xcalloc (HEAP_LIST_INIT_CAPACITY, sizeof *(list->items));
   list->capacity = HEAP_LIST_INIT_CAPACITY;
   list->count = 0;
 
@@ -40,22 +38,20 @@ list_xalloc (void)
 }
 
 void
-list_free (List *list)
+list_destroy (List *list)
 {
-  if (!list)
-    return;
   free (list->items);
   free (list);
 }
 
-int
+bool
 list_append (List *list, void *item)
 {
-  if ((list->count >= list->capacity)
-      && (list_xresize (list, list->count + 1) != 0))
-    return -1;
-  list->items[list->count] = item;
-  return list->count++; // ie index of append
+  if (list->count >= list->capacity)
+    list_xresize (list, list->count + 1);
+
+  list->items[list->count++] = item;
+  return true;
 }
 
 void

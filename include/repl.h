@@ -1,7 +1,7 @@
 #ifndef REPL_H
 #define REPL_H
 
-#include "eval_ctx.h"
+#include "context.h"
 
 void lispm_init (Context *ctx);
 void lispm_destroy (Context *ctx);

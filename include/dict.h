@@ -2,6 +2,8 @@
 #define DICT_H
 
 #include <stdarg.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #include "list.h"
 
@@ -13,6 +15,7 @@
 #define DICT_STR_MAX_LEN 256
 #endif
 
+#define DICT_CREATE() (dict_create (NULL, 0))
 #define DICT_ENTITY(k, v) { .hash_key = 0, .key = k, .len = 0, .val = v }
 
 typedef struct
@@ -30,11 +33,12 @@ typedef struct
   int *bins;
 } Dict;
 
-Dict *dict_xalloc_va_list (const char *key, ...);
-Dict *dict_xalloc (const DictEntity *entity, size_t n);
+Dict *dict_create_va_list (const char *key, ...);
+Dict *dict_create (const DictEntity *entity, size_t n);
 void dict_destroy (Dict *dict);
 void dict_del (Dict *dict, const char *key);
-int dict_insert (Dict *dict, const char *key, void *val);
+bool dict_has_key (Dict *dict, const char *key);
+bool dict_insert (Dict *dict, const char *key, void *val);
 DictEntity *dict_lookup (Dict *dict, const char *key);
 
 #endif
