@@ -1,60 +1,76 @@
 #include <stdlib.h>
 
+#include "dict.h"
 #include "env.h"
-#include "safe_str.h"
 #include "xalloc.h"
 
 #ifndef ENV_STR_MAX
 #define ENV_STR_MAX 256
 #endif
 
-Env *
-env_new (Env *parent)
+struct env
 {
-  Env *env = xcalloc (1, sizeof *(env));
-  env->parent = parent;
+  Dict *dict;
+  Env *parent;
+};
+
+Env *
+env_create (void)
+{
+  Env *env = xmalloc (sizeof *(env));
+  env->dict = DICT_CREATE ();
+  env->parent = NULL;
   return env;
 }
 
-rb_node *
-env_lookup (Env *env, const char *sym)
+void
+env_destroy (Env *env)
 {
-  size_t len = safe_strnlen (sym, ENV_STR_MAX);
+  dict_destroy (env->dict);
+  free (env);
+}
 
-  for (Env *cur_env = env; cur_env; cur_env = cur_env->parent)
+bool
+env_has_key (Env *frame, const char *key)
+{
+  return dict_has_key (frame->dict, key);
+}
+
+void *
+env_lookup (Env *frame, const char *key)
+{
+  while (frame)
     {
-      rb_node *n = rb_lookup (cur_env->root, sym, len);
-
-      if (n)
-        return n;
+      DictEntity *entity = dict_lookup (frame->dict, key);
+      if (entity)
+        return entity->val;
+      frame = frame->parent;
     }
-
   return NULL;
 }
 
-int
-env_set (Env *env, const char *sym, void *addr)
+bool
+env_set (Env *frame, const char *key, void *val)
 {
-  size_t len = safe_strnlen (sym, ENV_STR_MAX);
+  return dict_insert (frame->dict, key, val);
+}
 
-  for (Env *cur_env = env; cur_env; cur_env = cur_env->parent)
-    {
-      rb_node *n = rb_lookup (cur_env->root, sym, len);
+void
+env_enter_frame (Env **frame)
+{
+  if (!frame || !*frame)
+    return;
+  Env *chld = env_create ();
+  chld->parent = *frame;
+  *frame = chld;
+}
 
-      if (n)
-        {
-          RB_VAL (n) = addr;
-          return 0;
-        }
-    }
-
-  rb_node *n = rb_xalloc (); // FIXME
-
-  RB_KEY (n) = sym;
-  RB_KEY_LEN (n) = len;
-  RB_VAL (n) = addr;
-
-  rb_insert (&env->root, n);
-
-  return 0;
+void
+env_leave_frame (Env **frame)
+{
+  if (!frame || !*frame)
+    return;
+  Env *chld_frame = *frame;
+  *frame = (*frame)->parent;
+  env_destroy (chld_frame);
 }

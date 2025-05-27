@@ -56,7 +56,7 @@ SRC_OBJS := $(patsubst $(SRC)/%.c, $(BIN)/%.o, $(SRC_CFILES_ALL))
 all: src exec
 
 exec: $(MAIN_SRC)
-	$(CC) $(CFLAGS) -Dlispm_MAIN=1 -o $(EXEC) $(SRC_OBJS) $(MAIN_SRC) $(LDLIBS)
+	$(CC) $(CFLAGS) -DLISPM_MAIN=1 -o $(EXEC) $(SRC_OBJS) $(MAIN_SRC) $(LDLIBS)
 
 .PHONY: src
 src: gen $(SRC_OBJS)

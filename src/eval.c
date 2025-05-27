@@ -112,19 +112,24 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
       return NULL;
     }
 
-  Context new_ctx = *ctx;
-  CTX_ENV (&new_ctx) = env_new (GET_LAMBDA_ENV (fn));
+  // Context *new_ctx = *ctx;
+  // CTX_ENV (&new_ctx) = env_create (GET_LAMBDA_ENV (fn));
+
+  env_enter_frame (&ctx->env);
 
   Node *pairs = pair (GET_LAMBDA_PARAMS (fn), args, ctx);
 
   while (!IS_NIL (pairs))
     {
       Node *pair = CAR (pairs);
-      set (CAR (pair), CAR (CDR (pair)), &new_ctx);
+      set (CAR (pair), CAR (CDR (pair)),
+           ctx); // FIXME: need proper err handling
       pairs = CDR (pairs);
     }
 
-  return eval_progn (GET_LAMBDA_BODY (fn), &new_ctx);
+  Node *res = eval_progn (GET_LAMBDA_BODY (fn), ctx);
+  env_leave_frame (&ctx->env);
+  return res;
 }
 
 // (apply f arglist)
@@ -207,7 +212,7 @@ eval (Node *form, Context *ctx)
 
       if (IS_LAMBDA (car))
         {
-          GET_LAMBDA_ENV (car) = CTX_ENV (ctx);
+          GET_LAMBDA_ENV (car) = ctx->env;
           return car;
         }
 
@@ -496,14 +501,14 @@ lookup (Node *node, Context *ctx)
       return kywrd_node;
     }
 
-  rb_node *n = env_lookup (CTX_ENV (ctx), str);
-  if (!n)
+  Node *res = env_lookup (ctx->env, str);
+  if (!res)
     {
       raise (ERR_SYMBOL_NOT_FOUND, str);
       return NULL;
     }
 
-  return RB_VAL (n);
+  return res;
 }
 
 static Node *
@@ -524,7 +529,7 @@ set (Node *car, Node *cdr, Context *ctx)
       return NULL;
     }
 
-  env_set (CTX_ENV (ctx), str, cdr); // TODO: error handling
+  env_set (ctx->env, str, cdr); // TODO: error handling
   return cdr;
 }
 

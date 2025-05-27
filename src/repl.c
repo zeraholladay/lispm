@@ -23,7 +23,7 @@ extern int optreset;
 extern int yydebug;
 #endif
 
-#ifndef lispm_MAIN
+#ifndef LISPM_MAIN
 
 #ifndef REPL_BUF_SIZ
 #define REPL_BUF_SIZ 8192
@@ -50,7 +50,7 @@ lispm_init (Context *ctx)
     sym_save_init ();
 
   CTX_POOL (ctx) = pool_init (OBJ_POOL_CAPACITY, sizeof (Node));
-  CTX_ENV (ctx) = env_new (NULL);
+  ctx->env = env_create ();
   reset_parse_context (ctx);
 }
 
@@ -58,7 +58,7 @@ void
 lispm_destroy (Context *ctx)
 {
   reset_parse_context (ctx);
-  free (CTX_ENV (ctx)), CTX_ENV (ctx) = NULL;
+  env_destroy (ctx->env);
   pool_destroy_hier (&CTX_POOL (ctx));
 }
 

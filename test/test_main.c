@@ -10,6 +10,7 @@ extern int yydebug;
 extern Suite *str_safe_str_suite ();
 extern Suite *stack_suite (void);
 extern Suite *rb_tree_suite (void);
+extern Suite *list_suite (void);
 extern Suite *dict_suite (void);
 extern Suite *str_save_suite (void);
 extern Suite *palloc_suite (void);
@@ -30,6 +31,7 @@ main (void)
   srunner_add_suite (sr, str_safe_str_suite ());
   srunner_add_suite (sr, stack_suite ());
   srunner_add_suite (sr, rb_tree_suite ());
+  srunner_add_suite (sr, list_suite ());
   srunner_add_suite (sr, dict_suite ());
   srunner_add_suite (sr, env_suite ());
   srunner_add_suite (sr, str_save_suite ());

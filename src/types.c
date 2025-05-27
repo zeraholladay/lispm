@@ -31,12 +31,9 @@ list_append_strdup (List *list, char *str)
       return 0;
     }
 
-  if (list_append (list, dup) < 0)
-    {
-      return 0;
-    }
+  list_append (list, dup);
 
-  return len;
+  return list->count;
 }
 
 // Type eq
@@ -115,7 +112,7 @@ list_tostr (Node *self)
   size_t total = 0;
   Node *cur;
 
-  list = list_xalloc ();
+  list = list_create ();
 
   if (!list)
     return NULL;
@@ -156,7 +153,7 @@ list_tostr (Node *self)
       free (list->items[i]);
     }
 
-  list_free (list);
+  list_destroy (list);
 
   return str;
 }
