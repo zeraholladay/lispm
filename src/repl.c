@@ -19,22 +19,11 @@ extern int optreset;
 #define OBJ_POOL_CAPACITY 4096
 #endif
 
-#if YYDEBUG
-extern int yydebug;
-#endif
+#ifndef LISPM_MAIN_
 
-#ifndef LISPM_MAIN
-
-#ifndef REPL_BUF_SIZ
-#define REPL_BUF_SIZ 8192
-#endif
-
-extern Node *const const_false;
-extern Node *const const_true;
-
-extern FILE *yyin;
-extern int yyparse (Context *ctx);
-extern void yylex_destroy (void);
+// extern FILE *yyin;
+// extern int yyparse (Context *ctx);
+// extern void yylex_destroy (void);
 
 extern jmp_buf eval_error_jmp;
 

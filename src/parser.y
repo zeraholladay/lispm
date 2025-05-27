@@ -1,5 +1,6 @@
 // clang-format off
 %{
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "eval.h"
@@ -14,28 +15,14 @@
     }                                                                         \
   while (0)
 
+extern int yylineno;
+
 int yylex (Context * ctx);
 void yyerror_handler (Context * ctx, const char *s);
-
-extern int yylineno;
 %}
 
-%code requires
-{
-#include "types.h"
-
-void reset_parse_context(Context *ctx);
-}
-
-%lex-param
-{
-Context *ctx
-}
-
-%parse-param
-{
-Context *ctx
-}
+%parse-param {Node *ast_root} {Context *ctx}
+%lex-param {Context *ctx}
 
 %union
 {
@@ -65,7 +52,7 @@ Context *ctx
 program
   : forms
     {
-      CTX_PARSE_ROOT (ctx) = $1;
+      ast_root = $1;
       YYACCEPT;
     }
   | forms error
@@ -163,18 +150,9 @@ if_
   ;
 
 %%
-void
-reset_parse_context (Context *ctx)
-{
-  /* assumes pool has already been allocated. */
-  CTX_PARSE_ROOT (ctx) = NIL;
-}
 
 void
 yyerror_handler (Context *ctx, const char *s)
 {
   fprintf (stderr, "Syntax error: line %d: %s\n", yylineno, s);
-  reset_parse_context (ctx);
 }
-
-// clang-format off
