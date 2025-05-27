@@ -25,22 +25,19 @@ START_TEST (test_sym_save)
     size_t len;
     const char *saved_str;
   } saved[NUM_STRINGS];
-  rb_node *root_node = NULL;
-
-  sym_save_init ();
 
   for (int i = 0; i < NUM_STRINGS; ++i)
     {
       saved[i].len = strlen (test_sym_save_similar_strings[i]);
-      saved[i].saved_str = sym_save (
-          &root_node, test_sym_save_similar_strings[i], saved[i].len);
+      saved[i].saved_str
+          = sym_save (test_sym_save_similar_strings[i], saved[i].len);
       ck_assert_str_eq (saved[i].saved_str, test_sym_save_similar_strings[i]);
     }
 
   for (int i = 0; i < NUM_STRINGS; ++i)
     {
-      const char *saved_str = sym_save (
-          &root_node, test_sym_save_similar_strings[i], saved[i].len);
+      const char *saved_str
+          = sym_save (test_sym_save_similar_strings[i], saved[i].len);
       ck_assert_str_eq (saved[i].saved_str, saved_str);
       ck_assert (saved[i].len == strlen (test_sym_save_similar_strings[i]));
     }
@@ -50,10 +47,10 @@ START_TEST (test_sym_save)
       for (int j = 0; j < NUM_STRINGS; ++j)
         {
           const char *saved_str_i
-              = sym_save (&root_node, test_sym_save_similar_strings[i],
+              = sym_save (test_sym_save_similar_strings[i],
                           strlen (test_sym_save_similar_strings[i]));
           const char *saved_str_j
-              = sym_save (&root_node, test_sym_save_similar_strings[j],
+              = sym_save (test_sym_save_similar_strings[j],
                           strlen (test_sym_save_similar_strings[j]));
           if (strcmp (test_sym_save_similar_strings[i],
                       test_sym_save_similar_strings[j])

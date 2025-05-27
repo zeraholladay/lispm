@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,6 +14,8 @@ typedef struct BumpPool
   char buffer[SYM_SAVE_BUMP_SIZE];
 } BumpPool;
 
+static rb_node *root = NULL;
+static bool sym_saved = false;
 static Pool *pool = NULL;
 static BumpPool *bump_pool = NULL;
 
@@ -48,7 +51,7 @@ bump_pool_strndup (const char *s, size_t len)
   return memcpy (new, s, len);
 }
 
-void
+static void
 sym_save_init (void)
 {
   bump_pool = xalloc_bump_pool ();
@@ -57,9 +60,15 @@ sym_save_init (void)
 
 // TODO: max symbol size/limit
 const char *
-sym_save (rb_node **root, const char *s, size_t len)
+sym_save (const char *s, size_t len)
 {
-  rb_node *node = rb_lookup (*root, s, len);
+  if (!sym_saved)
+    {
+      sym_saved = true;
+      sym_save_init ();
+    }
+
+  rb_node *node = rb_lookup (root, s, len);
 
   if (node)
     return RB_KEY (node);
@@ -74,7 +83,7 @@ sym_save (rb_node **root, const char *s, size_t len)
   if (!RB_KEY (node))
     return NULL;
 
-  rb_insert (root, node);
+  rb_insert (&root, node);
 
   return RB_KEY (node);
 }

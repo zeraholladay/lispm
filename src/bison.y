@@ -1,13 +1,14 @@
 // clang-format off
 %{
-#include <stdbool.h>
 #include <stdio.h>
 
+#include "bison.h"
+#include "context.h"
 #include "eval.h"
-#include "parser.h"
+#include "flex.h"
 #include "types.h"
 
-#define yyerror(ctx, s)                                                       \
+#define yyerror(n, ctx, s)                                                    \
   do                                                                          \
     {                                                                         \
       yyerror_handler (ctx, s);                                               \
@@ -15,14 +16,15 @@
     }                                                                         \
   while (0)
 
-extern int yylineno;
-
-int yylex (Context * ctx);
 void yyerror_handler (Context * ctx, const char *s);
 %}
 
-%parse-param {Node *ast_root} {Context *ctx}
-%lex-param {Context *ctx}
+%code requires
+{
+#include "types.h"
+}
+
+%parse-param {Node **progn} {Context *ctx}
 
 %union
 {
@@ -34,10 +36,9 @@ void yyerror_handler (Context * ctx, const char *s);
   } symbol;
 }
 
-%token ERROR
+%token ERROR LAMBDA QUOTE
 %token <integer> INTEGER
 %token <symbol>  IF SYMBOL
-%token LAMBDA QUOTE
 
 %type <node>
   program
@@ -52,14 +53,13 @@ void yyerror_handler (Context * ctx, const char *s);
 program
   : forms
     {
-      ast_root = $1;
+      *progn = $1;
       YYACCEPT;
     }
   | forms error
     {
-      CTX_PARSE_ROOT (ctx) = NIL;
-      yyerror (ctx, "Parse error\n");
-      YYABORT;
+      *progn = NIL;
+      yyerror (progn, ctx, "Parse error\n");
     }
   ;
 
@@ -154,5 +154,6 @@ if_
 void
 yyerror_handler (Context *ctx, const char *s)
 {
+  (void)ctx;
   fprintf (stderr, "Syntax error: line %d: %s\n", yylineno, s);
 }

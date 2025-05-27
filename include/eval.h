@@ -2,6 +2,7 @@
 #define EVAL_H
 
 #include "context.h"
+#include "debug.h"
 #include "keywords.h"
 #include "types.h"
 

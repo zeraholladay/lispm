@@ -9,13 +9,10 @@
 #include "repl.h"
 #include "types.h"
 
-extern FILE *yyin;
-extern int yyparse (Context *ctx);
-extern void yylex_destroy (void);
-
 extern void lispm_init (Context *ctx);
 extern void lispm_destroy (Context *ctx);
 
+static Node *progn = NULL;
 static Context ctx = {};
 
 jmp_buf eval_error_jmp;
@@ -35,18 +32,8 @@ teardown (void)
 static Node *
 run_eval_progn (const char *input)
 {
-  yyin = fmemopen ((void *)input, strlen (input), "r");
-
-  int parse_status = yyparse (&ctx);
-  ck_assert_int_eq (parse_status, 0);
-
-  Node *program = CTX_PARSE_ROOT (&ctx);
-  Node *eval_result = eval_progn (program, &ctx);
-
-  yylex_destroy ();
-  fclose (yyin);
-
-  return eval_result;
+  ck_assert (parser_buf (input, &progn, &ctx));
+  return eval_progn (progn, &ctx);
 }
 
 // should test based on https://jtra.cz/stuff/lisp/sclr/index.html
@@ -80,7 +67,7 @@ START_TEST (test_quote)
   Node *car = NULL;
   Node *cdr = NULL;
 
-  // NULL program
+  // NULL progn
   eval_result = run_eval_progn ("()");
   ck_assert (eval_result);
 

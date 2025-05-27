@@ -1,53 +1,33 @@
+#include <stdbool.h>
 #include <stdio.h>
 
-#include "parser.h"
-
-#if YYDEBUG
-extern int yydebug;
-#endif
-
-#ifndef INPUT_BUF_SIZ
-#define INPUT_BUF_SIZ 8192
-#endif
-
-extern FILE *yyin;
-extern int yyparse (Context *ctx);
-extern void yylex_destroy (void);
+#include "bison.h"
+#include "context.h"
+#include "flex.h"
+#include "types.h"
 
 bool
-parser_rl (const char *str, Node *parse_head, Context *ctx)
+parser_buf (const char *input, Node **ast_head, Context *ctx)
 {
-  char full_input[INPUT_BUF_SIZ];
-  int len = rl_readline (full_input, sizeof (full_input));
+  yy_scan_string (input);
 
-  if (len < 0)
-    return false;
+  // yypush_buffer_state (scan_buf);
 
-  yyin = fmemopen ((void *)full_input, len, "r");
-
-  reset_parse_context (ctx);
-  int parse_status = yyparse (ctx);
+  int status = yyparse (ast_head, ctx);
 
   yylex_destroy ();
-  fclose (yyin);
 
-  if (parse_status)
-    return false;
+  // yypop_buffer_state ();
 
-  return true;
+  return (status == 0);
 }
 
 bool
-parser_stream (FILE *restrict in, Node *parse_head, Context *ctx)
+parser_stream (FILE *restrict in, Node **ast_head, Context *ctx)
 {
-  yyin = in;
+  yyset_in (in);
 
-  int parse_status = yyparse (&ctx);
+  int status = yyparse (ast_head, ctx);
 
-  fclose (yyin);
-
-  if (parse_status)
-    return false;
-
-  return true;
+  return (status == 0);
 }

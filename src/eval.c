@@ -2,14 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "debug.h"
 #include "error.h"
 #include "eval.h"
-#include "eval_bool.h"
-#include "keywords.h"
-#include "parser.h"
-#include "safe_str.h"
-#include "types.h"
 #include "xalloc.h"
 
 #define PRINT(node)                                                           \
