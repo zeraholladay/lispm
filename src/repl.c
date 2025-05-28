@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "eval.h"
+#include "format.h"
 #include "parser.h"
 #include "readline.h"
 #include "types.h"
@@ -47,9 +48,7 @@ lispm_eval_progn (Node *parse_head, Context *ctx)
   if (setjmp (eval_error_jmp) == 0)
     {
       Node *eval_result = eval_progn (parse_head, ctx);
-      Node *node = eval_str (eval_result, ctx);
-      printf ("%s\n", GET_STRING (node));
-      free (node->string); // FIXME with GC
+      PRINT (eval_result);
       return 0;
     }
 

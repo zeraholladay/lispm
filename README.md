@@ -14,6 +14,10 @@ Test:
 make clean test
 ```
 
+```bash
+bin/lispm
+```
+
 Debug:
 
 ```
@@ -61,7 +65,7 @@ Examples:
 ---
 
 ### `SET x y`
-Sets a symbol to a value in the current context.
+Sets a symbol to a value in the global context.
 
 Examples:
 
@@ -164,17 +168,23 @@ Examples:
 (len '(1 2 3 4 5))
 ; 5
 ```
+
 ---
 
-### `PAIR x y`
-Pairs two lists:
+### `MAPCAR FN (l1 ... lN)`
+Applies function FN to elements of lists with same index:
 
 Examples:
 
 ```lisp
-(pair '(1 2 3 4 5)
-      '(a b c d e))
+(mapcar LIST '(A B C) '(1 2 3)) ; pair
+; ((A 1) (B 2) (C 3))
+(mapcar (lambda (x) (+ x 10)) '(1 2 3 4))
+; (11 12 13 14)
+(mapcar * '(3 4 5) '(4 5 6))
+; (12 20 30)
 ```
+
 
 ---
 
@@ -238,21 +248,19 @@ Examples:
 In no particular order:
 
 1. Internal call stack.
-1. Environment should be methods on Context.
-1. Environment should be a hashed dictionary and not a tree.
+1. ~~Environment should be methods on Context.~~
+1. ~~Environment should be a hashed dictionary and not a tree.~~
 1. Generic type-based allocator
 1. Add and mul should return 1 when no args.
 1. Real exceptions
 1. Memory management (tracking)
-1. I/O subsystem (printf is ugly)
+1. ~~I/O subsystem (printf is ugly)~~
 1. Docs/README.md
-1. Test heaplist
 1. Define/def
 1. Strings (started kind of)
 1. Fix yyarse after pool forever.
 1. Parse errors (exceptions first)
 1. GC
 1. Max symbol size
-1. Rename `set` to `let` & add `define`
-1. `map-car`
+1. `define`
 1. cmake

@@ -72,7 +72,7 @@ START_TEST (test_eq)
   eval_result = run_eval_progn (test_program);
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
-  eval_result = run_eval_progn ("(eq (str 'foo) (str 'foo))");
+  eval_result = run_eval_progn ("(eq (string 'foo) (string 'foo))");
   ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
 
   eval_result = run_eval_progn ("(eq rest rest)");
@@ -109,7 +109,7 @@ START_TEST (test_eq)
   eval_result = run_eval_progn (test_program);
   ck_assert (IS_NIL (eval_result));
 
-  eval_result = run_eval_progn ("(eq (str 'foo) (str 'bar))");
+  eval_result = run_eval_progn ("(eq (string 'foo) (string 'bar))");
   ck_assert (IS_NIL (eval_result));
 
   eval_result = run_eval_progn ("(eq first rest)");

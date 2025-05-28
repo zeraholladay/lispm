@@ -29,13 +29,11 @@
 struct Node;
 typedef struct Node Node;
 
-typedef char *(*StrFn) (Node *);
 typedef int (*EqFn) (Node *, Node *);
 
 typedef struct Type
 {
   const char *type_name;
-  StrFn str_fn;
   EqFn eq_fn;
 } Type;
 
@@ -48,7 +46,9 @@ typedef enum
   TYPE_STRING,     // literal
   TYPE_CONS,       // cons cells
   TYPE_BUILTIN_FN, // builtin fn
-  TYPE_LAMBDA      // user-defined fn
+  TYPE_LAMBDA,     // user-defined fn
+  TYPE_UNKNOWN,    // unknown ptr
+  _TYPE_CNT        // entinel for end
 } TypeEnum;
 
 typedef long long Integer;

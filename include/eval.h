@@ -57,7 +57,7 @@ Node *eval_pair (Node *args, Context *ctx);
 Node *eval_print (Node *args, Context *ctx);
 Node *eval_reverse (Node *args, Context *ctx);
 Node *eval_set (Node *args, Context *ctx);
-Node *eval_str (Node *args, Context *ctx);
+Node *eval_string (Node *args, Context *ctx);
 Node *eval (Node *form, Context *ctx);
 Node *eval_list (Node *args, Context *ctx);
 Node *eval_progn (Node *program, Context *ctx);

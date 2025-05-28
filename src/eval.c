@@ -4,17 +4,8 @@
 
 #include "error.h"
 #include "eval.h"
+#include "format.h"
 #include "xalloc.h"
-
-#define PRINT(node)                                                           \
-  do                                                                          \
-    {                                                                         \
-      StrFn to_str_fn = type (node)->str_fn;                                  \
-      char *str = to_str_fn (node);                                           \
-      printf ("%s\n", str);                                                   \
-      free (str);                                                             \
-    }                                                                         \
-  while (0)
 
 // funcalls
 static Node *funcall (Node *fn, Node *arglist, Context *ctx);
@@ -34,7 +25,6 @@ static Node *last (Node *args, Context *ctx);
 static size_t length (Node *list);
 static Node *mapcar (Node *fn, Node *arglist, Context *ctx);
 static Node *nth (size_t idx, Node *list);
-static Node *pair (Node *l1, Node *l2, Context *ctx);
 static Node *reverse (Node *list, Context *ctx);
 static Node *reverse_inplace (Node *list);
 static Node *zip (Node *lists, Context *ctx);
@@ -53,7 +43,7 @@ funcall (Node *fn, Node *arglist, Context *ctx)
   if (IS_LAMBDA (fn))
     return funcall_lambda (fn, arglist, ctx);
 
-  raise (ERR_NOT_A_FUNCTION, type (fn)->str_fn (fn));
+  raise (ERR_NOT_A_FUNCTION, DEBUG_LOCATION);
   return NULL;
 }
 
@@ -108,7 +98,8 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 
   env_enter_frame (&ctx->env);
 
-  Node *pairs = pair (GET_LAMBDA_PARAMS (fn), args, ctx);
+  Node *pairs
+      = mapcar (KEYWORD (LIST), LIST2 (fn->lambda.params, args, ctx), ctx);
 
   while (!IS_NIL (pairs))
     {
@@ -385,12 +376,6 @@ mapcar (Node *fn, Node *arglist, Context *ctx)
 }
 
 static Node *
-pair (Node *list1, Node *list2, Context *ctx)
-{
-  return mapcar (KEYWORD (LIST), LIST2 (list1, list2, ctx), ctx);
-}
-
-static Node *
 nth (size_t idx, Node *list)
 {
   for (size_t i = 0; i < idx; ++i)
@@ -633,17 +618,6 @@ eval_last (Node *args, Context *ctx)
 }
 
 Node *
-eval_pair (Node *args, Context *ctx)
-{
-  if (!LISTP (CAR (args)) || !LISTP (CAR (CDR (args))))
-    {
-      raise (ERR_INVALID_ARG, "pair");
-      return NULL;
-    }
-  return pair (CAR (args), CAR (CDR (args)), ctx);
-}
-
-Node *
 eval_print (Node *args, Context *ctx)
 {
   (void)ctx;
@@ -679,7 +653,7 @@ eval_set (Node *args, Context *ctx)
 }
 
 Node *
-eval_str (Node *args, Context *ctx)
+eval_string (Node *args, Context *ctx)
 {
-  return cons_string (&CTX_POOL (ctx), type (args)->str_fn (args));
+  return cons_string (&CTX_POOL (ctx), format (FIRST (args)));
 }
