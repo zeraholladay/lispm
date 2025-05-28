@@ -43,40 +43,40 @@ START_TEST (test_eq)
 
   // True statements
   eval_result = run_eval_progn ("(eq T T)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(eq NIL NIL)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(eq 0 0)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(eq 42 42)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(eq '() '())");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(eq 'foo 'foo)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   test_program = "(set 'foo (lambda () ()))"
                  "(set 'bar foo)"
                  "(eq foo bar)";
   eval_result = run_eval_progn (test_program);
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   test_program = "(set 'foo '(1 2 3 4))"
                  "(set 'bar foo)"
                  "(eq foo bar)";
   eval_result = run_eval_progn (test_program);
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(eq (string 'foo) (string 'foo))");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(eq rest rest)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   // False statements
   eval_result = run_eval_progn ("(eq T NIL)");
@@ -122,7 +122,7 @@ START_TEST (test_not)
   Node *eval_result = NULL;
 
   eval_result = run_eval_progn ("(not nil)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(not T)");
   ck_assert (IS_NIL (eval_result));
@@ -140,13 +140,13 @@ START_TEST (test_and)
   ck_assert (IS_NIL (eval_result));
 
   eval_result = run_eval_progn ("(and T T)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(and)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(and T T 'foobar)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foobar");
+  ck_assert_str_eq (eval_result->symbol.str, "foobar");
 }
 END_TEST
 
@@ -158,16 +158,16 @@ START_TEST (test_or)
   ck_assert (IS_NIL (eval_result));
 
   eval_result = run_eval_progn ("(or T nil)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(or nil T)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  ck_assert_str_eq (eval_result->symbol.str, "T");
 
   eval_result = run_eval_progn ("(or)");
   ck_assert (IS_NIL (eval_result));
 
   eval_result = run_eval_progn ("(or 'foobar T T)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foobar");
+  ck_assert_str_eq (eval_result->symbol.str, "foobar");
 }
 END_TEST
 

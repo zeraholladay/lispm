@@ -7,24 +7,7 @@
 #include "context.h"
 #include "palloc.h"
 
-#define IS_TYPE(nptr, kind) ((nptr) != NULL && (nptr)->type == (kind))
-
-#define IS_SYMBOL(nptr) IS_TYPE ((nptr), TYPE_SYMBOL)
-#define IS_INTEGER(nptr) IS_TYPE ((nptr), TYPE_INTEGER)
-#define IS_STRING(nptr) IS_TYPE ((nptr), TYPE_STRING)
-#define IS_CONS(nptr) IS_TYPE ((nptr), TYPE_CONS)
-#define IS_BUILTIN_FN(nptr) IS_TYPE ((nptr), TYPE_BUILTIN_FN)
-#define IS_SPECIAL_FORM(nptr)                                                 \
-  (IS_TYPE ((nptr), TYPE_BUILTIN_FN) && GET_BUILTIN_FN (nptr)->is_sf)
-#define IS_LAMBDA(nptr) IS_TYPE ((nptr), TYPE_LAMBDA)
-#define GET_SYMBOL(nptr) ((nptr)->symbol)
-#define GET_INTEGER(nptr) ((nptr)->integer)
-#define GET_STRING(nptr) ((nptr)->string)
-#define GET_CONS(nptr) (&(nptr)->cons)
-#define GET_BUILTIN_FN(nptr) ((nptr)->builtin_fn)
-#define GET_LAMBDA(nptr) (&(nptr)->lambda)
-#define GET_LAMBDA_PARAMS(nptr) ((nptr)->lambda.params)
-#define GET_LAMBDA_BODY(nptr) ((nptr)->lambda.body)
+#define IS(ptr, T) ((ptr) && (ptr)->type == TYPE_##T)
 
 struct Node;
 typedef struct Node Node;
@@ -70,7 +53,7 @@ typedef struct Node *(*Fn) (struct Node *, struct Context *);
 typedef struct
 {
   const char *name;
-  int is_sf, arity;
+  int sform, arity;
   Fn fn;
 } BuiltinFn;
 

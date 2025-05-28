@@ -110,7 +110,7 @@ fmt_cons (StrBuf *sb, Node *n)
   Node *cur;
   appendf (sb, "(");
 
-  for (cur = n; IS_CONS (cur); cur = CDR (cur))
+  for (cur = n; IS (cur, CONS); cur = CDR (cur))
     {
       Node *car = CAR (cur);
       Node *cdr = CDR (cur);
@@ -142,8 +142,7 @@ fmt_cons (StrBuf *sb, Node *n)
 void
 fmt_builtin_fn (StrBuf *sb, Node *n)
 {
-  const BuiltinFn *builtin = GET_BUILTIN_FN (n);
-  return appendf (sb, "#<BUILTIN-FUNCTION %S>", builtin->name);
+  return appendf (sb, "#<BUILTIN-FUNCTION %S>", n->builtin_fn->name);
 }
 
 void

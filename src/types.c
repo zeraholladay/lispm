@@ -7,93 +7,73 @@
 #include "safe_str.h"
 #include "types.h"
 
-// Type eq
 static inline int
 type_eq (Node *self, Node *other)
 {
   return type (self) == type (other);
 }
 
-// NIL type
 static int
 nil_eq (Node *self, Node *other)
 {
-  (void)self;
-  (void)other;
   return self == other;
 }
-// Integer type
+
 static int
 integer_eq (Node *self, Node *other)
 {
-  return type_eq (self, other) && GET_INTEGER (self) == GET_INTEGER (other);
+  return type_eq (self, other) && self->integer == other->integer;
 }
 
-// Symbol type
 static int
 symbol_eq (Node *self, Node *other)
 {
-  return type_eq (self, other)
-         && GET_SYMBOL (self).str == GET_SYMBOL (other).str;
+  return type_eq (self, other) && self->symbol.str == other->symbol.str;
 }
 
-// List type
 static int
 list_eq (Node *self, Node *other)
 {
   return type_eq (self, other)
          && ((IS_NIL (self) && IS_NIL (other))
-             || GET_CONS (self) == GET_CONS (other));
+             || &self->cons == &other->cons);
 }
 
-// Primitive type
 static int
 primitive_eq (Node *self, Node *other)
 {
   return type_eq (self, other)
-         && &GET_BUILTIN_FN (self) == &GET_BUILTIN_FN (other);
+         && &self->builtin_fn == &other->builtin_fn;
 }
 
-// Lambda type
 static int
 lambda_eq (Node *self, Node *other)
 {
-  return type_eq (self, other) && GET_LAMBDA (self) == GET_LAMBDA (other);
+  return type_eq (self, other) && &self->lambda == &other->lambda;
 }
 
-// String type
 static int
 string_eq (Node *self, Node *other)
 {
   return type_eq (self, other)
-         && (!strcmp (GET_STRING (self),
-                      GET_STRING (other))); // FIX ME: strings should have len
+         && (!strcmp (self->string, other->string));
 }
 
 static Type type_tab[] = {
-  // Special constant
   [TYPE_NIL] = { .type_name = "NIL", .eq_fn = nil_eq },
-
-  // Literal values
   [TYPE_INTEGER] = { .type_name = "INTEGER", .eq_fn = integer_eq },
   [TYPE_STRING] = { .type_name = "STRING", .eq_fn = string_eq },
   [TYPE_SYMBOL] = { .type_name = "SYMBOL", .eq_fn = symbol_eq },
-
-  // Composite structures
   [TYPE_CONS] = { .type_name = "CONS", .eq_fn = list_eq },
-
-  // Function-like values
   [TYPE_BUILTIN_FN] = { .type_name = "PRIMITIVE", .eq_fn = primitive_eq },
   [TYPE_LAMBDA] = { .type_name = "LAMBDA", .eq_fn = lambda_eq },
 };
 
-// type()
 const Type *
 type (Node *self)
 {
   if (!self || IS_NIL (self))
     return &type_tab[TYPE_NIL];
-
   return &type_tab[self->type];
 }
 
