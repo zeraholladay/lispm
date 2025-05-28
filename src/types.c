@@ -260,13 +260,12 @@ type (Node *self)
 }
 
 Node *
-cons_lambda (Pool **p, Node *params, Node *body, Env *env)
+cons_lambda (Pool **p, Node *params, Node *body)
 {
   Node *node = pool_xalloc_hier (p);
   node->type = TYPE_LAMBDA;
   node->lambda.params = params;
   node->lambda.body = body;
-  node->lambda.env = env;
   return node;
 }
 

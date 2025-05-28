@@ -77,7 +77,7 @@ forms
 form
     : '(' LAMBDA param_list forms ')'
       {
-        $$ = LIST1 (cons_lambda (&CTX_POOL (ctx), $3, $4, NULL), ctx);
+        $$ = LIST1 (cons_lambda (&CTX_POOL (ctx), $3, $4), ctx);
       }
     | '(' if_ form form ')'
       {
