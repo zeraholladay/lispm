@@ -60,9 +60,9 @@ int
 lispm_repl (Context *ctx)
 {
   Node *progn = NULL;
-  rl_init ();
-
   char input[RL_BUF_SIZ];
+
+  rl_init ();
 
   for (;;)
     {

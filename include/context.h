@@ -3,7 +3,6 @@
 
 #include "env.h"
 #include "palloc.h"
-#include "rb_tree.h"
 
 #define CTX_POOL(ctx) ((ctx)->node_pool)
 
