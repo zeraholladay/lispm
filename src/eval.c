@@ -25,7 +25,6 @@ static Node *last (Node *args, Context *ctx);
 static size_t length (Node *list);
 static Node *mapcar (Node *fn, Node *arglist, Context *ctx);
 static Node *nth (size_t idx, Node *list);
-static Node *pair (Node *l1, Node *l2, Context *ctx);
 static Node *reverse (Node *list, Context *ctx);
 static Node *reverse_inplace (Node *list);
 static Node *zip (Node *lists, Context *ctx);
@@ -99,7 +98,8 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 
   env_enter_frame (&ctx->env);
 
-  Node *pairs = pair (GET_LAMBDA_PARAMS (fn), args, ctx);
+  Node *pairs
+      = mapcar (KEYWORD (LIST), LIST2 (fn->lambda.params, args, ctx), ctx);
 
   while (!IS_NIL (pairs))
     {
@@ -376,12 +376,6 @@ mapcar (Node *fn, Node *arglist, Context *ctx)
 }
 
 static Node *
-pair (Node *list1, Node *list2, Context *ctx)
-{
-  return mapcar (KEYWORD (LIST), LIST2 (list1, list2, ctx), ctx);
-}
-
-static Node *
 nth (size_t idx, Node *list)
 {
   for (size_t i = 0; i < idx; ++i)
@@ -621,17 +615,6 @@ eval_last (Node *args, Context *ctx)
       return NULL;
     }
   return last (CAR (args), ctx);
-}
-
-Node *
-eval_pair (Node *args, Context *ctx)
-{
-  if (!LISTP (CAR (args)) || !LISTP (CAR (CDR (args))))
-    {
-      raise (ERR_INVALID_ARG, "pair");
-      return NULL;
-    }
-  return pair (CAR (args), CAR (CDR (args)), ctx);
 }
 
 Node *

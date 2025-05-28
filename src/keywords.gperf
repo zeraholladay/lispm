@@ -31,7 +31,6 @@ static BuiltinFn builtin_nth      = { .name = "NTH",     .is_sf = 0, .arity =  2
 static BuiltinFn builtin_not      = { .name = "NOT",     .is_sf = 0, .arity =  1, .fn = eval_not        };
 static BuiltinFn builtin_list     = { .name = "LIST",    .is_sf = 0, .arity = -1, .fn = eval_list       };
 static BuiltinFn builtin_or       = { .name = "OR",      .is_sf = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_pair     = { .name = "PAIR",    .is_sf = 0, .arity =  2, .fn = eval_pair       };
 static BuiltinFn builtin_print    = { .name = "PRINT",   .is_sf = 0, .arity =  1, .fn = eval_print      };
 static BuiltinFn builtin_rest     = { .name = "REST",    .is_sf = 0, .arity =  1, .fn = eval_cdr        };
 static BuiltinFn builtin_reverse  = { .name = "REVERSE", .is_sf = 0, .arity =  1, .fn = eval_reverse    };
@@ -82,7 +81,6 @@ NTH,     { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_nth      },
 NOT,     { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_not      },
 LIST,    { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_list     },
 OR,      { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_or       },
-PAIR,    { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_pair     },
 PRINT,   { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_print    },
 PROGN,   { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_progn    },
 REST,    { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_rest     },
