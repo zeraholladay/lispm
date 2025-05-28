@@ -4,17 +4,8 @@
 
 #include "error.h"
 #include "eval.h"
+#include "format.h"
 #include "xalloc.h"
-
-#define PRINT(node)                                                           \
-  do                                                                          \
-    {                                                                         \
-      StrFn to_str_fn = type (node)->str_fn;                                  \
-      char *str = to_str_fn (node);                                           \
-      printf ("%s\n", str);                                                   \
-      free (str);                                                             \
-    }                                                                         \
-  while (0)
 
 // funcalls
 static Node *funcall (Node *fn, Node *arglist, Context *ctx);
@@ -53,7 +44,7 @@ funcall (Node *fn, Node *arglist, Context *ctx)
   if (IS_LAMBDA (fn))
     return funcall_lambda (fn, arglist, ctx);
 
-  raise (ERR_NOT_A_FUNCTION, type (fn)->str_fn (fn));
+  raise (ERR_NOT_A_FUNCTION, DEBUG_LOCATION);
   return NULL;
 }
 
@@ -679,7 +670,7 @@ eval_set (Node *args, Context *ctx)
 }
 
 Node *
-eval_str (Node *args, Context *ctx)
+eval_string (Node *args, Context *ctx)
 {
-  return cons_string (&CTX_POOL (ctx), type (args)->str_fn (args));
+  return cons_string (&CTX_POOL (ctx), format (FIRST (args)));
 }

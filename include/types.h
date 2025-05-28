@@ -29,13 +29,11 @@
 struct Node;
 typedef struct Node Node;
 
-typedef char *(*StrFn) (Node *);
 typedef int (*EqFn) (Node *, Node *);
 
 typedef struct Type
 {
   const char *type_name;
-  StrFn str_fn;
   EqFn eq_fn;
 } Type;
 

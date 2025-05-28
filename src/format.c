@@ -26,20 +26,6 @@ static void fmt_builtin_fn (StrBuf *, Node *);
 static void fmt_lambda (StrBuf *, Node *);
 static void fmt_unknown (StrBuf *, Node *);
 
-// static const struct
-// {
-//   void(*fn) (StrBuf *, Node *);
-// } fmters[_TYPE_CNT + 1] = {
-//   [TYPE_NIL] = { .fn = fmt_nil },
-//   [TYPE_SYMBOL] = { .fn = fmt_symbol },
-//   [TYPE_INTEGER] = { .fn = fmt_integer },
-//   [TYPE_STRING] = { .fn = fmt_string },
-//   [TYPE_CONS] = { .fn = fmt_cons },
-//   [TYPE_BUILTIN_FN] = { .fn = fmt_builtin_fn },
-//   [TYPE_LAMBDA] = { .fn = fmt_lambda },
-//   [TYPE_UNKNOWN] = { .fn = fmt_unknown },
-// };
-
 static void (*fmters[_TYPE_CNT + 1]) (StrBuf *, Node *) = {
   [TYPE_NIL] = fmt_nil,         [TYPE_SYMBOL] = fmt_symbol,
   [TYPE_INTEGER] = fmt_integer, [TYPE_STRING] = fmt_string,
@@ -122,7 +108,7 @@ void
 fmt_cons (StrBuf *sb, Node *n)
 {
   Node *cur;
-  appendf (sb, "%s", "(");
+  appendf (sb, "(");
 
   for (cur = n; IS_CONS (cur); cur = CDR (cur))
     {
@@ -135,23 +121,29 @@ fmt_cons (StrBuf *sb, Node *n)
           appendf (sb, "%s", s);
           free (s);
           if (CAR (cdr))
-            appendf (sb, "%s", " ");
+            appendf (sb, " ");
         }
     }
+
+  if (sb->str[sb->used - 1] == ' ')
+    sb->used--;
+
   if (!IS_NIL (cur))
     {
-      appendf (sb, "%s", ".");
+      appendf (sb, ".");
       char *s = format (cur);
       appendf (sb, "%s", s);
       free (s);
     }
+
+  appendf (sb, ")");
 }
 
 void
 fmt_builtin_fn (StrBuf *sb, Node *n)
 {
   const BuiltinFn *builtin = GET_BUILTIN_FN (n);
-  return appendf (sb, "%s", builtin->name);
+  return appendf (sb, "#<BUILTIN-FUNCTION %S>", builtin->name);
 }
 
 void
@@ -160,7 +152,7 @@ fmt_lambda (StrBuf *sb, Node *n)
   char *params_str = format (n->lambda.params);
   char *body_str = format (n->lambda.body);
 
-  appendf (sb, "#lambda %s %s", params_str, body_str);
+  appendf (sb, "#<FUNCTION :LAMBDA %s %s>", params_str, body_str);
 
   free (params_str);
   free (body_str);
@@ -169,7 +161,7 @@ fmt_lambda (StrBuf *sb, Node *n)
 void
 fmt_unknown (StrBuf *sb, Node *n)
 {
-  appendf (sb, "unknown=%X", n);
+  appendf (sb, "#<UNKNOWN %X>", n);
 }
 
 char *
