@@ -42,109 +42,109 @@ run_eval_progn (const char *input)
 
 START_TEST (test_literal_expressions)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("42");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("42");
+  ck_assert (eval_res->integer == 42);
 
-  eval_result = run_eval_progn ("-42");
-  ck_assert (GET_INTEGER (eval_result) == -42);
+  eval_res = run_eval_progn ("-42");
+  ck_assert (eval_res->integer == -42);
 
-  eval_result = run_eval_progn ("T");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "T");
+  eval_res = run_eval_progn ("T");
+  ck_assert_str_eq (eval_res->symbol.str, "T");
 
-  eval_result = run_eval_progn ("NIL");
-  ck_assert (IS_NIL (eval_result));
+  eval_res = run_eval_progn ("NIL");
+  ck_assert (IS_NIL (eval_res));
 
-  eval_result = run_eval_progn ("'foo");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foo");
+  eval_res = run_eval_progn ("'foo");
+  ck_assert_str_eq (eval_res->symbol.str, "foo");
 }
 END_TEST
 
 START_TEST (test_quote)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
   Node *car = NULL;
   Node *cdr = NULL;
 
   // NULL progn
-  eval_result = run_eval_progn ("()");
-  ck_assert (eval_result);
+  eval_res = run_eval_progn ("()");
+  ck_assert (eval_res);
 
-  eval_result = run_eval_progn ("'(foo)");
-  ck_assert (!IS_NIL (eval_result));
-  car = CAR (eval_result);
-  cdr = CDR (eval_result);
-  ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
+  eval_res = run_eval_progn ("'(foo)");
+  ck_assert (!IS_NIL (eval_res));
+  car = CAR (eval_res);
+  cdr = CDR (eval_res);
+  ck_assert_str_eq (car->symbol.str, "foo");
   ck_assert (IS_NIL (cdr));
 
-  eval_result = run_eval_progn ("'(foo bar)");
-  ck_assert (!IS_NIL (eval_result));
-  car = CAR (eval_result);
-  cdr = CDR (eval_result);
+  eval_res = run_eval_progn ("'(foo bar)");
+  ck_assert (!IS_NIL (eval_res));
+  car = CAR (eval_res);
+  cdr = CDR (eval_res);
   ck_assert (!IS_NIL (cdr));
-  ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
-  ck_assert_str_eq (GET_SYMBOL (CAR (cdr)).str, "bar");
+  ck_assert_str_eq (car->symbol.str, "foo");
+  ck_assert_str_eq (CAR (cdr)->symbol.str, "bar");
 }
 END_TEST
 
 START_TEST (test_cons)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
   Node *car = NULL;
   Node *cdr = NULL;
 
-  eval_result = run_eval_progn ("(cons 'foo 'bar)");
-  ck_assert (!IS_NIL (eval_result));
-  car = CAR (eval_result);
-  cdr = CDR (eval_result);
-  ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
-  ck_assert_str_eq (GET_SYMBOL (cdr).str, "bar");
+  eval_res = run_eval_progn ("(cons 'foo 'bar)");
+  ck_assert (!IS_NIL (eval_res));
+  car = CAR (eval_res);
+  cdr = CDR (eval_res);
+  ck_assert_str_eq (car->symbol.str, "foo");
+  ck_assert_str_eq (cdr->symbol.str, "bar");
 
-  eval_result = run_eval_progn ("(cons 'foo '(bar))");
-  ck_assert (!IS_NIL (eval_result));
-  car = CAR (eval_result);
-  cdr = CDR (eval_result);
+  eval_res = run_eval_progn ("(cons 'foo '(bar))");
+  ck_assert (!IS_NIL (eval_res));
+  car = CAR (eval_res);
+  cdr = CDR (eval_res);
   ck_assert (!IS_NIL (cdr));
-  ck_assert_str_eq (GET_SYMBOL (CAR (cdr)).str, "bar");
+  ck_assert_str_eq (CAR (cdr)->symbol.str, "bar");
 }
 END_TEST
 
 START_TEST (test_set_and_lookup)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(set 'foo 42)");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(set 'foo 42)");
+  ck_assert (eval_res->integer == 42);
 
-  eval_result = run_eval_progn ("foo");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("foo");
+  ck_assert (eval_res->integer == 42);
 
-  eval_result = run_eval_progn ("(set 'bar 'foo)");
-  ck_assert (IS_SYMBOL (eval_result));
+  eval_res = run_eval_progn ("(set 'bar 'foo)");
+  ck_assert (IS (eval_res, SYMBOL));
 
-  eval_result = run_eval_progn ("(set 'bar '(1 2 3))");
-  ck_assert (IS_CONS (eval_result));
+  eval_res = run_eval_progn ("(set 'bar '(1 2 3))");
+  ck_assert (IS (eval_res, CONS));
 
-  eval_result = run_eval_progn ("(set 'bar (lambda () ()))");
-  ck_assert (IS_LAMBDA (eval_result));
+  eval_res = run_eval_progn ("(set 'bar (lambda () ()))");
+  ck_assert (IS (eval_res, LAMBDA));
 }
 END_TEST
 
 START_TEST (test_first)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(first '())");
-  ck_assert (IS_NIL (eval_result));
+  eval_res = run_eval_progn ("(first '())");
+  ck_assert (IS_NIL (eval_res));
 
-  eval_result = run_eval_progn ("(first '(foo bar))");
-  ck_assert (IS_SYMBOL (eval_result));
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foo");
+  eval_res = run_eval_progn ("(first '(foo bar))");
+  ck_assert (IS (eval_res, SYMBOL));
+  ck_assert_str_eq (eval_res->symbol.str, "foo");
 
   if (setjmp (eval_error_jmp) == 0)
     {
-      eval_result = run_eval_progn ("(first)");
+      eval_res = run_eval_progn ("(first)");
       ck_assert (0);
     }
   else
@@ -156,19 +156,19 @@ END_TEST
 
 START_TEST (test_rest)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(rest '())");
-  ck_assert (IS_NIL (eval_result));
+  eval_res = run_eval_progn ("(rest '())");
+  ck_assert (IS_NIL (eval_res));
 
-  eval_result = run_eval_progn ("(rest '(foo bar))");
-  ck_assert (IS_CONS (eval_result));
-  ck_assert (IS_SYMBOL (CAR (eval_result)));
-  ck_assert_str_eq (GET_SYMBOL (CAR (eval_result)).str, "bar");
+  eval_res = run_eval_progn ("(rest '(foo bar))");
+  ck_assert (IS (eval_res, CONS));
+  ck_assert (IS (CAR (eval_res), SYMBOL));
+  ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
 
   if (setjmp (eval_error_jmp) == 0)
     {
-      eval_result = run_eval_progn ("(rest)");
+      eval_res = run_eval_progn ("(rest)");
       ck_assert (0);
     }
   else
@@ -180,203 +180,201 @@ END_TEST
 
 START_TEST (test_len)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(len '())");
-  ck_assert (GET_INTEGER (eval_result) == 0);
+  eval_res = run_eval_progn ("(len '())");
+  ck_assert (eval_res->integer == 0);
 
-  eval_result = run_eval_progn ("(len '(a))");
-  ck_assert (GET_INTEGER (eval_result) == 1);
+  eval_res = run_eval_progn ("(len '(a))");
+  ck_assert (eval_res->integer == 1);
 
-  eval_result = run_eval_progn ("(len '(a b))");
-  ck_assert (GET_INTEGER (eval_result) == 2);
+  eval_res = run_eval_progn ("(len '(a b))");
+  ck_assert (eval_res->integer == 2);
 }
 END_TEST
 
 START_TEST (test_if)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(if T 1 2)");
-  ck_assert_int_eq (GET_INTEGER (eval_result), 1);
+  eval_res = run_eval_progn ("(if T 1 2)");
+  ck_assert_int_eq (eval_res->integer, 1);
 
-  eval_result = run_eval_progn ("(if NIL 1 2)");
-  ck_assert_int_eq (GET_INTEGER (eval_result), 2);
+  eval_res = run_eval_progn ("(if NIL 1 2)");
+  ck_assert_int_eq (eval_res->integer, 2);
 
-  eval_result = run_eval_progn ("(if T 42)");
-  ck_assert_int_eq (GET_INTEGER (eval_result), 42);
+  eval_res = run_eval_progn ("(if T 42)");
+  ck_assert_int_eq (eval_res->integer, 42);
 
-  eval_result = run_eval_progn ("(if NIL 42)");
-  ck_assert (IS_NIL (eval_result));
+  eval_res = run_eval_progn ("(if NIL 42)");
+  ck_assert (IS_NIL (eval_res));
 
-  eval_result = run_eval_progn ("(if (< 2 3) 'yes 'no)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "yes");
+  eval_res = run_eval_progn ("(if (< 2 3) 'yes 'no)");
+  ck_assert_str_eq (eval_res->symbol.str, "yes");
 }
 END_TEST
 
 START_TEST (test_list)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(list)");
-  ck_assert (IS_NIL (eval_result));
+  eval_res = run_eval_progn ("(list)");
+  ck_assert (IS_NIL (eval_res));
 
-  eval_result = run_eval_progn ("(list 7)");
-  ck_assert_int_eq (GET_INTEGER (CAR (eval_result)), 7);
-  ck_assert (IS_NIL (CDR (eval_result)));
+  eval_res = run_eval_progn ("(list 7)");
+  ck_assert_int_eq (CAR (eval_res)->integer, 7);
+  ck_assert (IS_NIL (CDR (eval_res)));
 
-  eval_result = run_eval_progn ("(list 1 2 3)");
-  ck_assert_int_eq (GET_INTEGER (CAR (eval_result)), 1);
-  ck_assert_int_eq (GET_INTEGER (CAR (CDR (eval_result))), 2);
-  ck_assert_int_eq (GET_INTEGER (CAR (CDR (CDR (eval_result)))), 3);
-  ck_assert (IS_NIL (CDR (CDR (CDR (eval_result)))));
+  eval_res = run_eval_progn ("(list 1 2 3)");
+  ck_assert_int_eq (CAR (eval_res)->integer, 1);
+  ck_assert_int_eq (CAR (CDR (eval_res))->integer, 2);
+  ck_assert_int_eq (CAR (CDR (CDR (eval_res)))->integer, 3);
+  ck_assert (IS_NIL (CDR (CDR (CDR (eval_res)))));
 
-  eval_result = run_eval_progn ("(list 'a 'b)");
-  Node *second = CAR (CDR (eval_result));
-  ck_assert_str_eq (GET_SYMBOL (CAR (eval_result)).str, "a");
-  ck_assert_str_eq (GET_SYMBOL (second).str, "b");
-  ck_assert (IS_NIL (CDR (CDR (eval_result))));
+  eval_res = run_eval_progn ("(list 'a 'b)");
+  Node *second = CAR (CDR (eval_res));
+  ck_assert_str_eq (CAR (eval_res)->symbol.str, "a");
+  ck_assert_str_eq (second->symbol.str, "b");
+  ck_assert (IS_NIL (CDR (CDR (eval_res))));
 }
 END_TEST
 
 START_TEST (test_lambda)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
   // define
-  eval_result = run_eval_progn ("(lambda () ())");
-  ck_assert (IS_LAMBDA (eval_result));
+  eval_res = run_eval_progn ("(lambda () ())");
+  ck_assert (IS (eval_res, LAMBDA));
 
   // run
-  eval_result = run_eval_progn ("((lambda () ()))");
-  ck_assert (IS_NIL (eval_result));
+  eval_res = run_eval_progn ("((lambda () ()))");
+  ck_assert (IS_NIL (eval_res));
 
   // run
-  eval_result = run_eval_progn ("((lambda () (cons 'a 'b) 42))");
-  ck_assert (IS_INTEGER (eval_result) && GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("((lambda () (cons 'a 'b) 42))");
+  ck_assert (IS (eval_res, INTEGER) && eval_res->integer == 42);
 
   // run body with a=42
-  eval_result = run_eval_progn ("((lambda (a) a) 42)");
-  ck_assert (IS_INTEGER (eval_result) && GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("((lambda (a) a) 42)");
+  ck_assert (IS (eval_res, INTEGER) && eval_res->integer == 42);
 
   // define 'foo and run
-  eval_result = run_eval_progn ("(set 'foo (lambda () (cons 'a 'b)))"
-                                "(foo)");
-  ck_assert (IS_CONS (eval_result));
+  eval_res = run_eval_progn ("(set 'foo (lambda () (cons 'a 'b)))"
+                             "(foo)");
+  ck_assert (IS (eval_res, CONS));
 
   // with parameters
-  eval_result = run_eval_progn ("(set 'foo (lambda (a b) (cons a b)))"
-                                "(foo 'bar 'biz)");
-  ck_assert (IS_CONS (eval_result));
-  ck_assert_str_eq (GET_SYMBOL (CAR (eval_result)).str, "bar");
+  eval_res = run_eval_progn ("(set 'foo (lambda (a b) (cons a b)))"
+                             "(foo 'bar 'biz)");
+  ck_assert (IS (eval_res, CONS));
+  ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
 
   // test lexical scope
-  eval_result = run_eval_progn ("(set 'foo 'bar)"
-                                "((lambda () foo))");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "bar");
+  eval_res = run_eval_progn ("(set 'foo 'bar)"
+                             "((lambda () foo))");
+  ck_assert_str_eq (eval_res->symbol.str, "bar");
 }
 END_TEST
 
 START_TEST (test_apply)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
   Node *car = NULL;
   Node *cdr = NULL;
 
-  eval_result = run_eval_progn ("(apply (lambda () ()) '())");
-  ck_assert (IS_NIL (eval_result));
+  eval_res = run_eval_progn ("(apply (lambda () ()) '())");
+  ck_assert (IS_NIL (eval_res));
 
   // (apply #'+ 1 2 3 '(4 5 6))
 
-  eval_result
-      = run_eval_progn ("(apply (lambda (a b) (cons a b)) '(foo bar))");
-  ck_assert (!IS_NIL (eval_result));
-  car = CAR (eval_result);
-  cdr = CDR (eval_result);
-  ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
-  ck_assert_str_eq (GET_SYMBOL (cdr).str, "bar");
+  eval_res = run_eval_progn ("(apply (lambda (a b) (cons a b)) '(foo bar))");
+  ck_assert (!IS_NIL (eval_res));
+  car = CAR (eval_res);
+  cdr = CDR (eval_res);
+  ck_assert_str_eq (car->symbol.str, "foo");
+  ck_assert_str_eq (cdr->symbol.str, "bar");
 
-  eval_result = run_eval_progn ("(apply set '(a 42))");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(apply set '(a 42))");
+  ck_assert (eval_res->integer == 42);
 
-  eval_result = run_eval_progn ("(apply first '((a 42)))");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "a");
+  eval_res = run_eval_progn ("(apply first '((a 42)))");
+  ck_assert_str_eq (eval_res->symbol.str, "a");
 
-  eval_result = run_eval_progn ("(first (apply rest '((a 42))))");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(first (apply rest '((a 42))))");
+  ck_assert (eval_res->integer == 42);
 
-  eval_result = run_eval_progn ("(first (apply cons '(a 42)))");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "a");
+  eval_res = run_eval_progn ("(first (apply cons '(a 42)))");
+  ck_assert_str_eq (eval_res->symbol.str, "a");
 
-  eval_result = run_eval_progn ("(apply funcall '(first (42 2)))");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(apply funcall '(first (42 2)))");
+  ck_assert (eval_res->integer == 42);
 }
 END_TEST
 
 START_TEST (test_funcall)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
   Node *car = NULL;
   Node *cdr = NULL;
 
-  eval_result = run_eval_progn ("(funcall (lambda () ()))");
-  ck_assert (IS_NIL (eval_result));
+  eval_res = run_eval_progn ("(funcall (lambda () ()))");
+  ck_assert (IS_NIL (eval_res));
 
-  eval_result
-      = run_eval_progn ("(funcall (lambda (a b) (cons a b)) 'foo 'bar)");
-  ck_assert (!IS_NIL (eval_result));
-  car = CAR (eval_result);
-  cdr = CDR (eval_result);
-  ck_assert_str_eq (GET_SYMBOL (car).str, "foo");
-  ck_assert_str_eq (GET_SYMBOL (cdr).str, "bar");
+  eval_res = run_eval_progn ("(funcall (lambda (a b) (cons a b)) 'foo 'bar)");
+  ck_assert (!IS_NIL (eval_res));
+  car = CAR (eval_res);
+  cdr = CDR (eval_res);
+  ck_assert_str_eq (car->symbol.str, "foo");
+  ck_assert_str_eq (cdr->symbol.str, "bar");
 
-  eval_result = run_eval_progn ("(funcall set 'a 42)");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(funcall set 'a 42)");
+  ck_assert (eval_res->integer == 42);
 
-  eval_result = run_eval_progn ("(funcall first '(a 42))");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "a");
+  eval_res = run_eval_progn ("(funcall first '(a 42))");
+  ck_assert_str_eq (eval_res->symbol.str, "a");
 
-  eval_result = run_eval_progn ("(first (funcall rest '(a 42)))");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(first (funcall rest '(a 42)))");
+  ck_assert (eval_res->integer == 42);
 
-  eval_result = run_eval_progn ("(first (funcall cons 'a 42))");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "a");
+  eval_res = run_eval_progn ("(first (funcall cons 'a 42))");
+  ck_assert_str_eq (eval_res->symbol.str, "a");
 
-  eval_result = run_eval_progn ("(funcall apply 'first '((42 2)))");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(funcall apply 'first '((42 2)))");
+  ck_assert (eval_res->integer == 42);
 }
 END_TEST
 
 START_TEST (test_eval)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(eval 42)");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(eval 42)");
+  ck_assert (eval_res->integer == 42);
 
-  eval_result = run_eval_progn ("(eval ''foobar)");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foobar");
+  eval_res = run_eval_progn ("(eval ''foobar)");
+  ck_assert_str_eq (eval_res->symbol.str, "foobar");
 
-  eval_result = run_eval_progn ("(eval '(first '(foo bar biz)))");
-  ck_assert_str_eq (GET_SYMBOL (eval_result).str, "foo");
+  eval_res = run_eval_progn ("(eval '(first '(foo bar biz)))");
+  ck_assert_str_eq (eval_res->symbol.str, "foo");
 }
 END_TEST
 
 START_TEST (test_last)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(last '(1 2 3 42))");
-  ck_assert (GET_INTEGER (eval_result) == 42);
+  eval_res = run_eval_progn ("(last '(1 2 3 42))");
+  ck_assert (eval_res->integer == 42);
 }
 END_TEST
 
 START_TEST (test_butlast)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result = run_eval_progn ("(apply + (BUTLAST '(1 2 3 4)))");
-  ck_assert (GET_INTEGER (eval_result) == 6);
+  eval_res = run_eval_progn ("(apply + (BUTLAST '(1 2 3 4)))");
+  ck_assert (eval_res->integer == 6);
 }
 END_TEST
 
@@ -386,14 +384,14 @@ END_TEST
 // ("string" 3)) (mapcar #'* '(3 4 5) '(4 5 6)) => (12 20 30)
 START_TEST (test_mapcar)
 {
-  Node *eval_result = NULL;
+  Node *eval_res = NULL;
 
-  eval_result
+  eval_res
       = run_eval_progn ("(apply + (mapcar (lambda (x) (+ x 10)) '(1 2 3 4)))");
-  ck_assert (GET_INTEGER (eval_result) == 50);
+  ck_assert (eval_res->integer == 50);
 
-  eval_result = run_eval_progn ("(apply + (mapcar * '(3 4 5) '(4 5 6)))");
-  ck_assert (GET_INTEGER (eval_result) == 62);
+  eval_res = run_eval_progn ("(apply + (mapcar * '(3 4 5) '(4 5 6)))");
+  ck_assert (eval_res->integer == 62);
 }
 END_TEST
 

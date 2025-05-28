@@ -11,7 +11,7 @@
 
 #define IS_NIL(nptr) (nptr == NIL)
 #define LISTP(nptr) (IS_NIL (nptr) || CONSP (nptr))
-#define CONSP(nptr) (IS_CONS (nptr))
+#define CONSP(nptr) (IS (nptr, CONS))
 
 #define CAR(nptr) ((nptr)->cons.car)
 #define CDR(nptr) ((nptr)->cons.cdr)

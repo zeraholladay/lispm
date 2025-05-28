@@ -37,10 +37,10 @@ static Node *set (Node *car, Node *REST, Context *ctx);
 static Node *
 funcall (Node *fn, Node *arglist, Context *ctx)
 {
-  if (IS_BUILTIN_FN (fn))
+  if (IS (fn, BUILTIN_FN))
     return funcall_builtin (fn, arglist, ctx);
 
-  if (IS_LAMBDA (fn))
+  if (IS (fn, LAMBDA))
     return funcall_lambda (fn, arglist, ctx);
 
   raise (ERR_NOT_A_FUNCTION, DEBUG_LOCATION);
@@ -51,13 +51,12 @@ static Node *
 funcall_builtin (Node *fn, Node *arglist, Context *ctx)
 {
   int received = (int)length (arglist);
-  const BuiltinFn *builtin_fn = GET_BUILTIN_FN (fn);
+  const BuiltinFn *builtin_fn = fn->builtin_fn;
 
   if (builtin_fn->arity > 0 && builtin_fn->arity != received)
     {
-      ErrorCode err = (received < GET_BUILTIN_FN (fn)->arity)
-                          ? ERR_MISSING_ARG
-                          : ERR_UNEXPECTED_ARG;
+      ErrorCode err = (received < builtin_fn->arity) ? ERR_MISSING_ARG
+                                                     : ERR_UNEXPECTED_ARG;
       raise (err, builtin_fn->name);
       return NULL;
     }
@@ -85,7 +84,7 @@ funcall_builtin (Node *fn, Node *arglist, Context *ctx)
 static Node *
 funcall_lambda (Node *fn, Node *args, Context *ctx)
 {
-  size_t expected = length (GET_LAMBDA_PARAMS (fn));
+  size_t expected = length (fn->lambda.params);
   size_t received = length (args);
 
   if (expected != received)
@@ -104,13 +103,14 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
   while (!IS_NIL (pairs))
     {
       Node *pair = CAR (pairs);
-      const char *str = GET_SYMBOL (CAR (pair)).str; // cleanup
-      env_let (ctx->env, str, CADR (pair));
+      env_let (ctx->env, (CAR (pair))->symbol.str, CADR (pair));
       pairs = CDR (pairs);
     }
 
-  Node *res = eval_progn (GET_LAMBDA_BODY (fn), ctx);
+  Node *res = eval_progn (fn->lambda.body, ctx);
+
   env_leave_frame (&ctx->env);
+
   return res;
 }
 
@@ -173,8 +173,7 @@ eval_list (Node *args, Context *ctx)
 Node *
 eval (Node *form, Context *ctx)
 {
-  // SYMBOLS
-  if (IS_SYMBOL (form))
+  if (IS (form, SYMBOL))
     return lookup (form, ctx);
 
   // LITERALS: NUMBERS, STRINGS, ETC.
@@ -192,12 +191,12 @@ eval (Node *form, Context *ctx)
       if (car == KEYWORD (QUOTE))
         return CAR (cdr);
 
-      if (IS_LAMBDA (car))
+      if (IS (car, LAMBDA))
         return car;
 
       Node *fn = eval (car, ctx);
 
-      if (IS_SPECIAL_FORM (fn))
+      if (IS (fn, BUILTIN_FN) && fn->builtin_fn->sform)
         {
           if (fn == KEYWORD (APPLY))
             return eval_apply (cdr, ctx);
@@ -349,7 +348,7 @@ last (Node *list, Context *ctx)
 static size_t
 length (Node *list)
 {
-  if (!IS_CONS (list))
+  if (!IS (list, CONS))
     return 0;
 
   size_t i = 1;
@@ -465,19 +464,17 @@ zip (Node *lists, Context *ctx)
 static Node *
 lookup (Node *node, Context *ctx)
 {
-  const char *str = GET_SYMBOL (node).str;
-  size_t len = GET_SYMBOL (node).len;
+  const char *key = node->symbol.str;
+  size_t len = node->symbol.len;
 
-  Node *kywrd_node = keyword_lookup (str, len);
+  Node *kywrd_node = keyword_lookup (key, len);
   if (kywrd_node)
-    {
-      return kywrd_node;
-    }
+    return kywrd_node;
 
-  Node *res = env_lookup (ctx->env, str);
+  Node *res = env_lookup (ctx->env, key);
   if (!res)
     {
-      raise (ERR_SYMBOL_NOT_FOUND, str);
+      raise (ERR_SYMBOL_NOT_FOUND, key);
       return NULL;
     }
 
@@ -487,22 +484,22 @@ lookup (Node *node, Context *ctx)
 static Node *
 set (Node *car, Node *cdr, Context *ctx)
 {
-  if (!IS_SYMBOL (car))
+  if (!IS (car, SYMBOL))
     {
       raise (ERR_INVALID_ARG, "set");
       return NULL;
     }
 
-  const char *str = GET_SYMBOL (car).str;
-  size_t len = GET_SYMBOL (car).len;
+  const char *key = car->symbol.str;
+  size_t len = car->symbol.len;
 
-  if (keyword_lookup (str, len))
+  if (keyword_lookup (key, len))
     {
       raise (ERR_INVALID_ARG, "set");
       return NULL;
     }
 
-  env_set (ctx->env, str, cdr);
+  env_set (ctx->env, key, cdr);
   return cdr;
 }
 
@@ -596,12 +593,13 @@ eval_nth (Node *args, Context *ctx)
 {
   (void)ctx;
 
-  if (!IS_CONS (args) || !IS_INTEGER (CAR (args)) || !LISTP (CAR (CDR (args))))
+  if (!IS (args, CONS) || !IS (CAR (args), INTEGER)
+      || !LISTP (CAR (CDR (args))))
     {
       raise (ERR_ARG_NOT_ITERABLE, "nth: i list");
       return NULL;
     }
-  size_t idx = (size_t)GET_INTEGER (CAR (args));
+  size_t idx = (size_t)CAR (args)->integer;
   Node *list = CAR (CDR (args));
   return nth (idx, list);
 }
@@ -644,7 +642,7 @@ eval_reverse (Node *args, Context *ctx)
 Node *
 eval_set (Node *args, Context *ctx)
 {
-  if (!IS_SYMBOL (CAR (args)))
+  if (!IS (CAR (args), SYMBOL))
     {
       raise (ERR_INVALID_ARG, "set");
       return NULL;
