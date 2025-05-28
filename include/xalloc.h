@@ -1,5 +1,5 @@
-#ifndef OOM_HANDLERS
-#define OOM_HANDLERS
+#ifndef XMALLOC_H
+#define XMALLOC_H
 
 #include <stddef.h>
 #include <stdlib.h>

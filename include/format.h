@@ -1,5 +1,5 @@
-#ifndef __FORMAT_H__
-#define __FORMAT_H__
+#ifndef FORMAT_H
+#define FORMAT_H
 
 #include <stdbool.h>
 #include <stdio.h>

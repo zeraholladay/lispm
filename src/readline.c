@@ -77,7 +77,7 @@ rl_readline (char *full_input, size_t n)
           line = NULL;
         }
 
-      line = readline (len == 0 ? "repl> " : "... ");
+      line = readline (len == 0 ? "LISP> " : "... ");
 
       if (!line)
         return -1;

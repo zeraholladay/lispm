@@ -11,7 +11,7 @@ typedef struct BumpPool
 {
   size_t offset;
   struct BumpPool *next;
-  char buffer[SYM_SAVE_BUMP_SIZE];
+  char buffer[STR_INTERN_BUMP_SIZE];
 } BumpPool;
 
 static rb_node *root = NULL;
@@ -31,7 +31,7 @@ xalloc_bump_pool (void)
 static char *
 bump_pool_xalloc (size_t n)
 {
-  if (bump_pool->offset + n > SYM_SAVE_BUMP_SIZE)
+  if (bump_pool->offset + n > STR_INTERN_BUMP_SIZE)
     { // FIXME: large symbols
       BumpPool *new = xalloc_bump_pool ();
       new->next = bump_pool;
@@ -55,7 +55,7 @@ static void
 str_intern_init (void)
 {
   bump_pool = xalloc_bump_pool ();
-  pool = pool_init (SYMTAB_POOL_CAPACITY, sizeof (rb_node));
+  pool = pool_init (STR_INTERN_POOL_CAPACITY, sizeof (rb_node));
 }
 
 // TODO: max symbol size/limit
