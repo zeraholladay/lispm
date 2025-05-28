@@ -5,7 +5,7 @@
 
 #include "palloc.h"
 #include "safe_str.h"
-#include "sym_save.h"
+#include "str_intern.h"
 
 typedef struct BumpPool
 {
@@ -15,7 +15,7 @@ typedef struct BumpPool
 } BumpPool;
 
 static rb_node *root = NULL;
-static bool sym_saved = false;
+static bool str_internd = false;
 static Pool *pool = NULL;
 static BumpPool *bump_pool = NULL;
 
@@ -52,7 +52,7 @@ bump_pool_strndup (const char *s, size_t len)
 }
 
 static void
-sym_save_init (void)
+str_intern_init (void)
 {
   bump_pool = xalloc_bump_pool ();
   pool = pool_init (SYMTAB_POOL_CAPACITY, sizeof (rb_node));
@@ -60,12 +60,12 @@ sym_save_init (void)
 
 // TODO: max symbol size/limit
 const char *
-sym_save (const char *s, size_t len)
+str_intern (const char *s, size_t len)
 {
-  if (!sym_saved)
+  if (!str_internd)
     {
-      sym_saved = true;
-      sym_save_init ();
+      str_internd = true;
+      str_intern_init ();
     }
 
   rb_node *node = rb_lookup (root, s, len);

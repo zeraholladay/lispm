@@ -51,12 +51,9 @@ Suite *
 palloc_suite (void)
 {
   Suite *s = suite_create ("Palloc");
-
   TCase *tc_core = tcase_create ("Core");
-
   tcase_add_exit_test (tc_core, test_palloc, 1);
   tcase_add_test (tc_core, test_palloc_hier);
-
   suite_add_tcase (s, tc_core);
   return s;
 }

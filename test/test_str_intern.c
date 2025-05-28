@@ -2,9 +2,9 @@
 #include <string.h>
 
 #include "rb_tree.h"
-#include "sym_save.h"
+#include "str_intern.h"
 
-static const char *test_sym_save_similar_strings[]
+static const char *test_str_intern_similar_strings[]
     = { "example",   "exomple",  "exampl",    "exampel",  "exampqle",
         "exmple",    "exaple",   "examnple",  "exmaple",  "examplex",
         "exapmle",   "examplor", "exampole",  "xample",   "examplely",
@@ -15,10 +15,10 @@ static const char *test_sym_save_similar_strings[]
         "exawple",   "eximpa",   "examplar",  "eximpyle", "example" };
 
 #define NUM_STRINGS                                                           \
-  ((int)(sizeof (test_sym_save_similar_strings)                               \
-         / sizeof (test_sym_save_similar_strings[0])))
+  ((int)(sizeof (test_str_intern_similar_strings)                             \
+         / sizeof (test_str_intern_similar_strings[0])))
 
-START_TEST (test_sym_save)
+START_TEST (test_str_intern)
 {
   struct
   {
@@ -28,18 +28,19 @@ START_TEST (test_sym_save)
 
   for (int i = 0; i < NUM_STRINGS; ++i)
     {
-      saved[i].len = strlen (test_sym_save_similar_strings[i]);
+      saved[i].len = strlen (test_str_intern_similar_strings[i]);
       saved[i].saved_str
-          = sym_save (test_sym_save_similar_strings[i], saved[i].len);
-      ck_assert_str_eq (saved[i].saved_str, test_sym_save_similar_strings[i]);
+          = str_intern (test_str_intern_similar_strings[i], saved[i].len);
+      ck_assert_str_eq (saved[i].saved_str,
+                        test_str_intern_similar_strings[i]);
     }
 
   for (int i = 0; i < NUM_STRINGS; ++i)
     {
       const char *saved_str
-          = sym_save (test_sym_save_similar_strings[i], saved[i].len);
+          = str_intern (test_str_intern_similar_strings[i], saved[i].len);
       ck_assert_str_eq (saved[i].saved_str, saved_str);
-      ck_assert (saved[i].len == strlen (test_sym_save_similar_strings[i]));
+      ck_assert (saved[i].len == strlen (test_str_intern_similar_strings[i]));
     }
 
   for (int i = 0; i < NUM_STRINGS; ++i)
@@ -47,13 +48,13 @@ START_TEST (test_sym_save)
       for (int j = 0; j < NUM_STRINGS; ++j)
         {
           const char *saved_str_i
-              = sym_save (test_sym_save_similar_strings[i],
-                          strlen (test_sym_save_similar_strings[i]));
+              = str_intern (test_str_intern_similar_strings[i],
+                            strlen (test_str_intern_similar_strings[i]));
           const char *saved_str_j
-              = sym_save (test_sym_save_similar_strings[j],
-                          strlen (test_sym_save_similar_strings[j]));
-          if (strcmp (test_sym_save_similar_strings[i],
-                      test_sym_save_similar_strings[j])
+              = str_intern (test_str_intern_similar_strings[j],
+                            strlen (test_str_intern_similar_strings[j]));
+          if (strcmp (test_str_intern_similar_strings[i],
+                      test_str_intern_similar_strings[j])
               == 0)
             ck_assert_str_eq (saved_str_i, saved_str_j);
           else
@@ -62,8 +63,8 @@ START_TEST (test_sym_save)
                              "Assertion failed: strings equal (\"%s\" == "
                              "\"%s\") for %s and %s",
                              saved_str_i, saved_str_j,
-                             test_sym_save_similar_strings[i],
-                             test_sym_save_similar_strings[j]);
+                             test_str_intern_similar_strings[i],
+                             test_str_intern_similar_strings[j]);
             }
         }
     }
@@ -73,9 +74,9 @@ END_TEST
 Suite *
 str_save_suite (void)
 {
-  Suite *s = suite_create ("Symsave");
+  Suite *s = suite_create ("String Intern");
   TCase *tc_core = tcase_create ("Core");
-  tcase_add_test (tc_core, test_sym_save);
+  tcase_add_test (tc_core, test_str_intern);
   suite_add_tcase (s, tc_core);
   return s;
 }

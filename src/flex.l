@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "bison.h"
-#include "sym_save.h"
+#include "str_intern.h"
 %}
 
 NL       \r?\n
@@ -42,7 +42,7 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
                       return LAMBDA;
 
                     yylval.symbol.len = yyleng;
-                    yylval.symbol.str = sym_save (yytext, yyleng);
+                    yylval.symbol.str = str_intern (yytext, yyleng);
 
                     if (!strncasecmp ("IF", yytext, yyleng + 1))
                       return IF;
@@ -50,7 +50,7 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
                     return SYMBOL;
                   }
   [+\-*/><]       {
-                    yylval.symbol.str = sym_save (yytext, yyleng);
+                    yylval.symbol.str = str_intern (yytext, yyleng);
                     yylval.symbol.len = yyleng;
                     return SYMBOL;
                   }

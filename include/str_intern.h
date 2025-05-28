@@ -12,6 +12,6 @@
 #define SYM_SAVE_BUMP_SIZE 4096
 #endif
 
-const char *sym_save (const char *s, size_t s_len);
+const char *str_intern (const char *s, size_t s_len);
 
 #endif

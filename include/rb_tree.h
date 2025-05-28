@@ -1,8 +1,9 @@
 #ifndef RB_TREE_H
 #define RB_TREE_H
 
-#include "stack.h"
 #include <stdlib.h>
+
+#include "stack.h"
 
 #define RB_KEY(n) ((n)->key)
 #define RB_KEY_LEN(n) ((n)->key_len)

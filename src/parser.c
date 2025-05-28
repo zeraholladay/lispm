@@ -19,9 +19,9 @@ parser_buf (const char *input, Node **ast_head, Context *ctx)
 }
 
 bool
-parser_stream (FILE *restrict in, Node **ast_head, Context *ctx)
+parser_stream (FILE *instrm, Node **ast_head, Context *ctx)
 {
-  yyset_in (in);
+  yyset_in (instrm);
 
   int status = yyparse (ast_head, ctx);
 
