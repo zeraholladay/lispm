@@ -48,7 +48,9 @@ typedef enum
   TYPE_STRING,     // literal
   TYPE_CONS,       // cons cells
   TYPE_BUILTIN_FN, // builtin fn
-  TYPE_LAMBDA      // user-defined fn
+  TYPE_LAMBDA,     // user-defined fn
+  TYPE_UNKNOWN,    // unknown ptr
+  _TYPE_CNT        // entinel for end
 } TypeEnum;
 
 typedef long long Integer;
