@@ -35,15 +35,13 @@ static int
 list_eq (Node *self, Node *other)
 {
   return type_eq (self, other)
-         && ((IS_NIL (self) && IS_NIL (other))
-             || &self->cons == &other->cons);
+         && ((IS_NIL (self) && IS_NIL (other)) || &self->cons == &other->cons);
 }
 
 static int
 primitive_eq (Node *self, Node *other)
 {
-  return type_eq (self, other)
-         && &self->builtin_fn == &other->builtin_fn;
+  return type_eq (self, other) && &self->builtin_fn == &other->builtin_fn;
 }
 
 static int
@@ -55,8 +53,7 @@ lambda_eq (Node *self, Node *other)
 static int
 string_eq (Node *self, Node *other)
 {
-  return type_eq (self, other)
-         && (!strcmp (self->string, other->string));
+  return type_eq (self, other) && (!strcmp (self->string, other->string));
 }
 
 static Type type_tab[] = {

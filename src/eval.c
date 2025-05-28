@@ -55,9 +55,8 @@ funcall_builtin (Node *fn, Node *arglist, Context *ctx)
 
   if (builtin_fn->arity > 0 && builtin_fn->arity != received)
     {
-      ErrorCode err = (received < builtin_fn->arity)
-                          ? ERR_MISSING_ARG
-                          : ERR_UNEXPECTED_ARG;
+      ErrorCode err = (received < builtin_fn->arity) ? ERR_MISSING_ARG
+                                                     : ERR_UNEXPECTED_ARG;
       raise (err, builtin_fn->name);
       return NULL;
     }
@@ -600,7 +599,7 @@ eval_nth (Node *args, Context *ctx)
       raise (ERR_ARG_NOT_ITERABLE, "nth: i list");
       return NULL;
     }
-  size_t idx = (size_t) CAR (args)->integer;
+  size_t idx = (size_t)CAR (args)->integer;
   Node *list = CAR (CDR (args));
   return nth (idx, list);
 }
