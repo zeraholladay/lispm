@@ -48,7 +48,7 @@ typedef enum
   TYPE_BUILTIN_FN, // builtin fn
   TYPE_LAMBDA,     // user-defined fn
   TYPE_UNKNOWN,    // unknown ptr
-  _TYPE_CNT        // entinel for end
+  _TYPE_END        // entinel for end
 } TypeEnum;
 
 typedef long long Integer;

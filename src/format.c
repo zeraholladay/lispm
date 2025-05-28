@@ -26,7 +26,7 @@ static void fmt_builtin_fn (StrBuf *, Node *);
 static void fmt_lambda (StrBuf *, Node *);
 static void fmt_unknown (StrBuf *, Node *);
 
-static void (*fmters[_TYPE_CNT + 1]) (StrBuf *, Node *) = {
+static void (*fmters[_TYPE_END + 1]) (StrBuf *, Node *) = {
   [TYPE_NIL] = fmt_nil,         [TYPE_SYMBOL] = fmt_symbol,
   [TYPE_INTEGER] = fmt_integer, [TYPE_STRING] = fmt_string,
   [TYPE_CONS] = fmt_cons,       [TYPE_BUILTIN_FN] = fmt_builtin_fn,
@@ -178,7 +178,7 @@ format (Node *n)
   sb.str = xcalloc ((&sb)->cap, sizeof *(sb.str));
 
   if (n)
-    idx = n->type < _TYPE_CNT ? n->type : TYPE_UNKNOWN;
+    idx = n->type < _TYPE_END ? n->type : TYPE_UNKNOWN;
 
   fmters[idx](&sb, n);
 
