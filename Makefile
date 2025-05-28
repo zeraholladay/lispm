@@ -13,7 +13,7 @@ SRC := src
 BIN := bin
 GEN := gen
 
-MAIN_SRC := $(SRC)/repl.c
+MAIN_SRC := $(SRC)/main.c
 EXEC := $(BIN)/lispm
 
 # Compilers and flags

@@ -50,9 +50,20 @@ env_lookup (Env *frame, const char *key)
 }
 
 bool
-env_set (Env *frame, const char *key, void *val)
+env_let (Env *frame, const char *key, void *val)
 {
   return dict_insert (frame->dict, key, val);
+}
+
+bool
+env_set (Env *frame, const char *key, void *val)
+{
+  Env *cur = frame;
+
+  while (cur->parent)
+    cur = cur->parent;
+
+  return dict_insert (cur->dict, key, val);
 }
 
 void

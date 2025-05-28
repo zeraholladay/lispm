@@ -116,8 +116,8 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
   while (!IS_NIL (pairs))
     {
       Node *pair = CAR (pairs);
-      set (CAR (pair), CAR (CDR (pair)),
-           ctx); // FIXME: need proper err handling
+      const char *str = GET_SYMBOL (CAR (pair)).str;
+      env_let (ctx->env, str, CADR (pair));
       pairs = CDR (pairs);
     }
 
@@ -206,7 +206,7 @@ eval (Node *form, Context *ctx)
 
       if (IS_LAMBDA (car))
         {
-          GET_LAMBDA_ENV (car) = ctx->env;
+          GET_LAMBDA_ENV (car) = ctx->env; // broken
           return car;
         }
 
@@ -523,7 +523,7 @@ set (Node *car, Node *cdr, Context *ctx)
       return NULL;
     }
 
-  env_set (ctx->env, str, cdr); // TODO: error handling
+  env_set (ctx->env, str, cdr);
   return cdr;
 }
 

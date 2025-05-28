@@ -22,8 +22,6 @@ extern int optreset;
 #define OBJ_POOL_CAPACITY 4096
 #endif
 
-#ifndef LISPM_MAIN
-
 extern jmp_buf eval_error_jmp;
 
 void
@@ -144,18 +142,3 @@ lispm_main (int argc, char **argv)
 
   return 0;
 }
-
-#else
-
-#include "repl.h"
-
-int
-main (int argc, char **argv)
-{
-#if YYDEBUG
-  yydebug = YYDEBUG;
-#endif
-  return lispm_main (argc, argv);
-}
-
-#endif

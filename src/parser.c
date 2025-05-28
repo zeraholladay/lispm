@@ -11,13 +11,9 @@ parser_buf (const char *input, Node **ast_head, Context *ctx)
 {
   yy_scan_string (input);
 
-  // yypush_buffer_state (scan_buf);
-
   int status = yyparse (ast_head, ctx);
 
   yylex_destroy ();
-
-  // yypop_buffer_state ();
 
   return (status == 0);
 }

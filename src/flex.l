@@ -35,7 +35,6 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
                     yylval.integer = atoll (yytext);
                     return INTEGER;
                   }
-
   {ID}            {
                     if (!strncasecmp ("QUOTE", yytext, yyleng + 1))
                       return QUOTE;
@@ -50,7 +49,6 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
 
                     return SYMBOL;
                   }
-
   [+\-*/><]       {
                     yylval.symbol.str = sym_save (yytext, yyleng);
                     yylval.symbol.len = yyleng;
