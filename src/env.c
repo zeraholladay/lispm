@@ -79,7 +79,7 @@ env_enter_frame (Env **frame)
 void
 env_leave_frame (Env **frame)
 {
-  if (!frame || !*frame)
+  if (!frame || !*frame || !(*frame)->parent)
     return;
   Env *chld_frame = *frame;
   *frame = (*frame)->parent;
