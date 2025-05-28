@@ -2,6 +2,7 @@
 #define EVAL_H
 
 #include "context.h"
+#include "debug.h"
 #include "keywords.h"
 #include "types.h"
 
@@ -14,6 +15,7 @@
 
 #define CAR(nptr) ((nptr)->cons.car)
 #define CDR(nptr) ((nptr)->cons.cdr)
+#define CADR(nptr) (CAR (CDR (nptr)))
 #define FIRST(nptr) ((nptr)->cons.car)
 #define REST(nptr) ((nptr)->cons.cdr)
 

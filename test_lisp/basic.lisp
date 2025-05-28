@@ -1,7 +1,7 @@
 (SET 'COUNTER 0)
 (SET 'ASSERT
     (LAMBDA (X) (IF (EQ NIL (EVAL X))
-                    ((LAMBDA (X) (PRINT X) NIL) X)
+                    ((LAMBDA (X) (PRINT COUNTER) (PRINT X)) X)
                     (SET 'COUNTER (ADD COUNTER 1)))
     )
 )
@@ -142,3 +142,5 @@
 (ASSERT '(EQ RESULT (EVAL (LAYZ_FIB 20))))
 (SET 'RESULT 832040)
 (ASSERT '(EQ RESULT (EVAL (LAYZ_FIB 30)))) ;; 32 is the max as of 5-17-25
+(PRINT 'END)
+(ASSERT NIL)

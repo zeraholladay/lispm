@@ -13,7 +13,7 @@ SRC := src
 BIN := bin
 GEN := gen
 
-MAIN_SRC := $(SRC)/repl.c
+MAIN_SRC := $(SRC)/main.c
 EXEC := $(BIN)/lispm
 
 # Compilers and flags
@@ -39,13 +39,14 @@ FLEX := flex
 BISON := bison
 GPERF := gperf
 
-FLEX_SRC := $(SRC)/lexer.l
-BISON_SRC := $(SRC)/parser.y
+FLEX_SRC := $(SRC)/flex.l
+BISON_SRC := $(SRC)/bison.y
 GPERF_SCR := $(SRC)/keywords.gperf
 
-FLEX_C := $(GEN)/lexer.c
-BISON_C := $(GEN)/parser.c
-BISON_H := $(GEN)/parser.h
+FLEX_C := $(GEN)/flex.c
+FLEX_H := $(GEN)/flex.h
+BISON_C := $(GEN)/bison.c
+BISON_H := $(GEN)/bison.h
 GPERF_C := $(GEN)/keywords.c
 
 SRC_CFILES := $(wildcard $(SRC)/*.c) $(FLEX_C) $(BISON_C) $(GPERF_C)
@@ -73,7 +74,7 @@ $(BISON_C): $(BISON_SRC) | bin
 	$(BISON) $(BISON_FLAGS) -o $(BISON_C) --defines=$(BISON_H) $(BISON_SRC)
 
 $(FLEX_C): $(FLEX_SRC) $(BISON_H) | bin
-	$(FLEX) $(FLEX_FLAGS) -o $(FLEX_C) $(FLEX_SRC)
+	$(FLEX) $(FLEX_FLAGS) -o $(FLEX_C) --header-file=$(FLEX_H) $(FLEX_SRC)
 
 $(GPERF_C): $(GPERF_SCR) $(BISON_H) | bin
 	$(GPERF) $(GPERF_SCR) --output-file=$(GPERF_C)

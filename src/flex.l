@@ -5,14 +5,10 @@
 
 %{
 #include <stdlib.h>
+#include <string.h>
 
-#include "debug.h"
-#include "context.h"
-#include "parser.h"
-#include "safe_str.h"
+#include "bison.h"
 #include "sym_save.h"
-
-#define YY_DECL int yylex(Context *ctx)
 %}
 
 NL       \r?\n
@@ -39,7 +35,6 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
                     yylval.integer = atoll (yytext);
                     return INTEGER;
                   }
-
   {ID}            {
                     if (!strncasecmp ("QUOTE", yytext, yyleng + 1))
                       return QUOTE;
@@ -47,16 +42,15 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
                       return LAMBDA;
 
                     yylval.symbol.len = yyleng;
-                    yylval.symbol.str = sym_save (&CTX_SYMTAB(ctx), yytext, yyleng);
+                    yylval.symbol.str = sym_save (yytext, yyleng);
 
                     if (!strncasecmp ("IF", yytext, yyleng + 1))
                       return IF;
 
                     return SYMBOL;
                   }
-
   [+\-*/><]       {
-                    yylval.symbol.str = sym_save (&CTX_SYMTAB(ctx), yytext, yyleng);
+                    yylval.symbol.str = sym_save (yytext, yyleng);
                     yylval.symbol.len = yyleng;
                     return SYMBOL;
                   }

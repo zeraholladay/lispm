@@ -2,14 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "debug.h"
 #include "error.h"
 #include "eval.h"
-#include "eval_bool.h"
-#include "keywords.h"
-#include "parser.h"
-#include "safe_str.h"
-#include "types.h"
 #include "xalloc.h"
 
 #define PRINT(node)                                                           \
@@ -112,9 +106,6 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
       return NULL;
     }
 
-  // Context *new_ctx = *ctx;
-  // CTX_ENV (&new_ctx) = env_create (GET_LAMBDA_ENV (fn));
-
   env_enter_frame (&ctx->env);
 
   Node *pairs = pair (GET_LAMBDA_PARAMS (fn), args, ctx);
@@ -122,8 +113,8 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
   while (!IS_NIL (pairs))
     {
       Node *pair = CAR (pairs);
-      set (CAR (pair), CAR (CDR (pair)),
-           ctx); // FIXME: need proper err handling
+      const char *str = GET_SYMBOL (CAR (pair)).str; // cleanup
+      env_let (ctx->env, str, CADR (pair));
       pairs = CDR (pairs);
     }
 
@@ -211,10 +202,7 @@ eval (Node *form, Context *ctx)
         return CAR (cdr);
 
       if (IS_LAMBDA (car))
-        {
-          GET_LAMBDA_ENV (car) = ctx->env;
-          return car;
-        }
+        return car;
 
       Node *fn = eval (car, ctx);
 
@@ -529,7 +517,7 @@ set (Node *car, Node *cdr, Context *ctx)
       return NULL;
     }
 
-  env_set (ctx->env, str, cdr); // TODO: error handling
+  env_set (ctx->env, str, cdr);
   return cdr;
 }
 

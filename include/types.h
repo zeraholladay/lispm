@@ -5,7 +5,6 @@
 #include <stddef.h>
 
 #include "context.h"
-#include "env.h"
 #include "palloc.h"
 
 #define IS_TYPE(nptr, kind) ((nptr) != NULL && (nptr)->type == (kind))
@@ -26,7 +25,6 @@
 #define GET_LAMBDA(nptr) (&(nptr)->lambda)
 #define GET_LAMBDA_PARAMS(nptr) ((nptr)->lambda.params)
 #define GET_LAMBDA_BODY(nptr) ((nptr)->lambda.body)
-#define GET_LAMBDA_ENV(nptr) ((nptr)->lambda.env)
 
 struct Node;
 typedef struct Node Node;
@@ -80,7 +78,6 @@ typedef struct
 {
   Node *params;
   Node *body;
-  Env *env;
 } Lambda;
 
 struct Node
@@ -101,7 +98,7 @@ struct Node
 };
 
 const Type *type (Node *self);
-Node *cons_lambda (Pool **p, Node *params, Node *body, Env *env);
+Node *cons_lambda (Pool **p, Node *params, Node *body);
 Node *cons_integer (Pool **p, Integer i);
 Node *cons_cons (Pool **p, Node *car, Node *cdr);
 Node *cons_string (Pool **p, char *str);

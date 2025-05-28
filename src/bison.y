@@ -2,11 +2,13 @@
 %{
 #include <stdio.h>
 
+#include "bison.h"
+#include "context.h"
 #include "eval.h"
-#include "parser.h"
+#include "flex.h"
 #include "types.h"
 
-#define yyerror(ctx, s)                                                       \
+#define yyerror(n, ctx, s)                                                    \
   do                                                                          \
     {                                                                         \
       yyerror_handler (ctx, s);                                               \
@@ -14,28 +16,15 @@
     }                                                                         \
   while (0)
 
-int yylex (Context * ctx);
 void yyerror_handler (Context * ctx, const char *s);
-
-extern int yylineno;
 %}
 
 %code requires
 {
 #include "types.h"
-
-void reset_parse_context(Context *ctx);
 }
 
-%lex-param
-{
-Context *ctx
-}
-
-%parse-param
-{
-Context *ctx
-}
+%parse-param {Node **progn} {Context *ctx}
 
 %union
 {
@@ -47,10 +36,9 @@ Context *ctx
   } symbol;
 }
 
-%token ERROR
+%token ERROR LAMBDA QUOTE
 %token <integer> INTEGER
 %token <symbol>  IF SYMBOL
-%token LAMBDA QUOTE
 
 %type <node>
   program
@@ -65,14 +53,13 @@ Context *ctx
 program
   : forms
     {
-      CTX_PARSE_ROOT (ctx) = $1;
+      *progn = $1;
       YYACCEPT;
     }
   | forms error
     {
-      CTX_PARSE_ROOT (ctx) = NIL;
-      yyerror (ctx, "Parse error\n");
-      YYABORT;
+      *progn = NIL;
+      yyerror (progn, ctx, "Parse error\n");
     }
   ;
 
@@ -90,7 +77,7 @@ forms
 form
     : '(' LAMBDA param_list forms ')'
       {
-        $$ = LIST1 (cons_lambda (&CTX_POOL (ctx), $3, $4, NULL), ctx);
+        $$ = LIST1 (cons_lambda (&CTX_POOL (ctx), $3, $4), ctx);
       }
     | '(' if_ form form ')'
       {
@@ -163,18 +150,10 @@ if_
   ;
 
 %%
-void
-reset_parse_context (Context *ctx)
-{
-  /* assumes pool has already been allocated. */
-  CTX_PARSE_ROOT (ctx) = NIL;
-}
 
 void
 yyerror_handler (Context *ctx, const char *s)
 {
+  (void)ctx;
   fprintf (stderr, "Syntax error: line %d: %s\n", yylineno, s);
-  reset_parse_context (ctx);
 }
-
-// clang-format off
