@@ -43,8 +43,7 @@ funcall (Cell *fn, Cell *arglist, Context *ctx)
   if (IS (fn, LAMBDA))
     return funcall_lambda (fn, arglist, ctx);
 
-  raise (ERR_NOT_A_FUNCTION, DEBUG_LOCATION);
-  return NULL;
+  return ERROR (ERR_NOT_A_FUNCTION, fn, ctx);
 }
 
 static Cell *
@@ -57,8 +56,7 @@ funcall_builtin (Cell *fn, Cell *arglist, Context *ctx)
     {
       ErrorCode err = (received < builtin_fn->arity) ? ERR_MISSING_ARG
                                                      : ERR_UNEXPECTED_ARG;
-      raise (err, builtin_fn->name);
-      return NULL;
+      return ERROR (err, builtin_fn->name, ctx);
     }
 
   // eval_apply or eval_funcall could have taken us here.
@@ -91,8 +89,7 @@ funcall_lambda (Cell *fn, Cell *args, Context *ctx)
     {
       ErrorCode err
           = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
-      raise (err, "funcall/lambda");
-      return NULL;
+      return ERROR (err, fn, ctx);
     }
 
   env_enter_frame (&ctx->env);
@@ -139,10 +136,7 @@ eval_apply (Cell *arglist, Context *ctx)
   Cell *tail_list = eval (last_arg_list, ctx);
 
   if (!LISTP (tail_list))
-    {
-      raise (ERR_INVALID_ARG, "apply");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, fn, ctx);
 
   Cell *fixed = reverse_inplace (fixed_rev);
   Cell *all = append_inplace (fixed, tail_list);
@@ -219,16 +213,14 @@ eval (Cell *form, Context *ctx)
           if (fn == KEYWORD (OR))
             return or_form (cdr, ctx);
 
-          raise (ERR_INTERNAL, DEBUG_LOCATION);
-          return NULL;
+          return ERROR (ERR_INTERNAL, DEBUG_LOCATION, ctx);
         }
 
       Cell *arglist = eval_list (cdr, ctx);
       return funcall (fn, arglist, ctx);
     }
 
-  raise (ERR_INTERNAL, DEBUG_LOCATION);
-  return NULL;
+  return ERROR (ERR_INTERNAL, DEBUG_LOCATION, ctx);
 }
 
 Cell *
@@ -474,10 +466,7 @@ lookup (Cell *cell, Context *ctx)
 
   Cell *res = env_lookup (ctx->env, key);
   if (!res)
-    {
-      raise (ERR_SYMBOL_NOT_FOUND, key);
-      return NULL;
-    }
+    return ERROR (ERR_SYMBOL_NOT_FOUND, key, ctx);
 
   return res;
 }
@@ -486,19 +475,13 @@ static Cell *
 set (Cell *car, Cell *cdr, Context *ctx)
 {
   if (!IS (car, SYMBOL))
-    {
-      raise (ERR_INVALID_ARG, "set");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "set", ctx);
 
   const char *key = car->symbol.str;
   size_t len = car->symbol.len;
 
   if (keyword_lookup (key, len))
-    {
-      raise (ERR_INVALID_ARG, "set");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "set", ctx);
 
   env_set (ctx->env, key, cdr);
   return cdr;
@@ -510,10 +493,7 @@ Cell *
 eval_append (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "append");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "append", ctx);
 
   Cell *result = CAR (args);
 
@@ -529,10 +509,8 @@ Cell *
 eval_butlast (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "butlast");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "butlast", ctx);
+
   return butlast (CAR (args), ctx);
 }
 
@@ -547,10 +525,8 @@ eval_car (Cell *args, Context *ctx)
 {
   (void)ctx;
   if (!LISTP (CAR (args)))
-    {
-      raise (ERR_INVALID_ARG, "car");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "car", ctx);
+
   return CAR (CAR (args));
 }
 
@@ -561,10 +537,8 @@ eval_cdr (Cell *args, Context *ctx)
   Cell *car = CAR (args);
 
   if (!LISTP (car))
-    {
-      raise (ERR_INVALID_ARG, "cdr");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "cdr", ctx);
+
   return CDR (car);
 }
 
@@ -574,10 +548,8 @@ eval_length (Cell *args, Context *ctx)
   Cell *car = CAR (args);
 
   if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "len");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "len", ctx);
+
   return INTEGER (length (car), ctx);
 }
 
@@ -585,25 +557,16 @@ Cell *
 eval_mapcar (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "mapcar fn l1 ...");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "mapcar fn l1 ...", ctx);
 
   Cell *fn = CAR (args);
 
   if (IS_NOT (fn, BUILTIN_FN) && IS_NOT (fn, LAMBDA))
-    {
-      raise (ERR_INVALID_ARG, "mapcar: not a function or lambda");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "mapcar: not a function or lambda", ctx);
 
   for (Cell *item = CDR (args); !IS_NIL (item); item = CDR (item))
     if (!LISTP (CAR (item)))
-      {
-        raise (ERR_INVALID_ARG, "mapcar: arg is not a list");
-        return NULL;
-      }
+      return ERROR (ERR_INVALID_ARG, "mapcar: arg is not a list", ctx);
 
   return mapcar (fn, CDR (args), ctx);
 }
@@ -615,10 +578,8 @@ eval_nth (Cell *args, Context *ctx)
 
   if (IS_NOT (args, CONS) || IS_NOT (CAR (args), INTEGER)
       || !LISTP (CAR (CDR (args))))
-    {
-      raise (ERR_ARG_NOT_ITERABLE, "nth: i list");
-      return NULL;
-    }
+    return ERROR (ERR_ARG_NOT_ITERABLE, "nth: i list", ctx);
+
   size_t idx = (size_t)CAR (args)->integer;
   Cell *list = CAR (CDR (args));
   return nth (idx, list);
@@ -628,10 +589,8 @@ Cell *
 eval_last (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "last");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "last", ctx);
+
   return last (CAR (args), ctx);
 }
 
@@ -640,10 +599,8 @@ eval_print (Cell *args, Context *ctx)
 {
   (void)ctx;
   if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "print");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "print", ctx);
+
   PRINT (CAR (args));
   return T;
 }
@@ -652,10 +609,8 @@ Cell *
 eval_reverse (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "cdr");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "cdr", ctx);
+
   return reverse (CAR (args), ctx);
 }
 
@@ -663,10 +618,8 @@ Cell *
 eval_set (Cell *args, Context *ctx)
 {
   if (IS_NOT (CAR (args), SYMBOL))
-    {
-      raise (ERR_INVALID_ARG, "set");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "set", ctx);
+
   return set (CAR (args), CAR (CDR (args)), ctx);
 }
 
