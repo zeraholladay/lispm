@@ -1,11 +1,11 @@
 #include "error.h"
 #include "eval.h"
 
-Node *
-eval_gt (Node *args, Context *ctx)
+Cell *
+eval_gt (Cell *args, Context *ctx)
 {
   (void)ctx;
-  Node *result = T;
+  Cell *result = T;
 
   if (!IS (args, CONS))
     {
@@ -25,9 +25,9 @@ eval_gt (Node *args, Context *ctx)
       return NULL;
     }
 
-  Node *prev = CAR (args);
+  Cell *prev = CAR (args);
 
-  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
+  for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
       if (!IS (CAR (rest), INTEGER))
         {
@@ -44,11 +44,11 @@ eval_gt (Node *args, Context *ctx)
   return result;
 }
 
-Node *
-eval_lt (Node *args, Context *ctx)
+Cell *
+eval_lt (Cell *args, Context *ctx)
 {
   (void)ctx;
-  Node *result = T;
+  Cell *result = T;
 
   if (!IS (args, CONS))
     {
@@ -68,9 +68,9 @@ eval_lt (Node *args, Context *ctx)
       return NULL;
     }
 
-  Node *prev = CAR (args);
+  Cell *prev = CAR (args);
 
-  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
+  for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
       if (!IS (CAR (rest), INTEGER))
         {
@@ -90,8 +90,8 @@ eval_lt (Node *args, Context *ctx)
 // TODO: BUG IN gt (1 OR more args) and add, and mul take  (0 or more)
 // TODO: check for over/underflow someday
 
-Node *
-eval_add (Node *args, Context *ctx)
+Cell *
+eval_add (Cell *args, Context *ctx)
 {
   if (!IS (args, CONS))
     {
@@ -113,7 +113,7 @@ eval_add (Node *args, Context *ctx)
 
   Integer sum = CAR (args)->integer;
 
-  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
+  for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
       if (!IS (CAR (rest), INTEGER))
         {
@@ -127,8 +127,8 @@ eval_add (Node *args, Context *ctx)
   return cons_integer (&CTX_POOL (ctx), sum);
 }
 
-Node *
-eval_sub (Node *args, Context *ctx)
+Cell *
+eval_sub (Cell *args, Context *ctx)
 {
   if (!IS (args, CONS))
     {
@@ -150,7 +150,7 @@ eval_sub (Node *args, Context *ctx)
 
   Integer total = CAR (args)->integer;
 
-  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
+  for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
       if (!IS (CAR (rest), INTEGER))
         {
@@ -164,8 +164,8 @@ eval_sub (Node *args, Context *ctx)
   return cons_integer (&CTX_POOL (ctx), total);
 }
 
-Node *
-eval_mul (Node *args, Context *ctx)
+Cell *
+eval_mul (Cell *args, Context *ctx)
 {
   if (!IS (args, CONS))
     {
@@ -187,7 +187,7 @@ eval_mul (Node *args, Context *ctx)
 
   Integer result = CAR (args)->integer;
 
-  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
+  for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
       if (!IS (CAR (rest), INTEGER))
         {
@@ -201,8 +201,8 @@ eval_mul (Node *args, Context *ctx)
   return cons_integer (&CTX_POOL (ctx), result);
 }
 
-Node *
-eval_div (Node *args, Context *ctx)
+Cell *
+eval_div (Cell *args, Context *ctx)
 {
   if (!IS (args, CONS))
     {
@@ -224,7 +224,7 @@ eval_div (Node *args, Context *ctx)
 
   Integer result = CAR (args)->integer;
 
-  for (Node *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
+  for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
       if (!IS (CAR (rest), INTEGER))
         {

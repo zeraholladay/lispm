@@ -3,11 +3,11 @@
 
 #include "eval.h"
 
-Node *eval_gt (Node *args, Context *ctx);
-Node *eval_lt (Node *args, Context *ctx);
-Node *eval_add (Node *args, Context *ctx);
-Node *eval_sub (Node *args, Context *ctx);
-Node *eval_mul (Node *args, Context *ctx);
-Node *eval_div (Node *args, Context *ctx);
+Cell *eval_gt (Cell *args, Context *ctx);
+Cell *eval_lt (Cell *args, Context *ctx);
+Cell *eval_add (Cell *args, Context *ctx);
+Cell *eval_sub (Cell *args, Context *ctx);
+Cell *eval_mul (Cell *args, Context *ctx);
+Cell *eval_div (Cell *args, Context *ctx);
 
 #endif

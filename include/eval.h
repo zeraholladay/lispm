@@ -39,27 +39,27 @@
     }                                                                         \
   while (0)
 
-Node *eval_append (Node *args, Context *ctx);
-Node *eval_apply (Node *args, Context *ctx);
-Node *eval_butlast (Node *expr, Context *ctx);
-Node *eval_cons (Node *args, Context *ctx);
-Node *eval_car (Node *args, Context *ctx);
-Node *eval_cdr (Node *args, Context *ctx);
-Node *eval_funcall (Node *args, Context *ctx);
-Node *eval_if (Node *expr, Context *ctx);
-Node *eval_lambda (Node *expr, Context *ctx);
-Node *eval_last (Node *expr, Context *ctx);
-Node *eval_len (Node *args, Context *ctx);
-Node *eval_list (Node *args, Context *ctx);
-Node *eval_mapcar (Node *args, Context *ctx);
-Node *eval_nth (Node *expr, Context *ctx);
-Node *eval_pair (Node *args, Context *ctx);
-Node *eval_print (Node *args, Context *ctx);
-Node *eval_reverse (Node *args, Context *ctx);
-Node *eval_set (Node *args, Context *ctx);
-Node *eval_string (Node *args, Context *ctx);
-Node *eval (Node *form, Context *ctx);
-Node *eval_list (Node *args, Context *ctx);
-Node *eval_progn (Node *program, Context *ctx);
+Cell *eval_append (Cell *args, Context *ctx);
+Cell *eval_apply (Cell *args, Context *ctx);
+Cell *eval_butlast (Cell *expr, Context *ctx);
+Cell *eval_cons (Cell *args, Context *ctx);
+Cell *eval_car (Cell *args, Context *ctx);
+Cell *eval_cdr (Cell *args, Context *ctx);
+Cell *eval_funcall (Cell *args, Context *ctx);
+Cell *eval_if (Cell *expr, Context *ctx);
+Cell *eval_lambda (Cell *expr, Context *ctx);
+Cell *eval_last (Cell *expr, Context *ctx);
+Cell *eval_len (Cell *args, Context *ctx);
+Cell *eval_list (Cell *args, Context *ctx);
+Cell *eval_mapcar (Cell *args, Context *ctx);
+Cell *eval_nth (Cell *expr, Context *ctx);
+Cell *eval_pair (Cell *args, Context *ctx);
+Cell *eval_print (Cell *args, Context *ctx);
+Cell *eval_reverse (Cell *args, Context *ctx);
+Cell *eval_set (Cell *args, Context *ctx);
+Cell *eval_string (Cell *args, Context *ctx);
+Cell *eval (Cell *form, Context *ctx);
+Cell *eval_list (Cell *args, Context *ctx);
+Cell *eval_progn (Cell *program, Context *ctx);
 
 #endif

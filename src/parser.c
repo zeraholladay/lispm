@@ -7,7 +7,7 @@
 #include "types.h"
 
 bool
-parser_buf (const char *input, Node **ast_head, Context *ctx)
+parser_buf (const char *input, Cell **ast_head, Context *ctx)
 {
   yy_scan_string (input);
 
@@ -19,7 +19,7 @@ parser_buf (const char *input, Node **ast_head, Context *ctx)
 }
 
 bool
-parser_stream (FILE *instrm, Node **ast_head, Context *ctx)
+parser_stream (FILE *instrm, Cell **ast_head, Context *ctx)
 {
   yyset_in (instrm);
 

@@ -11,11 +11,11 @@
 typedef struct Keyword
 {
   const char *name;
-  Node node;
+  Cell node;
 } Keyword;
 
 /* KEYWORD.gperf */
-struct Node *keyword_lookup (const char *str, size_t len);
+struct Cell *keyword_lookup (const char *str, size_t len);
 const char *is_keyword_strncmp (const char *text, int state);
 
 #endif

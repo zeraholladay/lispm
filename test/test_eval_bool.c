@@ -12,7 +12,7 @@
 extern void lispm_init (Context *ctx);
 extern void lispm_destroy (Context *ctx);
 
-static Node *progn = NULL;
+static Cell *progn = NULL;
 static Context ctx = {};
 
 jmp_buf eval_error_jmp;
@@ -29,7 +29,7 @@ teardown (void)
   lispm_destroy (&ctx);
 }
 
-static Node *
+static Cell *
 run_eval_progn (const char *input)
 {
   ck_assert (parser_buf (input, &progn, &ctx));
@@ -38,7 +38,7 @@ run_eval_progn (const char *input)
 
 START_TEST (test_eq)
 {
-  Node *eval_result = NULL;
+  Cell *eval_result = NULL;
   char *test_program;
 
   // True statements
@@ -119,7 +119,7 @@ END_TEST
 
 START_TEST (test_not)
 {
-  Node *eval_result = NULL;
+  Cell *eval_result = NULL;
 
   eval_result = run_eval_progn ("(not nil)");
   ck_assert_str_eq (eval_result->symbol.str, "T");
@@ -131,7 +131,7 @@ END_TEST
 
 START_TEST (test_and)
 {
-  Node *eval_result = NULL;
+  Cell *eval_result = NULL;
 
   eval_result = run_eval_progn ("(and nil T)");
   ck_assert (IS_NIL (eval_result));
@@ -152,7 +152,7 @@ END_TEST
 
 START_TEST (test_or)
 {
-  Node *eval_result = NULL;
+  Cell *eval_result = NULL;
 
   eval_result = run_eval_progn ("(or nil nil)");
   ck_assert (IS_NIL (eval_result));

@@ -100,7 +100,7 @@ DIV,     { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_div      },
 #define PRIN_FN_TAB_NUM                                                       \
   ((int)(sizeof (keyword_table) / sizeof (keyword_table[0])))
 
-struct Node *
+struct Cell *
 keyword_lookup (const char *str, size_t len)
 {
   Keyword *keyword = in_word_set(str, len);

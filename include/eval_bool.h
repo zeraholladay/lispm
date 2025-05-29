@@ -3,7 +3,7 @@
 
 #include "eval.h"
 
-Node *eval_eq (Node *args, Context *ctx);
-Node *eval_not (Node *args, Context *ctx);
+Cell *eval_eq (Cell *args, Context *ctx);
+Cell *eval_not (Cell *args, Context *ctx);
 
 #endif

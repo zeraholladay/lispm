@@ -10,7 +10,7 @@ START_TEST (test_palloc)
 {
   size_t count = 4096;
 
-  Pool *pool = pool_init (count, sizeof (Node));
+  Pool *pool = pool_init (count, sizeof (Cell));
 
   ck_assert (pool);
 
@@ -30,7 +30,7 @@ START_TEST (test_palloc_hier)
 {
   size_t count = 42;
 
-  Pool *pool = pool_init (count, sizeof (Node));
+  Pool *pool = pool_init (count, sizeof (Cell));
 
   ck_assert (pool);
 

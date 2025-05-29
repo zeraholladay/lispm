@@ -8,34 +8,34 @@
 #include "xalloc.h"
 
 // funcalls
-static Node *funcall (Node *fn, Node *arglist, Context *ctx);
-static Node *funcall_builtin (Node *fn, Node *args, Context *ctx);
-static Node *funcall_lambda (Node *fn, Node *args, Context *ctx);
+static Cell *funcall (Cell *fn, Cell *arglist, Context *ctx);
+static Cell *funcall_builtin (Cell *fn, Cell *args, Context *ctx);
+static Cell *funcall_lambda (Cell *fn, Cell *args, Context *ctx);
 
 // cond forms/expressions
-static Node *and_form (Node *form, Context *ctx);
-static Node *if_form (Node *form, Context *ctx);
-static Node *or_form (Node *form, Context *ctx);
+static Cell *and_form (Cell *form, Context *ctx);
+static Cell *if_form (Cell *form, Context *ctx);
+static Cell *or_form (Cell *form, Context *ctx);
 
 // sequence operations
-static Node *append_inplace (Node *list1, Node *list2);
-static Node *append_list (Node *list1, Node *list2, Context *ctx);
-static Node *butlast (Node *args, Context *ctx);
-static Node *last (Node *args, Context *ctx);
-static size_t length (Node *list);
-static Node *mapcar (Node *fn, Node *arglist, Context *ctx);
-static Node *nth (size_t idx, Node *list);
-static Node *reverse (Node *list, Context *ctx);
-static Node *reverse_inplace (Node *list);
-static Node *zip (Node *lists, Context *ctx);
+static Cell *append_inplace (Cell *list1, Cell *list2);
+static Cell *append_list (Cell *list1, Cell *list2, Context *ctx);
+static Cell *butlast (Cell *args, Context *ctx);
+static Cell *last (Cell *args, Context *ctx);
+static size_t length (Cell *list);
+static Cell *mapcar (Cell *fn, Cell *arglist, Context *ctx);
+static Cell *nth (size_t idx, Cell *list);
+static Cell *reverse (Cell *list, Context *ctx);
+static Cell *reverse_inplace (Cell *list);
+static Cell *zip (Cell *lists, Context *ctx);
 
 // context operations
-static Node *lookup (Node *node, Context *ctx);
-static Node *set (Node *car, Node *REST, Context *ctx);
+static Cell *lookup (Cell *node, Context *ctx);
+static Cell *set (Cell *car, Cell *REST, Context *ctx);
 
 // funcall & eval
-static Node *
-funcall (Node *fn, Node *arglist, Context *ctx)
+static Cell *
+funcall (Cell *fn, Cell *arglist, Context *ctx)
 {
   if (IS (fn, BUILTIN_FN))
     return funcall_builtin (fn, arglist, ctx);
@@ -47,8 +47,8 @@ funcall (Node *fn, Node *arglist, Context *ctx)
   return NULL;
 }
 
-static Node *
-funcall_builtin (Node *fn, Node *arglist, Context *ctx)
+static Cell *
+funcall_builtin (Cell *fn, Cell *arglist, Context *ctx)
 {
   int received = (int)length (arglist);
   const BuiltinFn *builtin_fn = fn->builtin_fn;
@@ -65,13 +65,13 @@ funcall_builtin (Node *fn, Node *arglist, Context *ctx)
   // so if we called them again, arglist would be eval'd 2x.
   if (fn == KEYWORD (FUNCALL))
     {
-      Node *fn2 = eval (CAR (arglist), ctx);
+      Cell *fn2 = eval (CAR (arglist), ctx);
       return funcall (fn2, CDR (arglist), ctx);
     }
 
   if (fn == KEYWORD (APPLY))
     {
-      Node *fn2 = eval (CAR (arglist), ctx);
+      Cell *fn2 = eval (CAR (arglist), ctx);
       return funcall (fn2, CAR (CDR (arglist)), ctx);
     }
 
@@ -81,8 +81,8 @@ funcall_builtin (Node *fn, Node *arglist, Context *ctx)
   return builtin_fn->fn (arglist, ctx);
 }
 
-static Node *
-funcall_lambda (Node *fn, Node *args, Context *ctx)
+static Cell *
+funcall_lambda (Cell *fn, Cell *args, Context *ctx)
 {
   size_t expected = length (fn->lambda.params);
   size_t received = length (args);
@@ -97,17 +97,17 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 
   env_enter_frame (&ctx->env);
 
-  Node *pairs
+  Cell *pairs
       = mapcar (KEYWORD (LIST), LIST2 (fn->lambda.params, args, ctx), ctx);
 
   while (!IS_NIL (pairs))
     {
-      Node *pair = CAR (pairs);
+      Cell *pair = CAR (pairs);
       env_let (ctx->env, (CAR (pair))->symbol.str, CADR (pair));
       pairs = CDR (pairs);
     }
 
-  Node *res = eval_progn (fn->lambda.body, ctx);
+  Cell *res = eval_progn (fn->lambda.body, ctx);
 
   env_leave_frame (&ctx->env);
 
@@ -120,23 +120,23 @@ funcall_lambda (Node *fn, Node *args, Context *ctx)
 //          (last-arg-list (last args))     ; the final element, as a list
 //          (all-args     (append fixed-args last-arg-list)))
 //     (funcall f all-args)))
-Node *
-eval_apply (Node *arglist, Context *ctx)
+Cell *
+eval_apply (Cell *arglist, Context *ctx)
 {
-  Node *fn = eval (CAR (arglist), ctx);
+  Cell *fn = eval (CAR (arglist), ctx);
 
-  Node *fixed_rev = NIL;
-  Node *fixd_args = butlast (CDR (arglist), ctx);
+  Cell *fixed_rev = NIL;
+  Cell *fixd_args = butlast (CDR (arglist), ctx);
 
   while (!IS_NIL (fixd_args))
     {
-      Node *eval_res = eval (CAR (fixd_args), ctx);
+      Cell *eval_res = eval (CAR (fixd_args), ctx);
       fixed_rev = CONS (eval_res, fixed_rev, ctx);
       fixd_args = CDR (fixd_args);
     }
 
-  Node *last_arg_list = last (CDR (arglist), ctx);
-  Node *tail_list = eval (last_arg_list, ctx);
+  Cell *last_arg_list = last (CDR (arglist), ctx);
+  Cell *tail_list = eval (last_arg_list, ctx);
 
   if (!LISTP (tail_list))
     {
@@ -144,34 +144,34 @@ eval_apply (Node *arglist, Context *ctx)
       return NULL;
     }
 
-  Node *fixed = reverse_inplace (fixed_rev);
-  Node *all = append_inplace (fixed, tail_list);
+  Cell *fixed = reverse_inplace (fixed_rev);
+  Cell *all = append_inplace (fixed, tail_list);
 
   return funcall (fn, all, ctx);
 }
 
-Node *
-eval_funcall (Node *args, Context *ctx)
+Cell *
+eval_funcall (Cell *args, Context *ctx)
 {
-  Node *fn = eval (CAR (args), ctx);
-  Node *arglist = eval_list (CDR (args), ctx);
+  Cell *fn = eval (CAR (args), ctx);
+  Cell *arglist = eval_list (CDR (args), ctx);
   return funcall (fn, arglist, ctx);
 }
 
-Node *
-eval_list (Node *args, Context *ctx)
+Cell *
+eval_list (Cell *args, Context *ctx)
 {
   if (IS_NIL (args))
     return NIL;
 
-  Node *car = eval (CAR (args), ctx);
-  Node *cdr = eval_list (CDR (args), ctx);
+  Cell *car = eval (CAR (args), ctx);
+  Cell *cdr = eval_list (CDR (args), ctx);
 
   return CONS (car, cdr, ctx);
 }
 
-Node *
-eval (Node *form, Context *ctx)
+Cell *
+eval (Cell *form, Context *ctx)
 {
   if (IS (form, SYMBOL))
     return lookup (form, ctx);
@@ -185,8 +185,8 @@ eval (Node *form, Context *ctx)
       if (IS_NIL (form))
         return NIL;
 
-      Node *car = CAR (form);
-      Node *cdr = CDR (form);
+      Cell *car = CAR (form);
+      Cell *cdr = CDR (form);
 
       if (car == KEYWORD (QUOTE))
         return CAR (cdr);
@@ -194,7 +194,7 @@ eval (Node *form, Context *ctx)
       if (IS (car, LAMBDA))
         return car;
 
-      Node *fn = eval (car, ctx);
+      Cell *fn = eval (car, ctx);
 
       if (IS (fn, BUILTIN_FN) && fn->builtin_fn->sform)
         {
@@ -223,7 +223,7 @@ eval (Node *form, Context *ctx)
           return NULL;
         }
 
-      Node *arglist = eval_list (cdr, ctx);
+      Cell *arglist = eval_list (cdr, ctx);
       return funcall (fn, arglist, ctx);
     }
 
@@ -231,14 +231,14 @@ eval (Node *form, Context *ctx)
   return NULL;
 }
 
-Node *
-eval_progn (Node *program, Context *ctx)
+Cell *
+eval_progn (Cell *program, Context *ctx)
 {
-  Node *result = NIL;
+  Cell *result = NIL;
 
-  for (Node *forms = program; forms != NIL; forms = CDR (forms))
+  for (Cell *forms = program; forms != NIL; forms = CDR (forms))
     {
-      Node *form = CAR (forms);
+      Cell *form = CAR (forms);
       result = eval (form, ctx);
     }
 
@@ -246,10 +246,10 @@ eval_progn (Node *program, Context *ctx)
 }
 
 // conditional forms/expressions
-static Node *
-and_form (Node *form, Context *ctx)
+static Cell *
+and_form (Cell *form, Context *ctx)
 {
-  Node *eval_res = T;
+  Cell *eval_res = T;
   EqFn nil_eq_fn = type (NIL)->eq_fn;
 
   while (!IS_NIL (form))
@@ -265,24 +265,24 @@ and_form (Node *form, Context *ctx)
   return eval_res;
 }
 
-static Node *
-if_form (Node *form, Context *ctx)
+static Cell *
+if_form (Cell *form, Context *ctx)
 {
-  Node *pred_form = CAR (form);
+  Cell *pred_form = CAR (form);
 
   if (!IS_NIL (eval (pred_form, ctx)))
     return eval (CAR (CDR (form)), ctx);
   else
     {
-      Node *else_form = CAR (CDR (CDR (form)));
+      Cell *else_form = CAR (CDR (CDR (form)));
       return else_form ? eval (else_form, ctx) : NIL;
     }
 }
 
-static Node *
-or_form (Node *form, Context *ctx)
+static Cell *
+or_form (Cell *form, Context *ctx)
 {
-  Node *eval_res = NIL;
+  Cell *eval_res = NIL;
   EqFn nil_eq_fn = type (NIL)->eq_fn;
 
   while (!IS_NIL (form))
@@ -301,13 +301,13 @@ or_form (Node *form, Context *ctx)
 
 // sequence operations
 
-static Node *
-append_inplace (Node *list1, Node *list2)
+static Cell *
+append_inplace (Cell *list1, Cell *list2)
 {
   if (IS_NIL (list1))
     return list2;
 
-  Node *l1 = list1;
+  Cell *l1 = list1;
 
   while (!IS_NIL (CDR (l1)))
     l1 = CDR (l1);
@@ -317,8 +317,8 @@ append_inplace (Node *list1, Node *list2)
   return list1;
 }
 
-static Node *
-append_list (Node *list1, Node *list2, Context *ctx)
+static Cell *
+append_list (Cell *list1, Cell *list2, Context *ctx)
 {
   if (IS_NIL (list1))
     return list2;
@@ -326,56 +326,56 @@ append_list (Node *list1, Node *list2, Context *ctx)
   return CONS (CAR (list1), append_list (CDR (list1), list2, ctx), ctx);
 }
 
-static Node *
-butlast (Node *list, Context *ctx)
+static Cell *
+butlast (Cell *list, Context *ctx)
 {
-  Node *rev = reverse_inplace (list);
-  Node *btl = reverse (CDR (rev), ctx);
+  Cell *rev = reverse_inplace (list);
+  Cell *btl = reverse (CDR (rev), ctx);
   reverse_inplace (rev);
   return btl;
 }
 
-static Node *
-last (Node *list, Context *ctx)
+static Cell *
+last (Cell *list, Context *ctx)
 {
   (void)ctx;
-  Node *rev = reverse_inplace (list);
-  Node *last = CAR (rev);
+  Cell *rev = reverse_inplace (list);
+  Cell *last = CAR (rev);
   reverse_inplace (rev);
   return last;
 }
 
 static size_t
-length (Node *list)
+length (Cell *list)
 {
   if (!IS (list, CONS))
     return 0;
 
   size_t i = 1;
 
-  for (Node *cdr = CDR (list); cdr != NIL; cdr = CDR (cdr))
+  for (Cell *cdr = CDR (list); cdr != NIL; cdr = CDR (cdr))
     ++i;
 
   return i;
 }
 
-static Node *
-mapcar (Node *fn, Node *arglist, Context *ctx)
+static Cell *
+mapcar (Cell *fn, Cell *arglist, Context *ctx)
 {
-  Node *zip_args = zip (arglist, ctx);
-  Node *rev = NIL;
+  Cell *zip_args = zip (arglist, ctx);
+  Cell *rev = NIL;
 
-  for (Node *l = zip_args; !IS_NIL (l); l = CDR (l))
+  for (Cell *l = zip_args; !IS_NIL (l); l = CDR (l))
     {
-      Node *res = funcall (fn, CAR (l), ctx);
+      Cell *res = funcall (fn, CAR (l), ctx);
       rev = CONS (res, rev, ctx);
     }
 
   return reverse_inplace (rev);
 }
 
-static Node *
-nth (size_t idx, Node *list)
+static Cell *
+nth (size_t idx, Cell *list)
 {
   for (size_t i = 0; i < idx; ++i)
     {
@@ -387,27 +387,27 @@ nth (size_t idx, Node *list)
   return (IS_NIL (list)) ? NIL : CAR (list);
 }
 
-static Node *
-reverse (Node *list, Context *ctx)
+static Cell *
+reverse (Cell *list, Context *ctx)
 {
   (void)ctx;
-  Node *result = NIL;
+  Cell *result = NIL;
 
-  for (Node *l = list; l != NIL; l = CDR (l))
+  for (Cell *l = list; l != NIL; l = CDR (l))
     result = CONS (CAR (l), result, ctx);
 
   return result;
 }
 
-static Node *
-reverse_inplace (Node *list)
+static Cell *
+reverse_inplace (Cell *list)
 {
-  Node *prev = NIL;
-  Node *cur = list;
+  Cell *prev = NIL;
+  Cell *cur = list;
 
   while (!IS_NIL (cur))
     {
-      Node *next = CDR (cur);
+      Cell *next = CDR (cur);
       RPLACD (cur, prev);
       prev = cur;
       cur = next;
@@ -416,8 +416,8 @@ reverse_inplace (Node *list)
   return prev;
 }
 
-static Node *
-zip (Node *lists, Context *ctx)
+static Cell *
+zip (Cell *lists, Context *ctx)
 {
   scratch_t s;
 
@@ -425,12 +425,12 @@ zip (Node *lists, Context *ctx)
   if (len == 0)
     return NIL;
 
-  Node **heads = xalloc_scratch (&s, len * sizeof *heads);
+  Cell **heads = xalloc_scratch (&s, len * sizeof *heads);
 
   for (size_t i = 0; i < len; i++)
     heads[i] = nth (i, lists);
 
-  Node *out_rev = NIL;
+  Cell *out_rev = NIL;
 
   for (;;)
     {
@@ -445,7 +445,7 @@ zip (Node *lists, Context *ctx)
       if (done)
         break;
 
-      Node *row_rev = NIL;
+      Cell *row_rev = NIL;
 
       for (size_t i = 0; i < len; i++)
         {
@@ -461,17 +461,17 @@ zip (Node *lists, Context *ctx)
 }
 
 // context operations
-static Node *
-lookup (Node *node, Context *ctx)
+static Cell *
+lookup (Cell *node, Context *ctx)
 {
   const char *key = node->symbol.str;
   size_t len = node->symbol.len;
 
-  Node *kywrd_node = keyword_lookup (key, len);
+  Cell *kywrd_node = keyword_lookup (key, len);
   if (kywrd_node)
     return kywrd_node;
 
-  Node *res = env_lookup (ctx->env, key);
+  Cell *res = env_lookup (ctx->env, key);
   if (!res)
     {
       raise (ERR_SYMBOL_NOT_FOUND, key);
@@ -481,8 +481,8 @@ lookup (Node *node, Context *ctx)
   return res;
 }
 
-static Node *
-set (Node *car, Node *cdr, Context *ctx)
+static Cell *
+set (Cell *car, Cell *cdr, Context *ctx)
 {
   if (!IS (car, SYMBOL))
     {
@@ -505,8 +505,8 @@ set (Node *car, Node *cdr, Context *ctx)
 
 // other builtins
 
-Node *
-eval_append (Node *args, Context *ctx)
+Cell *
+eval_append (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
     {
@@ -514,9 +514,9 @@ eval_append (Node *args, Context *ctx)
       return NULL;
     }
 
-  Node *result = CAR (args);
+  Cell *result = CAR (args);
 
-  for (Node *list = CDR (args); args != NIL; args = CDR (args))
+  for (Cell *list = CDR (args); args != NIL; args = CDR (args))
     {
       result = append_list (result, CAR (list), ctx);
     }
@@ -524,8 +524,8 @@ eval_append (Node *args, Context *ctx)
   return result;
 }
 
-Node *
-eval_butlast (Node *args, Context *ctx)
+Cell *
+eval_butlast (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
     {
@@ -535,14 +535,14 @@ eval_butlast (Node *args, Context *ctx)
   return butlast (CAR (args), ctx);
 }
 
-Node *
-eval_cons (Node *args, Context *ctx)
+Cell *
+eval_cons (Cell *args, Context *ctx)
 {
   return CONS (CAR (args), CAR (CDR (args)), ctx);
 }
 
-Node *
-eval_car (Node *args, Context *ctx)
+Cell *
+eval_car (Cell *args, Context *ctx)
 {
   (void)ctx;
   if (!LISTP (CAR (args)))
@@ -553,11 +553,11 @@ eval_car (Node *args, Context *ctx)
   return CAR (CAR (args));
 }
 
-Node *
-eval_cdr (Node *args, Context *ctx)
+Cell *
+eval_cdr (Cell *args, Context *ctx)
 {
   (void)ctx;
-  Node *car = CAR (args);
+  Cell *car = CAR (args);
 
   if (!LISTP (car))
     {
@@ -567,10 +567,10 @@ eval_cdr (Node *args, Context *ctx)
   return CDR (car);
 }
 
-Node *
-eval_len (Node *args, Context *ctx)
+Cell *
+eval_len (Cell *args, Context *ctx)
 {
-  Node *car = CAR (args);
+  Cell *car = CAR (args);
 
   if (!LISTP (args))
     {
@@ -580,16 +580,16 @@ eval_len (Node *args, Context *ctx)
   return cons_integer (&CTX_POOL (ctx), length (car));
 }
 
-Node *
-eval_mapcar (Node *args, Context *ctx)
+Cell *
+eval_mapcar (Cell *args, Context *ctx)
 {
-  Node *fn = CAR (args);
-  Node *arglist = CDR (args);
+  Cell *fn = CAR (args);
+  Cell *arglist = CDR (args);
   return mapcar (fn, arglist, ctx);
 }
 
-Node *
-eval_nth (Node *args, Context *ctx)
+Cell *
+eval_nth (Cell *args, Context *ctx)
 {
   (void)ctx;
 
@@ -600,12 +600,12 @@ eval_nth (Node *args, Context *ctx)
       return NULL;
     }
   size_t idx = (size_t)CAR (args)->integer;
-  Node *list = CAR (CDR (args));
+  Cell *list = CAR (CDR (args));
   return nth (idx, list);
 }
 
-Node *
-eval_last (Node *args, Context *ctx)
+Cell *
+eval_last (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
     {
@@ -615,8 +615,8 @@ eval_last (Node *args, Context *ctx)
   return last (CAR (args), ctx);
 }
 
-Node *
-eval_print (Node *args, Context *ctx)
+Cell *
+eval_print (Cell *args, Context *ctx)
 {
   (void)ctx;
   if (!LISTP (args))
@@ -628,8 +628,8 @@ eval_print (Node *args, Context *ctx)
   return T;
 }
 
-Node *
-eval_reverse (Node *args, Context *ctx)
+Cell *
+eval_reverse (Cell *args, Context *ctx)
 {
   if (!LISTP (args))
     {
@@ -639,8 +639,8 @@ eval_reverse (Node *args, Context *ctx)
   return reverse (CAR (args), ctx);
 }
 
-Node *
-eval_set (Node *args, Context *ctx)
+Cell *
+eval_set (Cell *args, Context *ctx)
 {
   if (!IS (CAR (args), SYMBOL))
     {
@@ -650,8 +650,8 @@ eval_set (Node *args, Context *ctx)
   return set (CAR (args), CAR (CDR (args)), ctx);
 }
 
-Node *
-eval_string (Node *args, Context *ctx)
+Cell *
+eval_string (Cell *args, Context *ctx)
 {
   return cons_string (&CTX_POOL (ctx), format (FIRST (args)));
 }

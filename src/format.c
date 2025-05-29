@@ -17,16 +17,16 @@ typedef struct str_sb
 
 static void appendf (StrBuf *str_sb, const char *fmt, ...);
 
-static void fmt_nil (StrBuf *, Node *);
-static void fmt_symbol (StrBuf *, Node *);
-static void fmt_integer (StrBuf *, Node *);
-static void fmt_string (StrBuf *, Node *);
-static void fmt_cons (StrBuf *, Node *);
-static void fmt_builtin_fn (StrBuf *, Node *);
-static void fmt_lambda (StrBuf *, Node *);
-static void fmt_unknown (StrBuf *, Node *);
+static void fmt_nil (StrBuf *, Cell *);
+static void fmt_symbol (StrBuf *, Cell *);
+static void fmt_integer (StrBuf *, Cell *);
+static void fmt_string (StrBuf *, Cell *);
+static void fmt_cons (StrBuf *, Cell *);
+static void fmt_builtin_fn (StrBuf *, Cell *);
+static void fmt_lambda (StrBuf *, Cell *);
+static void fmt_unknown (StrBuf *, Cell *);
 
-static void (*fmters[_TYPE_END + 1]) (StrBuf *, Node *) = {
+static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
   [TYPE_NIL] = fmt_nil,         [TYPE_SYMBOL] = fmt_symbol,
   [TYPE_INTEGER] = fmt_integer, [TYPE_STRING] = fmt_string,
   [TYPE_CONS] = fmt_cons,       [TYPE_BUILTIN_FN] = fmt_builtin_fn,
@@ -80,40 +80,40 @@ appendf (StrBuf *sb, const char *fmt, ...)
 }
 
 void
-fmt_nil (StrBuf *sb, Node *n)
+fmt_nil (StrBuf *sb, Cell *n)
 {
   (void)n;
   appendf (sb, "NIL");
 }
 
 void
-fmt_symbol (StrBuf *sb, Node *n)
+fmt_symbol (StrBuf *sb, Cell *n)
 {
   appendf (sb, "%s", n->symbol.str);
 }
 
 void
-fmt_integer (StrBuf *sb, Node *n)
+fmt_integer (StrBuf *sb, Cell *n)
 {
   appendf (sb, "%lld", n->integer);
 }
 
 void
-fmt_string (StrBuf *sb, Node *n)
+fmt_string (StrBuf *sb, Cell *n)
 {
   appendf (sb, "%s", n->string);
 }
 
 void
-fmt_cons (StrBuf *sb, Node *n)
+fmt_cons (StrBuf *sb, Cell *n)
 {
-  Node *cur;
+  Cell *cur;
   appendf (sb, "(");
 
   for (cur = n; IS (cur, CONS); cur = CDR (cur))
     {
-      Node *car = CAR (cur);
-      Node *cdr = CDR (cur);
+      Cell *car = CAR (cur);
+      Cell *cdr = CDR (cur);
 
       if (car)
         {
@@ -140,13 +140,13 @@ fmt_cons (StrBuf *sb, Node *n)
 }
 
 void
-fmt_builtin_fn (StrBuf *sb, Node *n)
+fmt_builtin_fn (StrBuf *sb, Cell *n)
 {
   return appendf (sb, "#<BUILTIN-FUNCTION %S>", n->builtin_fn->name);
 }
 
 void
-fmt_lambda (StrBuf *sb, Node *n)
+fmt_lambda (StrBuf *sb, Cell *n)
 {
   char *params_str = format (n->lambda.params);
   char *body_str = format (n->lambda.body);
@@ -158,13 +158,13 @@ fmt_lambda (StrBuf *sb, Node *n)
 }
 
 void
-fmt_unknown (StrBuf *sb, Node *n)
+fmt_unknown (StrBuf *sb, Cell *n)
 {
   appendf (sb, "#<UNKNOWN %X>", n);
 }
 
 char *
-format (Node *n)
+format (Cell *n)
 {
   size_t cap = 8;
   StrBuf sb = {

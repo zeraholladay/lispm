@@ -16,6 +16,6 @@
     }                                                                         \
   while (0)
 
-char *format (Node *n);
+char *format (Cell *n);
 
 #endif

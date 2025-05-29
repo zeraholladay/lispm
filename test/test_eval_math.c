@@ -12,7 +12,7 @@
 extern void lispm_init (Context *ctx);
 extern void lispm_destroy (Context *ctx);
 
-static Node *progn = NULL;
+static Cell *progn = NULL;
 static Context ctx = {};
 
 jmp_buf eval_error_jmp;
@@ -29,7 +29,7 @@ teardown (void)
   lispm_destroy (&ctx);
 }
 
-static Node *
+static Cell *
 run_eval_progn (const char *input)
 {
   ck_assert (parser_buf (input, &progn, &ctx));
@@ -38,7 +38,7 @@ run_eval_progn (const char *input)
 
 START_TEST (test_gt)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(gt 10 5 2)");
   ck_assert_str_eq (eval_res->symbol.str, "T");
@@ -56,7 +56,7 @@ END_TEST
 
 START_TEST (test_lt)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(lt 1 2 3)");
   ck_assert_str_eq (eval_res->symbol.str, "T");
@@ -74,7 +74,7 @@ END_TEST
 
 START_TEST (test_add)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(add 1 2 3)");
   ck_assert_int_eq (eval_res->integer, 6);
@@ -89,7 +89,7 @@ END_TEST
 
 START_TEST (test_sub)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(sub 10 2 3)");
   ck_assert_int_eq (eval_res->integer, 5);
@@ -104,7 +104,7 @@ END_TEST
 
 START_TEST (test_mul)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(mul 2 3 4)");
   ck_assert_int_eq (eval_res->integer, 24);
@@ -119,7 +119,7 @@ END_TEST
 
 START_TEST (test_div)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(div 100 2 5)");
   ck_assert_int_eq (eval_res->integer, 10);

@@ -24,12 +24,12 @@ void yyerror_handler (Context * ctx, const char *s);
 #include "types.h"
 }
 
-%parse-param {Node **progn} {Context *ctx}
+%parse-param {Cell **progn} {Context *ctx}
 
 %union
 {
   Integer integer;
-  Node *node;
+  Cell *node;
   struct {
     const char *str;
     size_t len;
