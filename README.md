@@ -248,7 +248,6 @@ Examples:
 In no particular order:
 
 1. Internal call stack.
-1. Generic type-based allocator
 1. Add and mul should return 1 when no args.
 1. Real exceptions
 1. Memory management (tracking)
