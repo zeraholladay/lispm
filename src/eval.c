@@ -250,12 +250,12 @@ static Cell *
 and_form (Cell *form, Context *ctx)
 {
   Cell *eval_res = T;
-  EqFn nil_eq_fn = type (NIL)->eq_fn;
+  EqFn nil_eq = type (NIL)->eq;
 
   while (!IS_NIL (form))
     {
       eval_res = eval (CAR (form), ctx);
-      if (nil_eq_fn (NIL, eval_res))
+      if (nil_eq (NIL, eval_res))
         {
           return NIL;
         }
@@ -283,13 +283,13 @@ static Cell *
 or_form (Cell *form, Context *ctx)
 {
   Cell *eval_res = NIL;
-  EqFn nil_eq_fn = type (NIL)->eq_fn;
+  EqFn nil_eq = type (NIL)->eq;
 
   while (!IS_NIL (form))
     {
       eval_res = eval (CAR (form), ctx);
 
-      if (!nil_eq_fn (NIL, eval_res))
+      if (!nil_eq (NIL, eval_res))
         {
           return eval_res;
         }
@@ -578,7 +578,7 @@ eval_length (Cell *args, Context *ctx)
       raise (ERR_INVALID_ARG, "len");
       return NULL;
     }
-  return cons_integer (&CTX_POOL (ctx), length (car));
+  return INTEGER (length (car), ctx);
 }
 
 Cell *
@@ -673,5 +673,5 @@ eval_set (Cell *args, Context *ctx)
 Cell *
 eval_string (Cell *args, Context *ctx)
 {
-  return cons_string (&CTX_POOL (ctx), format (FIRST (args)));
+  return STRING (format (CAR (args)), ctx);
 }

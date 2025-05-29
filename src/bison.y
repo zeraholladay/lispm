@@ -77,7 +77,7 @@ forms
 form
     : '(' LAMBDA param_list forms ')'
       {
-        $$ = LIST1 (cons_lambda (&CTX_POOL (ctx), $3, $4), ctx);
+        $$ = LIST1 (LAMBDA ($3, $4, ctx), ctx);
       }
     | '(' if_ form form ')'
       {
@@ -93,7 +93,7 @@ form
       }
     | INTEGER
       {
-        $$ = cons_integer (&CTX_POOL (ctx), $1);
+        $$ = INTEGER ($1, ctx);
       }
     | '\'' form
       {
@@ -134,7 +134,7 @@ symbol_list
 symbol
   : SYMBOL
     {
-      $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
+      $$ = SYMBOL ($1.str, $1.len, ctx);
     }
   | QUOTE
     {
@@ -145,7 +145,7 @@ symbol
 if_
   : IF
     {
-      $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
+      $$ = SYMBOL ($1.str, $1.len, ctx);
     }
   ;
 

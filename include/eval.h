@@ -19,7 +19,6 @@
 #define FIRST(nptr) ((nptr)->cons.car)
 #define REST(nptr) ((nptr)->cons.cdr)
 
-#define CONS(car, cdr, ctx) (cons_cons (&CTX_POOL (ctx), car, cdr))
 #define LIST1(car, ctx) (CONS (car, NIL, ctx))
 #define LIST2(car, cdr, ctx) (CONS (car, LIST1 (cdr, ctx), ctx))
 

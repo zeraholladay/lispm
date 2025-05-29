@@ -1,14 +1,21 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <limits.h>
+#include <stdarg.h>
 #include <stddef.h>
 
 #include "context.h"
 #include "palloc.h"
 
-#define IS(ptr, T) ((ptr) && (ptr)->type == TYPE_##T)
-#define IS_NOT(ptr, T) (!(IS (ptr, T)))
+#define IS(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
+#define IS_NOT(ptr, x) (!(IS (ptr, x)))
+
+#define INTEGER(integer, ctx) (new (&(ctx)->pool, TYPE_INTEGER, integer))
+#define SYMBOL(str, len, ctx) (new (&(ctx)->pool, TYPE_SYMBOL, str, len))
+#define STRING(str, ctx) (new (&(ctx)->pool, TYPE_STRING, str))
+#define CONS(car, cdr, ctx) (new (&(ctx)->pool, TYPE_CONS, car, cdr))
+#define LAMBDA(params, body, ctx)                                             \
+  (new (&(ctx)->pool, TYPE_LAMBDA, params, body))
 
 struct Cell;
 typedef struct Cell Cell;
@@ -18,15 +25,15 @@ typedef int (*EqFn) (Cell *, Cell *);
 typedef struct Type
 {
   const char *type_name;
-  EqFn eq_fn;
+  EqFn eq;
 } Type;
 
 // Cells
 typedef enum
 {
   TYPE_NIL,        // special constant
-  TYPE_SYMBOL,     // identifiers
   TYPE_INTEGER,    // literal
+  TYPE_SYMBOL,     // identifiers
   TYPE_STRING,     // literal
   TYPE_CONS,       // cons cells
   TYPE_BUILTIN_FN, // builtin fn
@@ -82,10 +89,6 @@ struct Cell
 };
 
 const Type *type (Cell *self);
-Cell *cons_lambda (Pool **p, Cell *params, Cell *body);
-Cell *cons_integer (Pool **p, Integer i);
-Cell *cons_cons (Pool **p, Cell *car, Cell *cdr);
-Cell *cons_string (Pool **p, char *str);
-Cell *cons_symbol (Pool **p, const char *str, size_t len);
+Cell *new (Pool **p, TypeEnum type, ...);
 
 #endif

@@ -8,7 +8,7 @@ eval_eq (Cell *args, Context *ctx)
   Cell *car = CAR (args);
   Cell *card = CAR (CDR (args));
 
-  EqFn fn = type (car)->eq_fn;
+  EqFn fn = type (car)->eq;
 
   if (fn (CAR (args), card))
     {
@@ -22,7 +22,7 @@ Cell *
 eval_not (Cell *args, Context *ctx)
 {
   (void)ctx;
-  EqFn nil_eq_fn = type (NIL)->eq_fn;
+  EqFn nil_eq = type (NIL)->eq;
 
   if (!LISTP (args))
     {
@@ -30,5 +30,5 @@ eval_not (Cell *args, Context *ctx)
       return NULL;
     }
 
-  return nil_eq_fn (NIL, CAR (args)) ? T : NIL;
+  return nil_eq (NIL, CAR (args)) ? T : NIL;
 }
