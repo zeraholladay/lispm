@@ -1,5 +1,4 @@
 #include <check.h>
-#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,8 +13,6 @@ extern void lispm_destroy (Context *ctx);
 
 static Cell *progn = NULL;
 static Context ctx = {};
-
-jmp_buf eval_error_jmp;
 
 static void
 setup (void)
