@@ -10,11 +10,12 @@
 #define IS(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 #define IS_NOT(ptr, x) (!(IS (ptr, x)))
 
-#define INTEGER(ctx, str, integer) (new (&(ctx)->p, TYPE_INTEGER, integer))
-#define SYMBOL(ctx, str, len, ctx) (new (&(ctx)->p, TYPE_SYMBOL, str, len))
-#define STRING(str) (new (&(ctx)->p, TYPE_STRING, str))
-#define CONS(car, cdr, ctx) (new (&(ctx)->p, TYPE_CONS, car, cdr))
-#define LAMBDA(car, params, body, ctx) (new (&(ctx)->p, TYPE_LAMBDA, params, body))
+#define INTEGER(integer, ctx) (new (&(ctx)->pool, TYPE_INTEGER, integer))
+#define SYMBOL(str, len, ctx) (new (&(ctx)->pool, TYPE_SYMBOL, str, len))
+#define STRING(str, ctx) (new (&(ctx)->pool, TYPE_STRING, str))
+#define CONS(car, cdr, ctx) (new (&(ctx)->pool, TYPE_CONS, car, cdr))
+#define LAMBDA(params, body, ctx)                                             \
+  (new (&(ctx)->pool, TYPE_LAMBDA, params, body))
 
 struct Cell;
 typedef struct Cell Cell;

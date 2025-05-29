@@ -578,7 +578,7 @@ eval_length (Cell *args, Context *ctx)
       raise (ERR_INVALID_ARG, "len");
       return NULL;
     }
-  return INTEGER (ctx, length (car));
+  return INTEGER (length (car), ctx);
 }
 
 Cell *
@@ -673,5 +673,5 @@ eval_set (Cell *args, Context *ctx)
 Cell *
 eval_string (Cell *args, Context *ctx)
 {
-  return STRING (ctx, format (FIRST (args)));
+  return STRING (format (CAR (args)), ctx);
 }

@@ -31,7 +31,7 @@ lispm_init (Context *ctx)
   Cell *nil = KEYWORD (NIL);
   CAR (nil) = CDR (nil) = nil;
 
-  CTX_POOL (ctx) = pool_init (OBJ_POOL_CAPACITY, sizeof (Cell));
+  ctx->pool = pool_init (OBJ_POOL_CAPACITY, sizeof (Cell));
   ctx->env = env_create ();
 }
 
@@ -39,7 +39,7 @@ void
 lispm_destroy (Context *ctx)
 {
   env_destroy (ctx->env);
-  pool_destroy_hier (&CTX_POOL (ctx));
+  pool_destroy_hier (&ctx->pool);
 }
 
 int

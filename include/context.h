@@ -4,9 +4,11 @@
 #include "env.h"
 #include "palloc.h"
 
+#define CTX_POOL(ctx) ((ctx)->p)
+
 typedef struct Context
 {
-  Pool *p;
+  Pool *pool;
   Env *env;
 } Context;
 
