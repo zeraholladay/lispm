@@ -23,7 +23,7 @@ static BuiltinFn builtin_first    = { .name = "FIRST",   .sform = 0, .arity =  1
 static BuiltinFn builtin_funcall  = { .name = "FUNCALL", .sform = 1, .arity = -1, .fn = eval_funcall    };
 static BuiltinFn builtin_gt       = { .name = "GT",      .sform = 0, .arity = -1, .fn = eval_gt         };
 static BuiltinFn builtin_if       = { .name = "IF",      .sform = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_len      = { .name = "LEN",     .sform = 0, .arity =  1, .fn = eval_len        };
+static BuiltinFn builtin_length   = { .name = "LENGTH",  .sform = 0, .arity =  1, .fn = eval_length     };
 static BuiltinFn builtin_last     = { .name = "LAST",    .sform = 0, .arity =  1, .fn = eval_last       };
 static BuiltinFn builtin_mapcar   = { .name = "MAPCAR",  .sform = 0, .arity = -1, .fn = eval_mapcar     };
 static BuiltinFn builtin_lt       = { .name = "LT",      .sform = 0, .arity = -1, .fn = eval_lt         };
@@ -73,7 +73,7 @@ GT,      { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_gt       },
 >,       { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_gt       },
 IF,      { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_if       },
 LAST,    { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_last     },
-LEN,     { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_len      },
+LENGTH,  { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_length   },
 LT,      { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_lt       },
 <,       { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_lt       },
 MAPCAR,  { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_mapcar   },
@@ -106,7 +106,7 @@ keyword_lookup (const char *str, size_t len)
   Keyword *keyword = in_word_set(str, len);
   if (keyword)
     {
-      return &keyword->node;
+      return &keyword->cell;
     }
   else
     {

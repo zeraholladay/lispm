@@ -49,7 +49,7 @@ Cell *eval_funcall (Cell *args, Context *ctx);
 Cell *eval_if (Cell *expr, Context *ctx);
 Cell *eval_lambda (Cell *expr, Context *ctx);
 Cell *eval_last (Cell *expr, Context *ctx);
-Cell *eval_len (Cell *args, Context *ctx);
+Cell *eval_length (Cell *args, Context *ctx);
 Cell *eval_list (Cell *args, Context *ctx);
 Cell *eval_mapcar (Cell *args, Context *ctx);
 Cell *eval_nth (Cell *expr, Context *ctx);

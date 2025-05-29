@@ -77,47 +77,47 @@ type (Cell *self)
 Cell *
 cons_lambda (Pool **p, Cell *params, Cell *body)
 {
-  Cell *node = pool_xalloc_hier (p);
-  node->type = TYPE_LAMBDA;
-  node->lambda.params = params;
-  node->lambda.body = body;
-  return node;
+  Cell *cell = pool_xalloc_hier (p);
+  cell->type = TYPE_LAMBDA;
+  cell->lambda.params = params;
+  cell->lambda.body = body;
+  return cell;
 }
 
 Cell *
 cons_integer (Pool **p, Integer i)
 {
-  Cell *node = pool_xalloc_hier (p);
-  node->type = TYPE_INTEGER;
-  node->integer = i;
-  return node;
+  Cell *cell = pool_xalloc_hier (p);
+  cell->type = TYPE_INTEGER;
+  cell->integer = i;
+  return cell;
 }
 
 Cell *
 cons_cons (Pool **p, Cell *car, Cell *cdr)
 {
-  Cell *node = pool_xalloc_hier (p);
-  node->type = TYPE_CONS;
-  CAR (node) = car;
-  CDR (node) = cdr;
-  return node;
+  Cell *cell = pool_xalloc_hier (p);
+  cell->type = TYPE_CONS;
+  CAR (cell) = car;
+  CDR (cell) = cdr;
+  return cell;
 }
 
 Cell *
 cons_string (Pool **p, char *str)
 {
-  Cell *node = pool_xalloc_hier (p);
-  node->type = TYPE_STRING;
-  node->string = str;
-  return node;
+  Cell *cell = pool_xalloc_hier (p);
+  cell->type = TYPE_STRING;
+  cell->string = str;
+  return cell;
 }
 
 Cell *
 cons_symbol (Pool **p, const char *str, size_t len)
 {
-  Cell *node = pool_xalloc_hier (p);
-  node->type = TYPE_SYMBOL;
-  node->symbol.str = str;
-  node->symbol.len = len;
-  return node;
+  Cell *cell = pool_xalloc_hier (p);
+  cell->type = TYPE_SYMBOL;
+  cell->symbol.str = str;
+  cell->symbol.len = len;
+  return cell;
 }

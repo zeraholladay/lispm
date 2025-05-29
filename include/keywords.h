@@ -11,7 +11,7 @@
 typedef struct Keyword
 {
   const char *name;
-  Cell node;
+  Cell cell;
 } Keyword;
 
 /* KEYWORD.gperf */

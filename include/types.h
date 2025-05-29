@@ -8,6 +8,7 @@
 #include "palloc.h"
 
 #define IS(ptr, T) ((ptr) && (ptr)->type == TYPE_##T)
+#define IS_NOT(ptr, T) (!(IS (ptr, T)))
 
 struct Cell;
 typedef struct Cell Cell;

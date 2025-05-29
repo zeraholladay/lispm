@@ -30,8 +30,8 @@ static Cell *reverse_inplace (Cell *list);
 static Cell *zip (Cell *lists, Context *ctx);
 
 // context operations
-static Cell *lookup (Cell *node, Context *ctx);
-static Cell *set (Cell *car, Cell *REST, Context *ctx);
+static Cell *lookup (Cell *cell, Context *ctx);
+static Cell *set (Cell *car, Cell *cdr, Context *ctx);
 
 // funcall & eval
 static Cell *
@@ -427,7 +427,7 @@ zip (Cell *lists, Context *ctx)
 
   Cell **heads = xalloc_scratch (&s, len * sizeof *heads);
 
-  for (size_t i = 0; i < len; i++)
+  for (size_t i = 0; i < len; ++i)
     heads[i] = nth (i, lists);
 
   Cell *out_rev = NIL;
@@ -436,18 +436,19 @@ zip (Cell *lists, Context *ctx)
     {
       int done = 0;
 
-      for (size_t i = 0; i < len; i++)
+      for (size_t i = 0; i < len; ++i)
         if (IS_NIL (heads[i]))
           {
             done = 1;
             break;
           }
+
       if (done)
         break;
 
       Cell *row_rev = NIL;
 
-      for (size_t i = 0; i < len; i++)
+      for (size_t i = 0; i < len; ++i)
         {
           row_rev = CONS (CAR (heads[i]), row_rev, ctx);
           heads[i] = CDR (heads[i]);
@@ -462,14 +463,14 @@ zip (Cell *lists, Context *ctx)
 
 // context operations
 static Cell *
-lookup (Cell *node, Context *ctx)
+lookup (Cell *cell, Context *ctx)
 {
-  const char *key = node->symbol.str;
-  size_t len = node->symbol.len;
+  const char *key = cell->symbol.str;
+  size_t len = cell->symbol.len;
 
-  Cell *kywrd_node = keyword_lookup (key, len);
-  if (kywrd_node)
-    return kywrd_node;
+  Cell *kywrd_cell = keyword_lookup (key, len);
+  if (kywrd_cell)
+    return kywrd_cell;
 
   Cell *res = env_lookup (ctx->env, key);
   if (!res)
@@ -568,7 +569,7 @@ eval_cdr (Cell *args, Context *ctx)
 }
 
 Cell *
-eval_len (Cell *args, Context *ctx)
+eval_length (Cell *args, Context *ctx)
 {
   Cell *car = CAR (args);
 
@@ -583,9 +584,28 @@ eval_len (Cell *args, Context *ctx)
 Cell *
 eval_mapcar (Cell *args, Context *ctx)
 {
+  if (!LISTP (args))
+    {
+      raise (ERR_INVALID_ARG, "mapcar fn l1 ...");
+      return NULL;
+    }
+
   Cell *fn = CAR (args);
-  Cell *arglist = CDR (args);
-  return mapcar (fn, arglist, ctx);
+
+  if (IS_NOT (fn, BUILTIN_FN) && IS_NOT (fn, LAMBDA))
+    {
+      raise (ERR_INVALID_ARG, "mapcar: not a function or lambda");
+      return NULL;
+    }
+
+  for (Cell *item = CDR (args); !IS_NIL (item); item = CDR (item))
+    if (!LISTP (CAR (item)))
+      {
+        raise (ERR_INVALID_ARG, "mapcar: arg is not a list");
+        return NULL;
+      }
+
+  return mapcar (fn, CDR (args), ctx);
 }
 
 Cell *
@@ -593,7 +613,7 @@ eval_nth (Cell *args, Context *ctx)
 {
   (void)ctx;
 
-  if (!IS (args, CONS) || !IS (CAR (args), INTEGER)
+  if (IS_NOT (args, CONS) || IS_NOT (CAR (args), INTEGER)
       || !LISTP (CAR (CDR (args))))
     {
       raise (ERR_ARG_NOT_ITERABLE, "nth: i list");
@@ -642,7 +662,7 @@ eval_reverse (Cell *args, Context *ctx)
 Cell *
 eval_set (Cell *args, Context *ctx)
 {
-  if (!IS (CAR (args), SYMBOL))
+  if (IS_NOT (CAR (args), SYMBOL))
     {
       raise (ERR_INVALID_ARG, "set");
       return NULL;
