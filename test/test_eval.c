@@ -182,13 +182,13 @@ START_TEST (test_len)
 {
   Cell *eval_res = NULL;
 
-  eval_res = run_eval_progn ("(len '())");
+  eval_res = run_eval_progn ("(length '())");
   ck_assert (eval_res->integer == 0);
 
-  eval_res = run_eval_progn ("(len '(a))");
+  eval_res = run_eval_progn ("(length '(a))");
   ck_assert (eval_res->integer == 1);
 
-  eval_res = run_eval_progn ("(len '(a b))");
+  eval_res = run_eval_progn ("(length '(a b))");
   ck_assert (eval_res->integer == 2);
 }
 END_TEST
