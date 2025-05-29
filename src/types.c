@@ -57,13 +57,13 @@ string_eq (Cell *self, Cell *other)
 }
 
 static Type type_tab[] = {
-  [TYPE_NIL] = { .type_name = "NIL", .eq_fn = nil_eq },
-  [TYPE_INTEGER] = { .type_name = "INTEGER", .eq_fn = integer_eq },
-  [TYPE_STRING] = { .type_name = "STRING", .eq_fn = string_eq },
-  [TYPE_SYMBOL] = { .type_name = "SYMBOL", .eq_fn = symbol_eq },
-  [TYPE_CONS] = { .type_name = "CONS", .eq_fn = list_eq },
-  [TYPE_BUILTIN_FN] = { .type_name = "BUILTIN", .eq_fn = builtin_fn_eq },
-  [TYPE_LAMBDA] = { .type_name = "LAMBDA", .eq_fn = lambda_eq },
+  [TYPE_NIL] = { .type_name = "NIL", .eq = nil_eq },
+  [TYPE_INTEGER] = { .type_name = "INTEGER", .eq = integer_eq },
+  [TYPE_STRING] = { .type_name = "STRING", .eq = string_eq },
+  [TYPE_SYMBOL] = { .type_name = "SYMBOL", .eq = symbol_eq },
+  [TYPE_CONS] = { .type_name = "CONS", .eq = list_eq },
+  [TYPE_BUILTIN_FN] = { .type_name = "BUILTIN", .eq = builtin_fn_eq },
+  [TYPE_LAMBDA] = { .type_name = "LAMBDA", .eq = lambda_eq },
 };
 
 const Type *
@@ -75,49 +75,38 @@ type (Cell *self)
 }
 
 Cell *
-cons_lambda (Pool **p, Cell *params, Cell *body)
+new (Pool **p, TypeEnum type, ...)
 {
-  Cell *cell = pool_xalloc_hier (p);
-  cell->type = TYPE_LAMBDA;
-  cell->lambda.params = params;
-  cell->lambda.body = body;
-  return cell;
-}
+  va_list ap;
+  va_start (ap, type);
 
-Cell *
-cons_integer (Pool **p, Integer i)
-{
-  Cell *cell = pool_xalloc_hier (p);
-  cell->type = TYPE_INTEGER;
-  cell->integer = i;
-  return cell;
-}
+  Cell *c = pool_xalloc_hier (p);
+  c->type = type;
 
-Cell *
-cons_cons (Pool **p, Cell *car, Cell *cdr)
-{
-  Cell *cell = pool_xalloc_hier (p);
-  cell->type = TYPE_CONS;
-  CAR (cell) = car;
-  CDR (cell) = cdr;
-  return cell;
-}
-
-Cell *
-cons_string (Pool **p, char *str)
-{
-  Cell *cell = pool_xalloc_hier (p);
-  cell->type = TYPE_STRING;
-  cell->string = str;
-  return cell;
-}
-
-Cell *
-cons_symbol (Pool **p, const char *str, size_t len)
-{
-  Cell *cell = pool_xalloc_hier (p);
-  cell->type = TYPE_SYMBOL;
-  cell->symbol.str = str;
-  cell->symbol.len = len;
-  return cell;
+  switch (type)
+    {
+    case TYPE_LAMBDA:
+      c->lambda.params = va_arg (ap, Cell *);
+      c->lambda.body = va_arg (ap, Cell *);
+      break;
+    case TYPE_INTEGER:
+      c->integer = va_arg (ap, Integer);
+      break;
+    case TYPE_CONS:
+      c->cons.car = va_arg (ap, Cell *);
+      c->cons.cdr = va_arg (ap, Cell *);
+      break;
+    case TYPE_STRING:
+      c->string = va_arg (ap, char *);
+      break;
+    case TYPE_SYMBOL:
+      c->symbol.str = va_arg (ap, const char *);
+      c->symbol.len = va_arg (ap, size_t);
+      break;
+    default:
+      return NIL;
+      break;
+    }
+  va_end (ap);
+  return c;
 }

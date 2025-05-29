@@ -124,7 +124,7 @@ eval_add (Cell *args, Context *ctx)
       sum += CAR (rest)->integer;
     }
 
-  return cons_integer (&CTX_POOL (ctx), sum);
+  returnINTEGER (ctx, sum);
 }
 
 Cell *
@@ -161,7 +161,7 @@ eval_sub (Cell *args, Context *ctx)
       total -= CAR (rest)->integer;
     }
 
-  return cons_integer (&CTX_POOL (ctx), total);
+  returnINTEGER (ctx, total);
 }
 
 Cell *
@@ -198,7 +198,7 @@ eval_mul (Cell *args, Context *ctx)
       result *= CAR (rest)->integer;
     }
 
-  return cons_integer (&CTX_POOL (ctx), result);
+  returnINTEGER (ctx, result);
 }
 
 Cell *
@@ -241,5 +241,5 @@ eval_div (Cell *args, Context *ctx)
       result /= CAR (rest)->integer;
     }
 
-  return cons_integer (&CTX_POOL (ctx), result);
+  returnINTEGER (ctx, result);
 }

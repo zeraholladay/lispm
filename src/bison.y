@@ -93,7 +93,7 @@ form
       }
     | INTEGER
       {
-        $$ = cons_integer (&CTX_POOL (ctx), $1);
+        $$ = INTEGER (ctx, $1);
       }
     | '\'' form
       {
@@ -134,7 +134,7 @@ symbol_list
 symbol
   : SYMBOL
     {
-      $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
+      $$ = SYMBOL (ctx, $1.str, $1.len);
     }
   | QUOTE
     {
@@ -145,7 +145,7 @@ symbol
 if_
   : IF
     {
-      $$ = cons_symbol (&CTX_POOL (ctx), $1.str, $1.len);
+      $$ = SYMBOL (ctx, $1.str, $1.len);
     }
   ;
 

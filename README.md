@@ -248,17 +248,13 @@ Examples:
 In no particular order:
 
 1. Internal call stack.
-1. ~~Environment should be methods on Context.~~
-1. ~~Environment should be a hashed dictionary and not a tree.~~
 1. Generic type-based allocator
 1. Add and mul should return 1 when no args.
 1. Real exceptions
 1. Memory management (tracking)
-1. ~~I/O subsystem (printf is ugly)~~
 1. Docs/README.md
 1. Define/def
 1. Strings (started kind of)
-1. Fix yyarse after pool forever.
 1. Parse errors (exceptions first)
 1. GC
 1. Max symbol size
