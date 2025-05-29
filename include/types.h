@@ -8,11 +8,12 @@
 #include "palloc.h"
 
 #define IS(ptr, T) ((ptr) && (ptr)->type == TYPE_##T)
+#define IS_NOT(ptr, T) (!(IS (ptr, T)))
 
-struct Node;
-typedef struct Node Node;
+struct Cell;
+typedef struct Cell Cell;
 
-typedef int (*EqFn) (Node *, Node *);
+typedef int (*EqFn) (Cell *, Cell *);
 
 typedef struct Type
 {
@@ -20,7 +21,7 @@ typedef struct Type
   EqFn eq_fn;
 } Type;
 
-// Nodes
+// Cells
 typedef enum
 {
   TYPE_NIL,        // special constant
@@ -44,11 +45,11 @@ typedef struct
 
 typedef struct
 {
-  Node *car; // Contents of the Address Register
-  Node *cdr; // Contents of the Decrement Register
+  Cell *car; // Contents of the Address Register
+  Cell *cdr; // Contents of the Decrement Register
 } Cons;
 
-typedef struct Node *(*Fn) (struct Node *, struct Context *);
+typedef struct Cell *(*Fn) (struct Cell *, struct Context *);
 
 typedef struct
 {
@@ -59,11 +60,11 @@ typedef struct
 
 typedef struct
 {
-  Node *params;
-  Node *body;
+  Cell *params;
+  Cell *body;
 } Lambda;
 
-struct Node
+struct Cell
 {
   TypeEnum type;
   union
@@ -80,11 +81,11 @@ struct Node
   };
 };
 
-const Type *type (Node *self);
-Node *cons_lambda (Pool **p, Node *params, Node *body);
-Node *cons_integer (Pool **p, Integer i);
-Node *cons_cons (Pool **p, Node *car, Node *cdr);
-Node *cons_string (Pool **p, char *str);
-Node *cons_symbol (Pool **p, const char *str, size_t len);
+const Type *type (Cell *self);
+Cell *cons_lambda (Pool **p, Cell *params, Cell *body);
+Cell *cons_integer (Pool **p, Integer i);
+Cell *cons_cons (Pool **p, Cell *car, Cell *cdr);
+Cell *cons_string (Pool **p, char *str);
+Cell *cons_symbol (Pool **p, const char *str, size_t len);
 
 #endif

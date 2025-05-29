@@ -12,7 +12,7 @@
 extern void lispm_init (Context *ctx);
 extern void lispm_destroy (Context *ctx);
 
-static Node *progn = NULL;
+static Cell *progn = NULL;
 static Context ctx = {};
 
 jmp_buf eval_error_jmp;
@@ -29,7 +29,7 @@ teardown (void)
   lispm_destroy (&ctx);
 }
 
-static Node *
+static Cell *
 run_eval_progn (const char *input)
 {
   ck_assert (parser_buf (input, &progn, &ctx));
@@ -42,7 +42,7 @@ run_eval_progn (const char *input)
 
 START_TEST (test_literal_expressions)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("42");
   ck_assert (eval_res->integer == 42);
@@ -63,9 +63,9 @@ END_TEST
 
 START_TEST (test_quote)
 {
-  Node *eval_res = NULL;
-  Node *car = NULL;
-  Node *cdr = NULL;
+  Cell *eval_res = NULL;
+  Cell *car = NULL;
+  Cell *cdr = NULL;
 
   // NULL progn
   eval_res = run_eval_progn ("()");
@@ -90,9 +90,9 @@ END_TEST
 
 START_TEST (test_cons)
 {
-  Node *eval_res = NULL;
-  Node *car = NULL;
-  Node *cdr = NULL;
+  Cell *eval_res = NULL;
+  Cell *car = NULL;
+  Cell *cdr = NULL;
 
   eval_res = run_eval_progn ("(cons 'foo 'bar)");
   ck_assert (!IS_NIL (eval_res));
@@ -112,7 +112,7 @@ END_TEST
 
 START_TEST (test_set_and_lookup)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(set 'foo 42)");
   ck_assert (eval_res->integer == 42);
@@ -133,7 +133,7 @@ END_TEST
 
 START_TEST (test_first)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(first '())");
   ck_assert (IS_NIL (eval_res));
@@ -156,7 +156,7 @@ END_TEST
 
 START_TEST (test_rest)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(rest '())");
   ck_assert (IS_NIL (eval_res));
@@ -180,22 +180,22 @@ END_TEST
 
 START_TEST (test_len)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
-  eval_res = run_eval_progn ("(len '())");
+  eval_res = run_eval_progn ("(length '())");
   ck_assert (eval_res->integer == 0);
 
-  eval_res = run_eval_progn ("(len '(a))");
+  eval_res = run_eval_progn ("(length '(a))");
   ck_assert (eval_res->integer == 1);
 
-  eval_res = run_eval_progn ("(len '(a b))");
+  eval_res = run_eval_progn ("(length '(a b))");
   ck_assert (eval_res->integer == 2);
 }
 END_TEST
 
 START_TEST (test_if)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(if T 1 2)");
   ck_assert_int_eq (eval_res->integer, 1);
@@ -216,7 +216,7 @@ END_TEST
 
 START_TEST (test_list)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(list)");
   ck_assert (IS_NIL (eval_res));
@@ -232,7 +232,7 @@ START_TEST (test_list)
   ck_assert (IS_NIL (CDR (CDR (CDR (eval_res)))));
 
   eval_res = run_eval_progn ("(list 'a 'b)");
-  Node *second = CAR (CDR (eval_res));
+  Cell *second = CAR (CDR (eval_res));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "a");
   ck_assert_str_eq (second->symbol.str, "b");
   ck_assert (IS_NIL (CDR (CDR (eval_res))));
@@ -241,7 +241,7 @@ END_TEST
 
 START_TEST (test_lambda)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   // define
   eval_res = run_eval_progn ("(lambda () ())");
@@ -279,9 +279,9 @@ END_TEST
 
 START_TEST (test_apply)
 {
-  Node *eval_res = NULL;
-  Node *car = NULL;
-  Node *cdr = NULL;
+  Cell *eval_res = NULL;
+  Cell *car = NULL;
+  Cell *cdr = NULL;
 
   eval_res = run_eval_progn ("(apply (lambda () ()) '())");
   ck_assert (IS_NIL (eval_res));
@@ -314,9 +314,9 @@ END_TEST
 
 START_TEST (test_funcall)
 {
-  Node *eval_res = NULL;
-  Node *car = NULL;
-  Node *cdr = NULL;
+  Cell *eval_res = NULL;
+  Cell *car = NULL;
+  Cell *cdr = NULL;
 
   eval_res = run_eval_progn ("(funcall (lambda () ()))");
   ck_assert (IS_NIL (eval_res));
@@ -347,7 +347,7 @@ END_TEST
 
 START_TEST (test_eval)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(eval 42)");
   ck_assert (eval_res->integer == 42);
@@ -362,7 +362,7 @@ END_TEST
 
 START_TEST (test_last)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(last '(1 2 3 42))");
   ck_assert (eval_res->integer == 42);
@@ -371,7 +371,7 @@ END_TEST
 
 START_TEST (test_butlast)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(apply + (BUTLAST '(1 2 3 4)))");
   ck_assert (eval_res->integer == 6);
@@ -384,7 +384,7 @@ END_TEST
 // ("string" 3)) (mapcar #'* '(3 4 5) '(4 5 6)) => (12 20 30)
 START_TEST (test_mapcar)
 {
-  Node *eval_res = NULL;
+  Cell *eval_res = NULL;
 
   eval_res
       = run_eval_progn ("(apply + (mapcar (lambda (x) (+ x 10)) '(1 2 3 4)))");

@@ -24,12 +24,12 @@ void yyerror_handler (Context * ctx, const char *s);
 #include "types.h"
 }
 
-%parse-param {Node **progn} {Context *ctx}
+%parse-param {Cell **progn} {Context *ctx}
 
 %union
 {
   Integer integer;
-  Node *node;
+  Cell *cell;
   struct {
     const char *str;
     size_t len;
@@ -40,7 +40,7 @@ void yyerror_handler (Context * ctx, const char *s);
 %token <integer> INTEGER
 %token <symbol>  IF SYMBOL
 
-%type <node>
+%type <cell>
   program
   forms
   form

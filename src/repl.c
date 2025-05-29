@@ -28,10 +28,10 @@ extern jmp_buf eval_error_jmp;
 void
 lispm_init (Context *ctx)
 {
-  Node *nil = KEYWORD (NIL);
+  Cell *nil = KEYWORD (NIL);
   CAR (nil) = CDR (nil) = nil;
 
-  CTX_POOL (ctx) = pool_init (OBJ_POOL_CAPACITY, sizeof (Node));
+  CTX_POOL (ctx) = pool_init (OBJ_POOL_CAPACITY, sizeof (Cell));
   ctx->env = env_create ();
 }
 
@@ -43,11 +43,11 @@ lispm_destroy (Context *ctx)
 }
 
 int
-lispm_eval_progn (Node *parse_head, Context *ctx)
+lispm_eval_progn (Cell *parse_head, Context *ctx)
 {
   if (setjmp (eval_error_jmp) == 0)
     {
-      Node *eval_result = eval_progn (parse_head, ctx);
+      Cell *eval_result = eval_progn (parse_head, ctx);
       PRINT (eval_result);
       return 0;
     }
@@ -58,7 +58,7 @@ lispm_eval_progn (Node *parse_head, Context *ctx)
 int
 lispm_repl (Context *ctx)
 {
-  Node *progn = NULL;
+  Cell *progn = NULL;
   char input[RL_BUF_SIZ];
 
   rl_init ();
@@ -114,7 +114,7 @@ lispm_main (int argc, char **argv)
 
   for (int i = 0; i < argc; ++i)
     {
-      Node *progn = NULL;
+      Cell *progn = NULL;
       FILE *in = fopen (argv[i], "r");
 
       bool res = parser_stream (in, &progn, &ctx);

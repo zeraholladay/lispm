@@ -17,9 +17,9 @@ list_xresize (List *list, size_t min_capacity)
       new_capacity += (new_capacity >> 3) + (new_capacity < 9 ? 3 : 6);
     }
 
-  void **new_nodes = xrealloc (list->items, new_capacity * sizeof (void *));
+  void **ptr = xrealloc (list->items, new_capacity * sizeof (void *));
 
-  list->items = new_nodes;
+  list->items = ptr;
   list->capacity = new_capacity;
 
   return true;

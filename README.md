@@ -31,7 +31,7 @@ env DEBUG=1 make clean test all
 - Integers
 - Lambda
 - Primitive functions (C functions)
-- List (i.e. a Node)
+- List (i.e. a Cell)
 
 ## Primitives (or Operators)
 

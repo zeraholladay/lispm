@@ -1,12 +1,12 @@
 #include "error.h"
 #include "eval.h"
 
-Node *
-eval_eq (Node *args, Context *ctx)
+Cell *
+eval_eq (Cell *args, Context *ctx)
 {
   (void)ctx;
-  Node *car = CAR (args);
-  Node *card = CAR (CDR (args));
+  Cell *car = CAR (args);
+  Cell *card = CAR (CDR (args));
 
   EqFn fn = type (car)->eq_fn;
 
@@ -18,8 +18,8 @@ eval_eq (Node *args, Context *ctx)
   return NIL;
 }
 
-Node *
-eval_not (Node *args, Context *ctx)
+Cell *
+eval_not (Cell *args, Context *ctx)
 {
   (void)ctx;
   EqFn nil_eq_fn = type (NIL)->eq_fn;

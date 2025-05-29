@@ -7,15 +7,15 @@
 
 #include "types.h"
 
-#define PRINT(node)                                                           \
+#define PRINT(cell)                                                           \
   do                                                                          \
     {                                                                         \
-      char *str = format (node);                                              \
+      char *str = format (cell);                                              \
       puts (str);                                                             \
       free (str);                                                             \
     }                                                                         \
   while (0)
 
-char *format (Node *n);
+char *format (Cell *n);
 
 #endif
