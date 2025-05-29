@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "error.h"
 #include "eval.h"
 #include "format.h"
 #include "xalloc.h"
@@ -25,12 +26,14 @@ static void fmt_cons (StrBuf *, Cell *);
 static void fmt_builtin_fn (StrBuf *, Cell *);
 static void fmt_lambda (StrBuf *, Cell *);
 static void fmt_unknown (StrBuf *, Cell *);
+static void fmt_error (StrBuf *, Cell *);
 
 static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
   [TYPE_NIL] = fmt_nil,         [TYPE_SYMBOL] = fmt_symbol,
   [TYPE_INTEGER] = fmt_integer, [TYPE_STRING] = fmt_string,
   [TYPE_CONS] = fmt_cons,       [TYPE_BUILTIN_FN] = fmt_builtin_fn,
   [TYPE_LAMBDA] = fmt_lambda,   [TYPE_UNKNOWN] = fmt_unknown,
+  [TYPE_ERROR] = fmt_error,
 };
 
 static void
@@ -155,6 +158,15 @@ fmt_lambda (StrBuf *sb, Cell *n)
 
   free (params_str);
   free (body_str);
+}
+
+void
+fmt_error (StrBuf *sb, Cell *c)
+{
+  char *cell_str = format (c->error.cell);
+  appendf (sb, "*** error: %s: %s", error_messages[c->error.err_code],
+           cell_str);
+  free (cell_str);
 }
 
 void

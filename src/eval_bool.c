@@ -25,10 +25,7 @@ eval_not (Cell *args, Context *ctx)
   EqFn nil_eq = type (NIL)->eq;
 
   if (!LISTP (args))
-    {
-      raise (ERR_INVALID_ARG, "not");
-      return NULL;
-    }
+    return ERROR (ERR_INVALID_ARG, "not", ctx);
 
   return nil_eq (NIL, CAR (args)) ? T : NIL;
 }

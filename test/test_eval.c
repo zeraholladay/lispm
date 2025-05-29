@@ -1,5 +1,4 @@
 #include <check.h>
-#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,8 +13,6 @@ extern void lispm_destroy (Context *ctx);
 
 static Cell *progn = NULL;
 static Context ctx = {};
-
-jmp_buf eval_error_jmp;
 
 static void
 setup (void)
@@ -142,15 +139,8 @@ START_TEST (test_first)
   ck_assert (IS (eval_res, SYMBOL));
   ck_assert_str_eq (eval_res->symbol.str, "foo");
 
-  if (setjmp (eval_error_jmp) == 0)
-    {
-      eval_res = run_eval_progn ("(first)");
-      ck_assert (0);
-    }
-  else
-    {
-      ck_assert (1);
-    }
+  eval_res = run_eval_progn ("(first)");
+  ck_assert (IS (eval_res, ERROR));
 }
 END_TEST
 
@@ -166,15 +156,8 @@ START_TEST (test_rest)
   ck_assert (IS (CAR (eval_res), SYMBOL));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
 
-  if (setjmp (eval_error_jmp) == 0)
-    {
-      eval_res = run_eval_progn ("(rest)");
-      ck_assert (0);
-    }
-  else
-    {
-      ck_assert (1);
-    }
+  eval_res = run_eval_progn ("(rest)");
+  ck_assert (IS (eval_res, ERROR));
 }
 END_TEST
 

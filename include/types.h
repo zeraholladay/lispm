@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 #include "context.h"
+#include "error.h"
 #include "palloc.h"
 
 #define IS(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
@@ -16,7 +17,10 @@
 #define CONS(car, cdr, ctx) (new (&(ctx)->pool, TYPE_CONS, car, cdr))
 #define LAMBDA(params, body, ctx)                                             \
   (new (&(ctx)->pool, TYPE_LAMBDA, params, body))
+#define ERROR(err_code, msg, ctx)                                             \
+  (new (&(ctx)->pool, TYPE_ERROR, err_code, STRING (msg, ctx)))
 
+// forward decls
 struct Cell;
 typedef struct Cell Cell;
 
@@ -38,6 +42,7 @@ typedef enum
   TYPE_CONS,       // cons cells
   TYPE_BUILTIN_FN, // builtin fn
   TYPE_LAMBDA,     // user-defined fn
+  TYPE_ERROR,      // error
   TYPE_UNKNOWN,    // unknown ptr
   _TYPE_END        // entinel for end
 } TypeEnum;
@@ -71,6 +76,12 @@ typedef struct
   Cell *body;
 } Lambda;
 
+typedef struct
+{
+  ErrorCode err_code;
+  Cell *cell;
+} Error;
+
 struct Cell
 {
   TypeEnum type;
@@ -85,6 +96,8 @@ struct Cell
     // Function-like values
     const BuiltinFn *builtin_fn;
     Lambda lambda;
+    // Error
+    Error error;
   };
 };
 

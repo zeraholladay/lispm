@@ -1,5 +1,4 @@
 #include <check.h>
-#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,8 +13,6 @@ extern void lispm_destroy (Context *ctx);
 
 static Cell *progn = NULL;
 static Context ctx = {};
-
-jmp_buf eval_error_jmp;
 
 static void
 setup (void)
@@ -127,16 +124,8 @@ START_TEST (test_div)
   eval_res = run_eval_progn ("(div 42)");
   ck_assert_int_eq (eval_res->integer, 42);
 
-  if (setjmp (eval_error_jmp) == 0)
-    {
-
-      eval_res = run_eval_progn ("(div 10 0)");
-      ck_assert (0);
-    }
-  else
-    {
-      ck_assert (1);
-    }
+  eval_res = run_eval_progn ("(div 10 0)");
+  ck_assert (IS (eval_res, ERROR));
 }
 END_TEST
 

@@ -31,6 +31,4 @@ static const char *error_messages[]
         [ERR_ARG_NOT_ITERABLE] = "Argument is not iterable when expected",
         [ERR_DIVISION_BY_0] = "Division by zero" };
 
-void raise (ErrorCode err_code, const char *msg);
-
 #endif

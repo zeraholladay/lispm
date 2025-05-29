@@ -1,4 +1,3 @@
-#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -23,8 +22,6 @@ extern int optreset;
 #define OBJ_POOL_CAPACITY 4096
 #endif
 
-extern jmp_buf eval_error_jmp;
-
 void
 lispm_init (Context *ctx)
 {
@@ -45,14 +42,9 @@ lispm_destroy (Context *ctx)
 int
 lispm_eval_progn (Cell *parse_head, Context *ctx)
 {
-  if (setjmp (eval_error_jmp) == 0)
-    {
-      Cell *eval_result = eval_progn (parse_head, ctx);
-      PRINT (eval_result);
-      return 0;
-    }
-
-  return 1;
+  Cell *eval_result = eval_progn (parse_head, ctx);
+  PRINT (eval_result);
+  return 0;
 }
 
 int
