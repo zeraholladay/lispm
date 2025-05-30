@@ -170,7 +170,7 @@ eval (Cell *form, Context *ctx)
   if (IS (form, SYMBOL))
     return lookup (form, ctx);
 
-  // LITERALS: NUMBERS, STRINGS, ETC.
+  // literals, numbers, strings, etc.
   if (!LISTP (form))
     return form;
 

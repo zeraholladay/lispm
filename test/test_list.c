@@ -78,18 +78,91 @@ START_TEST (test_remove_index_edges)
 }
 END_TEST
 
+START_TEST (test_copy)
+{
+  List *lst_cpy = NULL;
+  int v[3] = { 1, 2, 3 };
+
+  // empty
+  lst_cpy = list_copy (lst);
+  ck_assert_int_eq (lst_cpy->count, 0);
+  list_destroy (lst_cpy);
+
+  list_append (lst, &v[0]);
+  lst_cpy = list_copy (lst);
+  ck_assert_int_eq (lst_cpy->count, 1);
+  ck_assert_ptr_eq (lst_cpy->items[0], &v[0]);
+  list_destroy (lst_cpy);
+
+  list_append (lst, &v[1]);
+  lst_cpy = list_copy (lst);
+  ck_assert_int_eq (lst_cpy->count, 2);
+  ck_assert_ptr_eq (lst_cpy->items[1], &v[1]);
+  list_destroy (lst_cpy);
+
+  list_append (lst, &v[2]);
+  lst_cpy = list_copy (lst);
+  ck_assert_int_eq (lst_cpy->count, 3);
+  ck_assert_ptr_eq (lst_cpy->items[2], &v[2]);
+  list_destroy (lst_cpy);
+}
+END_TEST
+
+START_TEST (test_reverse)
+{
+  // empty list
+  list_reverse (lst);
+  ck_assert_int_eq (lst->count, 0);
+
+  // one item
+  List *lst1 = list_create ();
+  int v1[1] = { 1 };
+  list_append (lst1, &v1[0]);
+  list_reverse (lst1);
+  ck_assert_int_eq (lst1->count, 1);
+  ck_assert_ptr_eq (lst1->items[0], &v1[0]);
+  list_destroy (lst1);
+
+  // two items (even)
+  List *lst2 = list_create ();
+  int v2[2] = { 1, 2 };
+  list_append (lst2, &v2[0]);
+  list_append (lst2, &v2[1]);
+  list_reverse (lst2);
+  ck_assert_int_eq (lst2->count, 2);
+  ck_assert_ptr_eq (lst2->items[0], &v2[1]);
+  ck_assert_ptr_eq (lst2->items[1], &v2[0]);
+  list_destroy (lst2);
+
+  // two three (odd)
+  List *lst3 = list_create ();
+  int v3[3] = { 1, 2, 3 };
+  list_append (lst3, &v3[0]);
+  list_append (lst3, &v3[1]);
+  list_append (lst3, &v3[2]);
+  list_reverse (lst3);
+  ck_assert_int_eq (lst3->count, 3);
+  ck_assert_ptr_eq (lst3->items[0], &v3[2]);
+  ck_assert_ptr_eq (lst3->items[1], &v3[1]);
+  ck_assert_ptr_eq (lst3->items[2], &v3[0]);
+  list_destroy (lst3);
+}
+END_TEST
+
 Suite *
 list_suite (void)
 {
   Suite *s = suite_create ("List");
 
-  TCase *tc_core = tcase_create ("Core");
-  tcase_add_checked_fixture (tc_core, setup, teardown);
-  tcase_add_test (tc_core, test_append_and_count);
-  tcase_add_test (tc_core, test_capacity_growth);
-  tcase_add_test (tc_core, test_remove_index_middle);
-  tcase_add_test (tc_core, test_remove_index_edges);
-  suite_add_tcase (s, tc_core);
+  TCase *tc = tcase_create ("Core");
+  tcase_add_checked_fixture (tc, setup, teardown);
+  tcase_add_test (tc, test_append_and_count);
+  tcase_add_test (tc, test_capacity_growth);
+  tcase_add_test (tc, test_remove_index_middle);
+  tcase_add_test (tc, test_remove_index_edges);
+  tcase_add_test (tc, test_copy);
+  tcase_add_test (tc, test_reverse);
+  suite_add_tcase (s, tc);
 
   return s;
 }
