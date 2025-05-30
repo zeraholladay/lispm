@@ -4,23 +4,23 @@
 #include "safe_str.h"
 #include "xalloc.h"
 
-static bool list_xresize (List *list, size_t min_capacity);
+static bool list_xresize (List *lst, size_t min_capacity);
 
 // thanks python
 static bool
-list_xresize (List *list, size_t min_capacity)
+list_xresize (List *lst, size_t min_capacity)
 {
-  size_t new_capacity = list->capacity;
+  size_t new_capacity = lst->capacity;
 
   while (new_capacity < min_capacity)
     {
       new_capacity += (new_capacity >> 3) + (new_capacity < 9 ? 3 : 6);
     }
 
-  void **ptr = xrealloc (list->items, new_capacity * sizeof (void *));
+  void **ptr = xrealloc (lst->items, new_capacity * sizeof (void *));
 
-  list->items = ptr;
-  list->capacity = new_capacity;
+  lst->items = ptr;
+  lst->capacity = new_capacity;
 
   return true;
 }
@@ -28,42 +28,68 @@ list_xresize (List *list, size_t min_capacity)
 List *
 list_create (void)
 {
-  List *list = xcalloc (1, sizeof (List));
+  List *lst = xcalloc (1, sizeof (List));
 
-  list->items = xcalloc (HEAP_LIST_INIT_CAPACITY, sizeof *(list->items));
-  list->capacity = HEAP_LIST_INIT_CAPACITY;
-  list->count = 0;
+  lst->items = xcalloc (HEAP_LIST_INIT_CAPACITY, sizeof *(lst->items));
+  lst->capacity = HEAP_LIST_INIT_CAPACITY;
+  lst->count = 0;
 
-  return list;
+  return lst;
 }
 
 void
-list_destroy (List *list)
+list_destroy (List *lst)
 {
-  free (list->items);
-  free (list);
+  free (lst->items);
+  free (lst);
 }
 
 bool
-list_append (List *list, void *item)
+list_append (List *lst, void *item)
 {
-  if (list->count >= list->capacity)
-    list_xresize (list, list->count + 1);
+  if (lst->count >= lst->capacity)
+    list_xresize (lst, lst->count + 1);
 
-  list->items[list->count++] = item;
+  lst->items[lst->count++] = item;
   return true;
 }
 
-void
-list_remove_index (List *list, size_t i)
+List *
+list_copy (List *lst)
 {
-  if (i >= list->count)
+  List *new = list_create ();
+
+  for (size_t i = 0; i < lst->count; ++i)
+    list_append (new, lst->items[i]);
+
+  return new;
+}
+
+void
+list_remove_index (List *lst, size_t i)
+{
+  if (i >= lst->count)
     return;
 
-  for (size_t j = i + 1; j < list->count; ++j)
-    {
-      list->items[j - 1] = list->items[j];
-    }
+  for (size_t j = i + 1; j < lst->count; ++j)
+    lst->items[j - 1] = lst->items[j];
 
-  list->count--;
+  lst->count--;
+}
+
+void
+list_reverse (List *lst)
+{
+  if (!lst->count)
+    return;
+
+  size_t start = 0;
+  size_t end = lst->count - 1;
+
+  while (start < end)
+    {
+      void *tmp = lst->items[start];
+      lst->items[start++] = lst->items[end];
+      lst->items[end--] = tmp;
+    }
 }
