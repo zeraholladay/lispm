@@ -56,6 +56,7 @@ appendf (StrBuf *sb, const char *fmt, ...)
       if (n < 0)
         {
           va_end (ap);
+          perror ("format error");
           return;
         }
       else if ((size_t)n >= avail)
@@ -145,7 +146,7 @@ fmt_cons (StrBuf *sb, Cell *n)
 void
 fmt_builtin_fn (StrBuf *sb, Cell *n)
 {
-  return appendf (sb, "#<BUILTIN-FUNCTION %S>", n->builtin_fn->name);
+  return appendf (sb, "#<BUILTIN-FUNCTION %s>", n->builtin_fn->name);
 }
 
 void
