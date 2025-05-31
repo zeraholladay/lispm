@@ -282,9 +282,7 @@ or_form (Cell *form, Context *ctx)
       eval_res = eval (CAR (form), ctx);
 
       if (!nil_eq (NIL, eval_res))
-        {
-          return eval_res;
-        }
+        return eval_res;
 
       form = CDR (form);
     }
@@ -309,13 +307,37 @@ append_inplace (Cell *list1, Cell *list2)
   return list1;
 }
 
+// APPEND function concatenates list arguments into one list.
+// Resulting list is shallow cpy of specified lists except for the last which
+// is directly shared.
 static Cell *
 append_list (Cell *list1, Cell *list2, Context *ctx)
 {
   if (IS_NIL (list1))
     return list2;
 
-  return CONS (CAR (list1), append_list (CDR (list1), list2, ctx), ctx);
+  Cell *new_head = NULL;
+  Cell *new_tail = NULL;
+
+  for (Cell *l1 = list1; !IS_NIL (l1); l1 = CDR (l1))
+    {
+      Cell *cpy = CONS (CAR (l1), NIL, ctx);
+
+      if (new_head == NULL)
+        {
+          new_head = cpy;
+          new_tail = cpy;
+        }
+      else
+        {
+          RPLACD (new_tail, cpy);
+          new_tail = cpy;
+        }
+    }
+
+  RPLACD (new_tail, list2);
+
+  return new_head;
 }
 
 static Cell *
@@ -497,10 +519,8 @@ eval_append (Cell *args, Context *ctx)
 
   Cell *result = CAR (args);
 
-  for (Cell *list = CDR (args); args != NIL; args = CDR (args))
-    {
-      result = append_list (result, CAR (list), ctx);
-    }
+  for (Cell *lst = CDR (args); !IS_NIL (lst); lst = CDR (lst))
+    result = append_list (result, CAR (lst), ctx);
 
   return result;
 }
