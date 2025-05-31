@@ -155,13 +155,13 @@ eval_funcall (Cell *args, Context *ctx)
 Cell *
 eval_list (Cell *args, Context *ctx)
 {
-  if (IS_NIL (args))
-    return NIL;
-
-  Cell *car = eval (CAR (args), ctx);
-  Cell *cdr = eval_list (CDR (args), ctx);
-
-  return CONS (car, cdr, ctx);
+  Cell *rev = NIL;
+  for (Cell *c = args; !IS_NIL (c); c = CDR (c))
+    {
+      Cell *eval_res = eval (CAR (c), ctx);
+      rev = CONS (eval_res, rev, ctx);
+    }
+  return reverse_inplace (rev);
 }
 
 Cell *
