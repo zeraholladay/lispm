@@ -91,7 +91,7 @@ eval (Cell *form, Context *ctx)
 
       Cell *fn = eval (car, ctx);
 
-      if (IS (fn, BUILTIN_FN) && fn->builtin_fn->sform)
+      if (IS (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
         {
           if (fn == KEYWORD (APPLY))
             return eval_apply (cdr, ctx);

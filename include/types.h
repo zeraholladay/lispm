@@ -66,7 +66,7 @@ typedef struct Cell *(*Fn) (struct Cell *, struct Context *);
 typedef struct
 {
   const char *name;
-  int sform, arity;
+  int is_lispm, arity;
   Fn fn;
 } BuiltinFn;
 

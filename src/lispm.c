@@ -4,17 +4,20 @@
 #include <stdbool.h>
 
 #include "debug.h"
+#include "error.h"
 #include "eval.h"
+#include "format.h"
 #include "lispm_utils.h"
 #include "types.h"
 #include "xalloc.h"
 
 #define POP(lm) ((lm)->stk.cells[--(lm)->stk.sp])
-#define PUSH(lm, ...)                                                         \
+#define PUSH(__lm, __val)                                                     \
   do                                                                          \
     {                                                                         \
-      if (!lipm_stk_push (lm, __VA_ARGS__, NULL))                             \
+      if ((__lm)->stk.sp >= LISPM_STK_MAX)                                    \
         goto overflow;                                                        \
+      (__lm)->stk.cells[(__lm)->stk.sp++] = __val;                            \
     }                                                                         \
   while (0)
 
@@ -47,12 +50,19 @@ typedef struct state
     } EVAL;
     struct
     {
-      Cell *fn;
+      Cell *fn, *arglist;
     } FUNCALL;
     struct
     {
-      Cell *arglist;
-      Cell *acc;
+      Cell *fn, *arglist;
+    } APPLY;
+    struct
+    {
+      Cell *fn, *arglist;
+    } LISPM;
+    struct
+    {
+      Cell *acc, *arglist;
     } LIST;
   };
 } State;
@@ -86,26 +96,6 @@ lm_secd_destroy (LMSecd *lm)
   env_destroy (lm->env);
 }
 
-static inline bool
-lipm_stk_push (LMSecd *lm, ...)
-{
-  va_list ap;
-  Cell *val;
-
-  va_start (ap, lm);
-  while ((val = va_arg (ap, Cell *)))
-    {
-      if (lm->stk.sp >= LISPM_STK_MAX)
-        {
-          va_end (ap);
-          return false;
-        }
-      lm->stk.cells[lm->stk.sp++] = val;
-    }
-  va_end (ap);
-  return true;
-}
-
 static Cell *
 lispm (LMSecd *lm, Context *ctx)
 {
@@ -134,14 +124,14 @@ lispm (LMSecd *lm, Context *ctx)
             continue;
           }
 
-        // literals, numbers, strings, etc.
+        // literals: numbers, strings, etc.
         if (!LISTP (arg))
           {
             PUSH (lm, arg);
             continue;
           }
 
-        // lists
+        // cons and NIL
         if (LISTP (arg))
           {
             if (IS_NIL (arg))
@@ -165,7 +155,7 @@ lispm (LMSecd *lm, Context *ctx)
                 continue;
               }
 
-            // __EVAL_CONT:
+            // to __EVAL_CONT:
             STATE_PUSH (lm, ((State){ .state = EVAL_CONT, .EVAL.arg = cdr }));
             STATE_PUSH (lm, ((State){ .state = EVAL, .EVAL.arg = car }));
             continue;
@@ -177,31 +167,14 @@ lispm (LMSecd *lm, Context *ctx)
         Cell *fn = POP (lm);
         Cell *arglist = s.EVAL.arg;
 
-        if (IS (fn, BUILTIN_FN) && fn->builtin_fn->sform)
-          {
-            // if (fn == KEYWORD (APPLY))
-            //   return eval_apply (cdr, ctx);
-
-            // if (fn == KEYWORD (FUNCALL))
-            //   return eval_funcall (cdr, ctx);
-
-            // if (fn == KEYWORD (EVAL))
-            //   return eval (eval (CAR (cdr), ctx), ctx);
-
-            // if (fn == KEYWORD (PROGN))
-            //   return eval_progn (cdr, ctx);
-
-            // if (fn == KEYWORD (AND))
-            //   return and_form (cdr, ctx);
-
-            // if (fn == KEYWORD (IF))
-            //   return if_form (cdr, ctx);
-
-            // if (fn == KEYWORD (OR))
-            //   return or_form (cdr, ctx);
-
-            return ERROR (ERR_INTERNAL, DEBUG_LOCATION, ctx);
-          }
+        // one of the functions this C function handles
+        // if (IS (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
+        //   {
+        //     STATE_PUSH (lm, ((State){ .state = LISPM,
+        //                               .LISPM.fn = fn,
+        //                               .LISPM.arglist = arglist }));
+        //     continue;
+        //   }
 
         STATE_PUSH (lm, ((State){
                             .state = FUNCALL,
@@ -211,6 +184,91 @@ lispm (LMSecd *lm, Context *ctx)
                                   .LIST.acc = NIL,
                                   .LIST.arglist = arglist }));
         continue;
+      }
+    __FUNCALL:
+      {
+        Cell *arglist = (s.FUNCALL.arglist) ? (s.FUNCALL.arglist) : POP (lm);
+        Cell *fn = (s.FUNCALL.fn) ? (s.FUNCALL.fn) : POP (lm);
+
+        if (IS (fn, BUILTIN_FN))
+          {
+            STATE_PUSH (lm, ((State){ .state = FUNCALL_BUILTIN,
+                                      .FUNCALL.fn = fn,
+                                      .FUNCALL.arglist = arglist }));
+            continue;
+          }
+
+        if (IS (fn, LAMBDA))
+          {
+            STATE_PUSH (lm, ((State){ .state = FUNCALL_LAMBDA,
+                                      .FUNCALL.fn = fn,
+                                      .FUNCALL.arglist = arglist }));
+            continue;
+          }
+
+        goto error;
+      }
+    __FUNCALL_BUILTIN:
+      {
+        Cell *fn = s.FUNCALL.fn;
+        Cell *arglist = s.FUNCALL.arglist;
+
+        int received = (int)length (arglist);
+        const BuiltinFn *builtin_fn = fn->builtin_fn;
+
+        if (builtin_fn->arity > 0 && builtin_fn->arity != received)
+          {
+            ErrorCode err = (received < builtin_fn->arity)
+                                ? ERR_MISSING_ARG
+                                : ERR_UNEXPECTED_ARG;
+            goto error; // return ERROR (err, builtin_fn->name, ctx);
+          }
+
+        if (fn == KEYWORD (LIST))
+          {
+            PUSH (lm, arglist); // LIST is __EVAL_LIST, which was already done
+            continue;
+          }
+
+        if (fn->builtin_fn->is_lispm)
+          {
+            continue;
+          }
+
+        // if (fn == KEYWORD (FUNCALL))
+        //   {
+        //     STATE_PUSH (lm, ((State){ .state = FUNCALL,
+        //                               .FUNCALL.arglist = CDR (arglist) }));
+        //     STATE_PUSH (lm,
+        //                 ((State){ .state = EVAL, .EVAL.arg = CAR (arglist)
+        //                 }));
+        //     continue;
+        //   }
+
+        // if (fn == KEYWORD (APPLY))
+        //   {
+        //     STATE_PUSH (lm,
+        //                 ((State){ .state = APPLY,  // XXX
+        //                           .FUNCALL.arglist = CAR (CDR (arglist))
+        //                           }));
+        //     STATE_PUSH (lm,
+        //                 ((State){ .state = EVAL, .EVAL.arg = CAR (arglist)
+        //                 }));
+        //     continue;
+        //   }
+
+        if (!builtin_fn->fn)
+          {
+            goto error;
+          }
+
+        PUSH (lm, builtin_fn->fn (arglist, ctx));
+        continue;
+      }
+    __FUNCALL_LAMBDA:
+      {
+        Cell *fn = s.FUNCALL.fn;
+        Cell *arglist = s.FUNCALL.arglist;
       }
     __LIST:
       {
@@ -230,11 +288,9 @@ lispm (LMSecd *lm, Context *ctx)
         STATE_PUSH (lm, ((State){ .state = LIST_ACC,
                                   .LIST.arglist = cdr,
                                   .LIST.acc = rev }));
-
         STATE_PUSH (lm, ((State){ .state = EVAL, .EVAL.arg = car }));
         continue;
       }
-
     __LIST_ACC:
       {
         Cell *eval_res = POP (lm);
@@ -247,63 +303,66 @@ lispm (LMSecd *lm, Context *ctx)
                                   .LIST.acc = rev2 }));
         continue;
       }
-
     __PROGN:
       {
       }
     __APPLY:
       {
+        Cell *arglist = s.APPLY.arglist ? s.APPLY.arglist : POP (lm);
+        Cell *fn = s.APPLY.fn ? s.APPLY.fn : POP (lm);
+
+        if (!LISTP (arglist))
+          goto error;
+
+        Cell *fixd_args = butlast (arglist, ctx);
+
+        STATE_PUSH (lm, ((State){ .state = APPLY_EVAL_LAST_ARG,
+                                  .APPLY.fn = fn,
+                                  .APPLY.arglist = arglist }));
+        STATE_PUSH (lm, ((State){ .state = LIST,
+                                  .LIST.arglist = fixd_args,
+                                  .LIST.acc = NIL }));
+        continue;
       }
-    __FUNCALL:
+    __APPLY_EVAL_LAST_ARG:
       {
-        if (IS (s.FUNCALL.fn, BUILTIN_FN))
-          STATE_PUSH (lm, ((State){ .state = FUNCALL_BUILTIN,
-                                    .FUNCALL.fn = s.FUNCALL.fn }));
+        Cell *fixed_rev = POP (lm);
+        Cell *arglist = s.APPLY.arglist;
+        Cell *tail_list = last (arglist, ctx);
 
-        if (IS (s.FUNCALL.fn, LAMBDA))
-          STATE_PUSH (lm, ((State){ .state = FUNCALL_LAMBDA,
-                                    .FUNCALL.fn = s.FUNCALL.fn }));
-
-        goto error;
-      }
-    __FUNCALL_BUILTIN:
-      {
-        Cell *fn = s.FUNCALL.fn;
-
-        Cell *arglist = POP (lm);
-
-        int received = (int)length (arglist);
-        const BuiltinFn *builtin_fn = fn->builtin_fn;
-
-        if (builtin_fn->arity > 0 && builtin_fn->arity != received)
+        if (!LISTP (tail_list))
           {
-            ErrorCode err = (received < builtin_fn->arity)
-                                ? ERR_MISSING_ARG
-                                : ERR_UNEXPECTED_ARG;
-            return ERROR (err, builtin_fn->name, ctx);
-          }
-        // eval_apply or eval_funcall could have taken us here.
-        // so if we called them again, arglist would be eval'd 2x.
-        if (fn == KEYWORD (FUNCALL))
-          {
-            Cell *fn2 = eval (CAR (arglist), ctx);
-            return funcall (fn2, CDR (arglist), ctx);
+            STATE_PUSH (lm, ((State){ .state = FUNCALL,
+                                      .FUNCALL.fn = s.APPLY.fn,
+                                      .FUNCALL.arglist = NIL }));
+            continue;
           }
 
-        if (fn == KEYWORD (APPLY))
-          {
-            Cell *fn2 = eval (CAR (arglist), ctx);
-            return funcall (fn2, CAR (CDR (arglist)), ctx);
-          }
-
-        if (fn == KEYWORD (LIST))
-          return arglist; // LIST is eval_list, so we're done.
-
-        return builtin_fn->fn (arglist, ctx);
+        STATE_PUSH (lm, ((State){ .state = APPLY_FUNCALL,
+                                  .APPLY.fn = s.APPLY.fn,
+                                  .APPLY.arglist = fixed_rev }));
+        STATE_PUSH (lm, ((State){ .state = EVAL, .EVAL.arg = tail_list }));
+        continue;
       }
-    __FUNCALL_LAMBDA:
+    __APPLY_FUNCALL:
       {
-        Cell *arglist = POP (lm);
+        Cell *tail_list = POP (lm);
+
+        if (!LISTP (tail_list))
+          goto error;
+
+        Cell *fixed_rev = s.APPLY.arglist; // the reversed list of fixed‐values
+        Cell *fn = s.APPLY.fn;
+
+        Cell *all_args = append_inplace (fixed_rev, tail_list);
+
+        STATE_PUSH (lm, ((State){ .state = FUNCALL,
+                                  .FUNCALL.fn = fn,
+                                  .FUNCALL.arglist = all_args }));
+        continue;
+      }
+    __LISPM:
+      {
       }
     }
 
@@ -311,11 +370,11 @@ lispm (LMSecd *lm, Context *ctx)
   return evl_ret;
 
 error:;
-  perror (err_msg);
+  perror ("**Error:");
   return NIL;
 
 overflow:;
-  perror ("**Overflow");
+  perror ("**Overflow:");
   return NIL;
 }
 
