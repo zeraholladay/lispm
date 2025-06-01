@@ -4,6 +4,7 @@
 
 #include "eval.h"
 #include "format.h"
+#include "lispm.h"
 #include "parser.h"
 #include "readline.h"
 #include "types.h"
@@ -42,7 +43,7 @@ lispm_destroy (Context *ctx)
 int
 lispm_eval_progn (Cell *parse_head, Context *ctx)
 {
-  Cell *eval_result = eval_progn (parse_head, ctx);
+  Cell *eval_result = lispm_progn (parse_head, ctx);
   PRINT (eval_result);
   return 0;
 }

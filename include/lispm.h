@@ -1,8 +1,12 @@
 #ifndef LISPM_H
 #define LISPM_H
 
-#ifndef LISPM_STK_MAX
-#define LISPM_STK_MAX 4094
-#endif
+#include "context.h"
+#include "eval.h"
+
+#define LISPM_STK_MAX 1024
+#define LISPM_CTL_MAX 512
+
+Cell *lispm_progn (Cell *progn, Context *ctx);
 
 #endif
