@@ -17,26 +17,29 @@
       goto underflow;                                                         \
     (lm)->stk.cells[--(lm)->stk.sp];                                          \
   })
-#define PUSH(__lm, __val)                                                     \
+
+#define PUSH(lm, val)                                                         \
   do                                                                          \
     {                                                                         \
-      if ((__lm)->stk.sp >= LISPM_STK_MAX)                                    \
+      if ((lm)->stk.sp >= LISPM_STK_MAX)                                      \
         goto overflow;                                                        \
-      (__lm)->stk.cells[(__lm)->stk.sp++] = __val;                            \
+      (lm)->stk.cells[(lm)->stk.sp++] = val;                                  \
     }                                                                         \
   while (0)
+
 #define STATE_POP(lm)                                                         \
   ({                                                                          \
     if ((lm)->ctl.sp == 0)                                                    \
       goto underflow;                                                         \
     (lm)->ctl.states[--(lm)->ctl.sp];                                         \
   })
-#define STATE_PUSH(__lm, ...)                                                 \
+
+#define STATE_PUSH(lm, ...)                                                   \
   do                                                                          \
     {                                                                         \
-      if (((__lm)->ctl.sp) >= LISPM_CTL_MAX)                                  \
+      if (((lm)->ctl.sp) >= LISPM_CTL_MAX)                                    \
         goto overflow;                                                        \
-      (__lm)->ctl.states[(__lm)->ctl.sp++] = (State){ __VA_ARGS__ };          \
+      (lm)->ctl.states[(lm)->ctl.sp++] = (State){ __VA_ARGS__ };              \
     }                                                                         \
   while (0)
 
@@ -90,23 +93,11 @@ typedef struct lispm_secd
     State states[LISPM_CTL_MAX];
   } ctl;
   void *dmp; // temporary
-} LMSecd;
-
-static void
-lm_secd_init (LMSecd *lm)
-{
-  lm->stk.sp = lm->ctl.sp = 0;
-  lm->env = env_create ();
-}
-
-static void
-lm_secd_destroy (LMSecd *lm)
-{
-  env_destroy (lm->env);
-}
+  Pool *pool;
+} LM;
 
 static Cell *
-lispm (LMSecd *lm, Context *ctx)
+lispm_eval (LM *lm, Context *ctx)
 {
   while (lm->ctl.sp)
     {
@@ -497,20 +488,64 @@ overflow:;
   return NIL;
 }
 
+LM *
+lm_create (void)
+{
+  LM *lm = xmalloc (sizeof *(lm));
+
+  lm->stk.sp = lm->ctl.sp = 0;
+
+  lm->env = env_create ();
+  lm->pool = pool_init (LM_OBJ_POOL_CAP, sizeof (Cell));
+
+  return lm;
+}
+
+void
+lm_destroy (LM *lm)
+{
+  env_destroy (lm->env);
+  pool_destroy (&lm->pool);
+  free (lm);
+}
+
+Cell *
+lm_alloc_cell (LM *lm)
+{
+  return pool_xalloc_hier (lm->pool);
+}
+
+Cell *
+lm_env_lkup (LM *lm, const char *key)
+{
+  return env_lookup (lm->env, key);
+}
+
+bool
+lm_env_let (LM *lm, const char *key, Cell *val)
+{
+  return env_let (lm->env, key, val);
+}
+
+bool
+lm_env_set (LM *lm, const char *key, Cell *val)
+{
+  return env_set (lm->env, key, val);
+}
+
 Cell *
 lispm_progn (Cell *progn, Context *ctx)
 {
-  LMSecd lm;
-  lm_secd_init (&lm);
+  LM *lm = lm_create ();
 
-  STATE_PUSH (&lm, .state = PROGN, .PROGN.arglist = progn);
+  STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = progn);
 
-  Cell *ret = lispm (&lm, ctx);
-  lm_secd_destroy (&lm);
+  Cell *ret = lispm_eval (lm, ctx);
+  lm_destroy (lm);
   return ret;
 
 overflow:
-  lm_secd_destroy (&lm);
+  lm_destroy (lm);
   perror ("Reset");
   return NIL;
 }
