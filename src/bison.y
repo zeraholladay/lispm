@@ -3,20 +3,20 @@
 #include <stdio.h>
 
 #include "bison.h"
-#include "context.h"
+#include "lispm.h"
 #include "eval.h"
 #include "flex.h"
 #include "types.h"
 
-#define yyerror(n, ctx, s)                                                    \
+#define yyerror(n, lm, s)                                                    \
   do                                                                          \
     {                                                                         \
-      yyerror_handler (ctx, s);                                               \
+      yyerror_handler (lm, s);                                               \
       YYABORT;                                                                \
     }                                                                         \
   while (0)
 
-void yyerror_handler (Context * ctx, const char *s);
+void yyerror_handler (Context * lm, const char *s);
 %}
 
 %code requires
@@ -24,7 +24,7 @@ void yyerror_handler (Context * ctx, const char *s);
 #include "types.h"
 }
 
-%parse-param {Cell **progn} {Context *ctx}
+%parse-param {Cell **progn} {LM *lm}
 
 %union
 {
@@ -59,7 +59,7 @@ program
   | forms error
     {
       *progn = NIL;
-      yyerror (progn, ctx, "Parse error\n");
+      yyerror (progn, lm, "Parse error\n");
     }
   ;
 
@@ -70,22 +70,22 @@ forms
     }
   | form forms
     {
-      $$ = CONS ($1, $2, ctx);
+      $$ = CONS ($1, $2, lm);
     }
   ;
 
 form
     : '(' LAMBDA param_list forms ')'
       {
-        $$ = LIST1 (LAMBDA ($3, $4, ctx), ctx);
+        $$ = LIST1 (LAMBDA ($3, $4, lm), lm);
       }
     | '(' if_ form form ')'
       {
-        $$ = CONS ($2, LIST2 ($3, $4, ctx), ctx);
+        $$ = CONS ($2, LIST2 ($3, $4, lm), lm);
       }
     | '(' if_ form form form ')'
       {
-        $$ = CONS ($2, CONS ( $3, LIST2 ($4, $5, ctx), ctx), ctx);
+        $$ = CONS ($2, CONS ( $3, LIST2 ($4, $5, lm), lm), lm);
       }
     | symbol
       {
@@ -93,11 +93,11 @@ form
       }
     | INTEGER
       {
-        $$ = INTEGER ($1, ctx);
+        $$ = INTEGER ($1, lm);
       }
     | '\'' form
       {
-        $$ = LIST2 (KEYWORD (QUOTE), $2, ctx);
+        $$ = LIST2 (KEYWORD (QUOTE), $2, lm);
       }
     | '(' forms ')'
       {
@@ -105,7 +105,7 @@ form
       }
     | '(' forms '.' form ')'
       {
-        $$ = CONS ($2, $4, ctx);  // FIXME
+        $$ = CONS ($2, $4, lm);  // FIXME
       }
     ;
 
@@ -127,14 +127,14 @@ symbol_list
     }
   | symbol symbol_list
     {
-      $$ = CONS ($1, $2, ctx);
+      $$ = CONS ($1, $2, lm);
     }
   ;
 
 symbol
   : SYMBOL
     {
-      $$ = SYMBOL ($1.str, $1.len, ctx);
+      $$ = SYMBOL ($1.str, $1.len, lm);
     }
   | QUOTE
     {
@@ -145,15 +145,15 @@ symbol
 if_
   : IF
     {
-      $$ = SYMBOL ($1.str, $1.len, ctx);
+      $$ = SYMBOL ($1.str, $1.len, lm);
     }
   ;
 
 %%
 
 void
-yyerror_handler (Context *ctx, const char *s)
+yyerror_handler (LM *lm, const char *s)
 {
-  (void)ctx;
+  (void)lm;
   fprintf (stderr, "Syntax error: line %d: %s\n", yylineno, s);
 }

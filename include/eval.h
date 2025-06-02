@@ -1,9 +1,9 @@
 #ifndef EVAL_H
 #define EVAL_H
 
-#include "context.h"
 #include "debug.h"
 #include "keywords.h"
+#include "lispm.h"
 #include "types.h"
 
 #define NIL (KEYWORD (NIL))
@@ -19,8 +19,8 @@
 #define FIRST(nptr) ((nptr)->cons.car)
 #define REST(nptr) ((nptr)->cons.cdr)
 
-#define LIST1(car, ctx) (CONS (car, NIL, ctx))
-#define LIST2(car, cdr, ctx) (CONS (car, LIST1 (cdr, ctx), ctx))
+#define LIST1(car, lm) (CONS (car, NIL, lm))
+#define LIST2(car, cdr, lm) (CONS (car, LIST1 (cdr, lm), lm))
 
 #define RPLACA(nptr, val)                                                     \
   do                                                                          \
@@ -38,27 +38,27 @@
     }                                                                         \
   while (0)
 
-Cell *eval_append (Cell *args, Context *ctx);
-Cell *eval_apply (Cell *args, Context *ctx);
-Cell *eval_butlast (Cell *expr, Context *ctx);
-Cell *eval_cons (Cell *args, Context *ctx);
-Cell *eval_car (Cell *args, Context *ctx);
-Cell *eval_cdr (Cell *args, Context *ctx);
-Cell *eval_funcall (Cell *args, Context *ctx);
-Cell *eval_if (Cell *expr, Context *ctx);
-Cell *eval_lambda (Cell *expr, Context *ctx);
-Cell *eval_last (Cell *expr, Context *ctx);
-Cell *eval_length (Cell *args, Context *ctx);
-Cell *eval_list (Cell *args, Context *ctx);
-Cell *eval_mapcar (Cell *args, Context *ctx);
-Cell *eval_nth (Cell *expr, Context *ctx);
-Cell *eval_pair (Cell *args, Context *ctx);
-Cell *eval_print (Cell *args, Context *ctx);
-Cell *eval_reverse (Cell *args, Context *ctx);
-Cell *eval_set (Cell *args, Context *ctx);
-Cell *eval_string (Cell *args, Context *ctx);
-Cell *eval (Cell *form, Context *ctx);
-Cell *eval_list (Cell *args, Context *ctx);
-Cell *eval_progn (Cell *program, Context *ctx);
+Cell *eval_append (Cell *args, LM *lm);
+Cell *eval_apply (Cell *args, LM *lm);
+Cell *eval_butlast (Cell *expr, LM *lm);
+Cell *eval_cons (Cell *args, LM *lm);
+Cell *eval_car (Cell *args, LM *lm);
+Cell *eval_cdr (Cell *args, LM *lm);
+Cell *eval_funcall (Cell *args, LM *lm);
+Cell *eval_if (Cell *expr, LM *lm);
+Cell *eval_lambda (Cell *expr, LM *lm);
+Cell *eval_last (Cell *expr, LM *lm);
+Cell *eval_length (Cell *args, LM *lm);
+Cell *eval_list (Cell *args, LM *lm);
+Cell *eval_mapcar (Cell *args, LM *lm);
+Cell *eval_nth (Cell *expr, LM *lm);
+Cell *eval_pair (Cell *args, LM *lm);
+Cell *eval_print (Cell *args, LM *lm);
+Cell *eval_reverse (Cell *args, LM *lm);
+Cell *eval_set (Cell *args, LM *lm);
+Cell *eval_string (Cell *args, LM *lm);
+Cell *eval (Cell *form, LM *lm);
+Cell *eval_list (Cell *args, LM *lm);
+Cell *eval_progn (Cell *program, LM *lm);
 
 #endif

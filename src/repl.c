@@ -24,32 +24,32 @@ extern int optreset;
 #endif
 
 void
-lispm_init (Context *ctx)
+lispm_init (LM *lm)
 {
   Cell *nil = KEYWORD (NIL);
   CAR (nil) = CDR (nil) = nil;
 
-  ctx->pool = pool_init (OBJ_POOL_CAPACITY, sizeof (Cell));
-  ctx->env = env_create ();
+  lm->pool = pool_init (OBJ_POOL_CAPACITY, sizeof (Cell));
+  lm->env = env_create ();
 }
 
 void
-lispm_destroy (Context *ctx)
+lispm_destroy (LM *lm)
 {
-  env_destroy (ctx->env);
-  pool_destroy_hier (&ctx->pool);
+  env_destroy (lm->env);
+  pool_destroy_hier (&lm->pool);
 }
 
 int
-lispm_eval_progn (Cell *parse_head, Context *ctx)
+lispm_eval_progn (Cell *parse_head, LM *lm)
 {
-  Cell *eval_result = lispm_progn (parse_head, ctx);
+  Cell *eval_result = lispm_progn (parse_head, lm);
   PRINT (eval_result);
   return 0;
 }
 
 int
-lispm_repl (Context *ctx)
+lispm_repl (LM *lm)
 {
   Cell *progn = NULL;
   char input[RL_BUF_SIZ];
@@ -63,13 +63,13 @@ lispm_repl (Context *ctx)
       if (len < 0)
         break;
 
-      if (!parser_buf (input, &progn, ctx))
+      if (!parser_buf (input, &progn, lm))
         {
           perror ("Parse failed");
           continue;
         }
 
-      lispm_eval_progn (progn, ctx);
+      lispm_eval_progn (progn, lm);
     }
 
   return 0;
@@ -102,15 +102,15 @@ lispm_main (int argc, char **argv)
   if (!argc)
     run_repl = 1;
 
-  Context ctx = {};
-  lispm_init (&ctx);
+  Context lm = {};
+  lispm_init (&lm);
 
   for (int i = 0; i < argc; ++i)
     {
       Cell *progn = NULL;
       FILE *in = fopen (argv[i], "r");
 
-      bool res = parser_stream (in, &progn, &ctx);
+      bool res = parser_stream (in, &progn, &lm);
 
       fclose (in);
 
@@ -120,7 +120,7 @@ lispm_main (int argc, char **argv)
           break; // TODO: syntax error
         }
 
-      int eval_status = lispm_eval_progn (progn, &ctx);
+      int eval_status = lispm_eval_progn (progn, &lm);
 
       if (eval_status)
         {
@@ -130,7 +130,7 @@ lispm_main (int argc, char **argv)
     }
 
   if (run_repl)
-    lispm_repl (&ctx);
+    lispm_repl (&lm);
 
   return 0;
 }

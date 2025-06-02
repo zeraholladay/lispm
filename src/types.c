@@ -76,12 +76,12 @@ type (Cell *self)
 }
 
 Cell *
-new (Pool **p, TypeEnum type, ...)
+new (LM *lm, TypeEnum type, ...)
 {
   va_list ap;
   va_start (ap, type);
 
-  Cell *c = pool_xalloc_hier (p);
+  Cell *c = lm_alloc_cell (lm);
   c->type = type;
 
   switch (type)

@@ -8,29 +8,29 @@
 #include "repl.h"
 #include "types.h"
 
-extern void lispm_init (Context *ctx);
-extern void lispm_destroy (Context *ctx);
+extern void lispm_init (LM *lm);
+extern void lispm_destroy (LM *lm);
 
 static Cell *progn = NULL;
-static Context ctx = {};
+static Context lm = {};
 
 static void
 setup (void)
 {
-  lispm_init (&ctx);
+  lispm_init (&lm);
 }
 
 static void
 teardown (void)
 {
-  lispm_destroy (&ctx);
+  lispm_destroy (&lm);
 }
 
 static Cell *
 run_eval_progn (const char *input)
 {
-  ck_assert (parser_buf (input, &progn, &ctx));
-  return eval_progn (progn, &ctx);
+  ck_assert (parser_buf (input, &progn, &lm));
+  return eval_progn (progn, &lm);
 }
 
 // should test based on https://jtra.cz/stuff/lisp/sclr/index.html

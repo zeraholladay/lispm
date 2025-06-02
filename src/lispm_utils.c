@@ -6,19 +6,19 @@
 
 // funcall & eval
 Cell *
-funcall (Cell *fn, Cell *arglist, Context *ctx)
+funcall (Cell *fn, Cell *arglist, LM *lm)
 {
   if (IS (fn, BUILTIN_FN))
-    return funcall_builtin (fn, arglist, ctx);
+    return funcall_builtin (fn, arglist, lm);
 
   if (IS (fn, LAMBDA))
-    return funcall_lambda (fn, arglist, ctx);
+    return funcall_lambda (fn, arglist, lm);
 
-  return ERROR (ERR_NOT_A_FUNCTION, fn, ctx);
+  return ERROR (ERR_NOT_A_FUNCTION, fn, lm);
 }
 
 Cell *
-funcall_builtin (Cell *fn, Cell *arglist, Context *ctx)
+funcall_builtin (Cell *fn, Cell *arglist, LM *lm)
 {
   int received = (int)length (arglist);
   const BuiltinFn *builtin_fn = fn->builtin_fn;
@@ -27,31 +27,31 @@ funcall_builtin (Cell *fn, Cell *arglist, Context *ctx)
     {
       ErrorCode err = (received < builtin_fn->arity) ? ERR_MISSING_ARG
                                                      : ERR_UNEXPECTED_ARG;
-      return ERROR (err, builtin_fn->name, ctx);
+      return ERROR (err, builtin_fn->name, lm);
     }
 
   // eval_apply or eval_funcall could have taken us here.
   // so if we called them again, arglist would be eval'd 2x.
   if (fn == KEYWORD (FUNCALL))
     {
-      Cell *fn2 = eval (CAR (arglist), ctx);
-      return funcall (fn2, CDR (arglist), ctx);
+      Cell *fn2 = eval (CAR (arglist), lm);
+      return funcall (fn2, CDR (arglist), lm);
     }
 
   if (fn == KEYWORD (APPLY))
     {
-      Cell *fn2 = eval (CAR (arglist), ctx);
-      return funcall (fn2, CAR (CDR (arglist)), ctx);
+      Cell *fn2 = eval (CAR (arglist), lm);
+      return funcall (fn2, CAR (CDR (arglist)), lm);
     }
 
   if (fn == KEYWORD (LIST))
     return arglist; // LIST is eval_list, so we're done.
 
-  return builtin_fn->fn (arglist, ctx);
+  return builtin_fn->fn (arglist, lm);
 }
 
 Cell *
-funcall_lambda (Cell *fn, Cell *args, Context *ctx)
+funcall_lambda (Cell *fn, Cell *args, LM *lm)
 {
   size_t expected = length (fn->lambda.params);
   size_t received = length (args);
@@ -60,24 +60,24 @@ funcall_lambda (Cell *fn, Cell *args, Context *ctx)
     {
       ErrorCode err
           = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
-      return ERROR (err, fn, ctx);
+      return ERROR (err, fn, lm);
     }
 
-  env_enter_frame (&ctx->env);
+  env_enter_frame (&lm->env);
 
   Cell *pairs
-      = mapcar (KEYWORD (LIST), LIST2 (fn->lambda.params, args, ctx), ctx);
+      = mapcar (KEYWORD (LIST), LIST2 (fn->lambda.params, args, lm), lm);
 
   while (!IS_NIL (pairs))
     {
       Cell *pair = CAR (pairs);
-      env_let (ctx->env, (CAR (pair))->symbol.str, CADR (pair));
+      env_let (lm->env, (CAR (pair))->symbol.str, CADR (pair));
       pairs = CDR (pairs);
     }
 
-  Cell *res = eval_progn (fn->lambda.body, ctx);
+  Cell *res = eval_progn (fn->lambda.body, lm);
 
-  env_leave_frame (&ctx->env);
+  env_leave_frame (&lm->env);
 
   return res;
 }
@@ -104,7 +104,7 @@ append_inplace (Cell *list1, Cell *list2)
 // Resulting list is shallow cpy of specified lists except for the last which
 // is directly shared.
 Cell *
-append_list (Cell *list1, Cell *list2, Context *ctx)
+append_list (Cell *list1, Cell *list2, LM *lm)
 {
   if (IS_NIL (list1))
     return list2;
@@ -114,7 +114,7 @@ append_list (Cell *list1, Cell *list2, Context *ctx)
 
   for (Cell *l1 = list1; !IS_NIL (l1); l1 = CDR (l1))
     {
-      Cell *cpy = CONS (CAR (l1), NIL, ctx);
+      Cell *cpy = CONS (CAR (l1), NIL, lm);
 
       if (new_head == NULL)
         {
@@ -134,18 +134,18 @@ append_list (Cell *list1, Cell *list2, Context *ctx)
 }
 
 Cell *
-butlast (Cell *list, Context *ctx)
+butlast (Cell *list, LM *lm)
 {
   Cell *rev = reverse_inplace (list);
-  Cell *btl = reverse (CDR (rev), ctx);
+  Cell *btl = reverse (CDR (rev), lm);
   reverse_inplace (rev);
   return btl;
 }
 
 Cell *
-last (Cell *list, Context *ctx)
+last (Cell *list, LM *lm)
 {
-  (void)ctx;
+  (void)lm;
   Cell *rev = reverse_inplace (list);
   Cell *last = CAR (rev);
   reverse_inplace (rev);
@@ -167,15 +167,15 @@ length (Cell *list)
 }
 
 Cell *
-mapcar (Cell *fn, Cell *arglist, Context *ctx)
+mapcar (Cell *fn, Cell *arglist, LM *lm)
 {
-  Cell *zip_args = zip (arglist, ctx);
+  Cell *zip_args = zip (arglist, lm);
   Cell *rev = NIL;
 
   for (Cell *l = zip_args; !IS_NIL (l); l = CDR (l))
     {
-      Cell *res = funcall (fn, CAR (l), ctx);
-      rev = CONS (res, rev, ctx);
+      Cell *res = funcall (fn, CAR (l), lm);
+      rev = CONS (res, rev, lm);
     }
 
   return reverse_inplace (rev);
@@ -195,13 +195,13 @@ nth (size_t idx, Cell *list)
 }
 
 Cell *
-reverse (Cell *list, Context *ctx)
+reverse (Cell *list, LM *lm)
 {
-  (void)ctx;
+  (void)lm;
   Cell *result = NIL;
 
   for (Cell *l = list; l != NIL; l = CDR (l))
-    result = CONS (CAR (l), result, ctx);
+    result = CONS (CAR (l), result, lm);
 
   return result;
 }
@@ -224,7 +224,7 @@ reverse_inplace (Cell *list)
 }
 
 Cell *
-zip (Cell *lists, Context *ctx)
+zip (Cell *lists, LM *lm)
 {
   scratch_t s;
 
@@ -257,11 +257,11 @@ zip (Cell *lists, Context *ctx)
 
       for (size_t i = 0; i < len; ++i)
         {
-          row_rev = CONS (CAR (heads[i]), row_rev, ctx);
+          row_rev = CONS (CAR (heads[i]), row_rev, lm);
           heads[i] = CDR (heads[i]);
         }
 
-      out_rev = CONS (reverse_inplace (row_rev), out_rev, ctx);
+      out_rev = CONS (reverse_inplace (row_rev), out_rev, lm);
     }
 
   xfree_scratch (&s);
@@ -270,7 +270,7 @@ zip (Cell *lists, Context *ctx)
 
 // context operations
 Cell *
-lookup (Cell *cell, Context *ctx)
+lookup (Cell *cell, LM *lm)
 {
   const char *key = cell->symbol.str;
   size_t len = cell->symbol.len;
@@ -279,25 +279,25 @@ lookup (Cell *cell, Context *ctx)
   if (kywrd_cell)
     return kywrd_cell;
 
-  Cell *res = env_lookup (ctx->env, key);
+  Cell *res = env_lookup (lm->env, key);
   if (!res)
-    return ERROR (ERR_SYMBOL_NOT_FOUND, key, ctx);
+    return ERROR (ERR_SYMBOL_NOT_FOUND, key, lm);
 
   return res;
 }
 
 Cell *
-set (Cell *car, Cell *cdr, Context *ctx)
+set (Cell *car, Cell *cdr, LM *lm)
 {
   if (!IS (car, SYMBOL))
-    return ERROR (ERR_INVALID_ARG, "set", ctx);
+    return ERROR (ERR_INVALID_ARG, "set", lm);
 
   const char *key = car->symbol.str;
   size_t len = car->symbol.len;
 
   if (keyword_lookup (key, len))
-    return ERROR (ERR_INVALID_ARG, "set", ctx);
+    return ERROR (ERR_INVALID_ARG, "set", lm);
 
-  env_set (ctx->env, key, cdr);
+  env_set (lm->env, key, cdr);
   return cdr;
 }

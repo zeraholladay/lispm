@@ -1,8 +1,7 @@
 #ifndef LISPM_H
 #define LISPM_H
 
-#include "context.h"
-#include "eval.h"
+#include <stdbool.h>
 
 #ifndef LISPM_STK_MAX
 #define LISPM_STK_MAX 1024
@@ -16,6 +15,9 @@
 #define LM_OBJ_POOL_CAP 1024
 #endif
 
+// Forward decls
+// forward decls
+typedef struct Cell Cell;
 typedef struct lispm_secd LM;
 
 // inst
@@ -31,6 +33,5 @@ bool lm_env_let (LM *lm, const char *key, Cell *val);
 bool lm_env_set (LM *lm, const char *key, Cell *val);
 
 // execute progn
-Cell *lispm_progn (Cell *progn, Context *ctx);
-
+Cell *lispm_progn (LM *lm, Cell *progn);
 #endif

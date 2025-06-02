@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "debug.h"
+#include "env.h"
 #include "error.h"
 #include "eval.h"
 #include "format.h"
@@ -97,7 +98,7 @@ typedef struct lispm_secd
 } LM;
 
 static Cell *
-lispm_eval (LM *lm, Context *ctx)
+lispm_eval (LM *lm)
 {
   while (lm->ctl.sp)
     {
@@ -118,7 +119,7 @@ lispm_eval (LM *lm, Context *ctx)
 
         if (IS (arg, SYMBOL))
           {
-            PUSH (lm, lookup (arg, ctx));
+            PUSH (lm, lookup (arg, lm));
             continue;
           }
 
@@ -201,7 +202,7 @@ lispm_eval (LM *lm, Context *ctx)
             ErrorCode err = (received < builtin_fn->arity)
                                 ? ERR_MISSING_ARG
                                 : ERR_UNEXPECTED_ARG;
-            goto error; // return ERROR (err, builtin_fn->name, ctx);
+            goto error; // return ERROR (err, builtin_fn->name, lm);
           }
 
         if (!builtin_fn->fn)
@@ -209,7 +210,7 @@ lispm_eval (LM *lm, Context *ctx)
             goto error;
           }
 
-        Cell *res = builtin_fn->fn (arglist, ctx);
+        Cell *res = builtin_fn->fn (arglist, lm);
         PUSH (lm, res);
         continue;
       }
@@ -243,7 +244,7 @@ lispm_eval (LM *lm, Context *ctx)
         Cell *eval_res = POP (lm);
 
         Cell *old_rev = s.LIST.acc;
-        Cell *rev2 = CONS (eval_res, old_rev, ctx);
+        Cell *rev2 = CONS (eval_res, old_rev, lm);
 
         STATE_PUSH (lm, .state = LIST, .LIST.arglist = s.LIST.arglist,
                     .LIST.acc = rev2);
@@ -257,7 +258,7 @@ lispm_eval (LM *lm, Context *ctx)
         if (!LISTP (arglist))
           goto error;
 
-        Cell *fixd_args = butlast (arglist, ctx);
+        Cell *fixd_args = butlast (arglist, lm);
 
         STATE_PUSH (lm, .state = APPLY_CONT, .APPLY.fn = fn,
                     .APPLY.arglist = arglist);
@@ -269,7 +270,7 @@ lispm_eval (LM *lm, Context *ctx)
       {
         Cell *fixed_rev = POP (lm);
         Cell *arglist = s.APPLY.arglist;
-        Cell *tail_list = last (arglist, ctx);
+        Cell *tail_list = last (arglist, lm);
 
         if (!LISTP (tail_list)) // ie (apply fn NIL)
           {
@@ -512,7 +513,7 @@ lm_destroy (LM *lm)
 Cell *
 lm_alloc_cell (LM *lm)
 {
-  return pool_xalloc_hier (lm->pool);
+  return pool_xalloc_hier (&lm->pool);
 }
 
 Cell *
@@ -534,13 +535,13 @@ lm_env_set (LM *lm, const char *key, Cell *val)
 }
 
 Cell *
-lispm_progn (Cell *progn, Context *ctx)
+lispm_progn (LM *lm, Cell *progn)
 {
-  LM *lm = lm_create ();
+  lm = lm_create ();
 
   STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = progn);
 
-  Cell *ret = lispm_eval (lm, ctx);
+  Cell *ret = lispm_eval (lm);
   lm_destroy (lm);
   return ret;
 

@@ -1,12 +1,12 @@
 #ifndef REPL_H
 #define REPL_H
 
-#include "context.h"
+#include "lispm.h"
 
-void lispm_init (Context *ctx);
-void lispm_destroy (Context *ctx);
-int lispm_eval_progn (Context *ctx);
-int lispm_repl (Context *ctx);
+void lispm_init (LM *lm);
+void lispm_destroy (LM *lm);
+int lispm_eval_progn (LM *lm);
+int lispm_repl (LM *lm);
 int lispm_main (int argc, char **argv);
 
 #endif
