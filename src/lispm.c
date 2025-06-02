@@ -113,6 +113,16 @@ lm_eval (LM *lm)
         default:
           goto error;
         }
+    __ENV_ENTER_FRAME:
+        {
+          env_enter_frame (&lm->env);
+          continue;
+        }
+    ___ENV_LEAVE_FRAME:
+        {
+          env_leave_frame (&lm->env);
+          continue;
+        }
     __EVAL:
       {
         Cell *arg = (s.EVAL.arg) ? s.EVAL.arg : POP (lm);
@@ -216,8 +226,41 @@ lm_eval (LM *lm)
       }
     __FUNCALL_LAMBDA:
       {
-        // Cell *fn = s.FUNCALL.fn;
-        // Cell *arglist = s.FUNCALL.arglist;
+        Cell *fn = s.FUNCALL.fn;
+        Cell *arglist = s.FUNCALL.arglist;
+
+        size_t expected = length (fn->lambda.params);
+        size_t received = length (arglist);
+
+        if (expected != received)
+          {
+            ErrorCode err
+                = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
+            goto error;
+          }
+
+        Cell *pairs
+            = mapcar (KEYWORD (LIST), LIST2 (fn->lambda.params, arglist, lm), lm);
+
+  while (!IS_NIL (pairs))
+    {
+      Cell *pair = CAR (pairs);
+      // env_let (lm->env, (CAR (pair))->symbol.str, CADR (pair));
+      lm_env_let (lm, (CAR (pair))->symbol.str, CADR (pair));
+      pairs = CDR (pairs);
+    }
+
+  Cell *res = eval_progn (fn->lambda.body, lm);
+
+  env_leave_frame (&lm->env);
+
+  // return res;
+
+        goto error; // not yet done
+      }
+    __FUNCALL_LAMBDA_CONT:
+      {
+
       }
     __LIST:
       {
