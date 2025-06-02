@@ -220,8 +220,8 @@ lm_eval (LM *lm)
         Cell *fn = s.FUNCALL.fn;
         Cell *arglist = s.FUNCALL.arglist;
 
-        int received = (int)length (arglist);
         const BuiltinFn *builtin_fn = fn->builtin_fn;
+        int received = (int)length (arglist);
 
         if (builtin_fn->arity > 0 && builtin_fn->arity != received)
           {
@@ -235,6 +235,13 @@ lm_eval (LM *lm)
           LM_ERR (ERR_NOT_A_FUNCTION, builtin_fn->name)
 
         Cell *res = builtin_fn->fn (arglist, lm);
+
+        if (IS (res, ERROR))
+          {
+            PERROR (res);
+            goto error;
+          }
+
         PUSH (lm, res);
         continue;
       }
@@ -274,7 +281,7 @@ lm_eval (LM *lm)
             pairs = CDR (pairs);
           }
 
-        STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = arglist);
+        STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = fn->lambda.body);
         continue;
       }
     __LIST:
@@ -532,15 +539,15 @@ lm_eval (LM *lm)
   return evl_ret;
 
 error:;
-  fputs ("**Error:", stderr);
+  fputs ("**Error\n", stderr);
   return NIL;
 
 underflow:;
-  fputs ("**Underflow:", stderr);
+  fputs ("**Underflow\n", stderr);
   return NIL;
 
 overflow:;
-  fputs ("**Overflow", stderr);
+  fputs ("**Overflow\n", stderr);
   return NIL;
 }
 

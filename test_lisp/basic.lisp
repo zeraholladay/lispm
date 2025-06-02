@@ -2,7 +2,9 @@
 (SET 'ASSERT
     (LAMBDA (X) (IF (EQ NIL (EVAL X))
                     ((LAMBDA (X) (PRINT COUNTER) (PRINT X)) X)
-                    (SET 'COUNTER (ADD COUNTER 1)))
+                    (PROGN
+                      (PRINT X)
+                      (SET 'COUNTER (ADD COUNTER 1))))
     )
 )
 ;; basic expressions
