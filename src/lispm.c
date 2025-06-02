@@ -64,7 +64,7 @@ typedef struct state
     struct lispm
     {
       Cell *res, *arglist;
-    } PROGN;
+    } PROGN, AND, OR;
     struct
     {
       Cell *acc, *arglist;
@@ -332,62 +332,45 @@ lispm (LMSecd *lm, Context *ctx)
         Cell *arglist = s.FUNCALL.arglist;
 
         if (fn == KEYWORD (LIST))
-          {
-            STATE_PUSH (lm, .state = LIST, .LIST.acc = NIL,
-                        .LIST.arglist = arglist);
-            continue;
-          }
-
-        if (fn == KEYWORD (FUNCALL))
+          STATE_PUSH (lm, .state = LIST, .LIST.acc = NIL,
+                      .LIST.arglist = arglist);
+        else if (fn == KEYWORD (FUNCALL))
           {
             STATE_PUSH (lm, .state = FUNCALL,
                         .FUNCALL.arglist = CDR (arglist));
             STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
-            continue;
           }
-
-        if (fn == KEYWORD (APPLY))
+        else if (fn == KEYWORD (APPLY))
           {
             STATE_PUSH (lm, .state = APPLY,
                         .APPLY.arglist = CAR (CDR (arglist)));
             STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
-            continue;
           }
-
-        if (fn == KEYWORD (EVAL))
+        else if (fn == KEYWORD (EVAL))
           {
             STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
             STATE_PUSH (lm, .state = EVAL);
-            continue;
           }
-
-        if (fn == KEYWORD (PROGN))
+        else if (fn == KEYWORD (PROGN))
+          STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = arglist);
+        else if (fn == KEYWORD (AND))
+          STATE_PUSH (lm, .state = AND, .AND.arglist = arglist);
+        else if (fn == KEYWORD (IF))
           {
-            STATE_PUSH (lm, .state = PROGN, .PROGN.res = NIL,
-                        .PROGN.arglist = arglist);
-            continue;
           }
 
-        // if (fn == KEYWORD (AND))
-        //   {
-        //   }
-        // return and_form (cdr, ctx);
-
-        // if (fn == KEYWORD (IF))
-        //   {
-        //   }
-        // return if_form (cdr, ctx);
-
-        // if (fn == KEYWORD (OR))
-        //   {
-        //   }
-        // return or_form (cdr, ctx);
-
-        goto error;
+        else if (fn == KEYWORD (OR))
+          {
+          }
+        else
+          {
+            goto error;
+          }
+        continue;
       }
     __PROGN:
       {
-        Cell *res = s.PROGN.res;
+        Cell *res = (s.PROGN.res) ? (s.PROGN.res) : NIL;
         Cell *arglist = s.PROGN.arglist;
 
         if (IS_NIL (arglist))
@@ -442,6 +425,47 @@ lispm (LMSecd *lm, Context *ctx)
                 PUSH (lm, NIL);
               }
           }
+        continue;
+      }
+    __AND:
+      {
+        Cell *arglist = s.AND.arglist;
+
+        if (IS_NIL (arglist))
+          {
+            PUSH (lm, T);
+            continue;
+          }
+
+        STATE_PUSH (lm, .state = AND_CONT, .AND.res = T,
+                    .AND.arglist = arglist);
+
+        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
+        continue;
+      }
+    __AND_CONT:
+      {
+        Cell *arglist = s.AND.arglist;
+        Cell *prev_res = s.AND.res;
+        Cell *curr_val = POP (lm);
+
+        if (IS_NIL (curr_val))
+          {
+            PUSH (lm, NIL);
+            continue;
+          }
+
+        Cell *rest = CDR (arglist);
+        if (IS_NIL (rest))
+          {
+            PUSH (lm, curr_val);
+            continue;
+          }
+
+        STATE_PUSH (lm, .state = AND_CONT, .AND.res = curr_val,
+                    .AND.arglist = rest);
+
+        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (rest));
         continue;
       }
     }
