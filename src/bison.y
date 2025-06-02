@@ -16,7 +16,7 @@
     }                                                                         \
   while (0)
 
-void yyerror_handler (Context * lm, const char *s);
+void yyerror_handler (LM *lm, const char *s);
 %}
 
 %code requires

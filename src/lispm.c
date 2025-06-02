@@ -98,7 +98,7 @@ typedef struct lispm_secd
 } LM;
 
 static Cell *
-lispm_eval (LM *lm)
+lm_eval (LM *lm)
 {
   while (lm->ctl.sp)
     {
@@ -492,6 +492,10 @@ overflow:;
 LM *
 lm_create (void)
 {
+  // fixme
+  Cell *nil = KEYWORD (NIL);
+  CAR (nil) = CDR (nil) = nil;
+
   LM *lm = xmalloc (sizeof *(lm));
 
   lm->stk.sp = lm->ctl.sp = 0;
@@ -535,13 +539,13 @@ lm_env_set (LM *lm, const char *key, Cell *val)
 }
 
 Cell *
-lispm_progn (LM *lm, Cell *progn)
+lm_progn (LM *lm, Cell *progn)
 {
   lm = lm_create ();
 
   STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = progn);
 
-  Cell *ret = lispm_eval (lm);
+  Cell *ret = lm_eval (lm);
   lm_destroy (lm);
   return ret;
 

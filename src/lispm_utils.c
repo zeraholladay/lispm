@@ -63,7 +63,7 @@ funcall_lambda (Cell *fn, Cell *args, LM *lm)
       return ERROR (err, fn, lm);
     }
 
-  env_enter_frame (&lm->env);
+  // env_enter_frame (&lm->env);
 
   Cell *pairs
       = mapcar (KEYWORD (LIST), LIST2 (fn->lambda.params, args, lm), lm);
@@ -71,13 +71,14 @@ funcall_lambda (Cell *fn, Cell *args, LM *lm)
   while (!IS_NIL (pairs))
     {
       Cell *pair = CAR (pairs);
-      env_let (lm->env, (CAR (pair))->symbol.str, CADR (pair));
+      // env_let (lm->env, (CAR (pair))->symbol.str, CADR (pair));
+      lm_env_let (lm, (CAR (pair))->symbol.str, CADR (pair));
       pairs = CDR (pairs);
     }
 
   Cell *res = eval_progn (fn->lambda.body, lm);
 
-  env_leave_frame (&lm->env);
+  // env_leave_frame (&lm->env);
 
   return res;
 }
@@ -279,7 +280,7 @@ lookup (Cell *cell, LM *lm)
   if (kywrd_cell)
     return kywrd_cell;
 
-  Cell *res = env_lookup (lm->env, key);
+  Cell *res = lm_env_lkup (lm, key);
   if (!res)
     return ERROR (ERR_SYMBOL_NOT_FOUND, key, lm);
 
@@ -298,6 +299,6 @@ set (Cell *car, Cell *cdr, LM *lm)
   if (keyword_lookup (key, len))
     return ERROR (ERR_INVALID_ARG, "set", lm);
 
-  env_set (lm->env, key, cdr);
+  lm_env_set (lm, key, cdr);
   return cdr;
 }

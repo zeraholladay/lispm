@@ -33,5 +33,6 @@ bool lm_env_let (LM *lm, const char *key, Cell *val);
 bool lm_env_set (LM *lm, const char *key, Cell *val);
 
 // execute progn
-Cell *lispm_progn (LM *lm, Cell *progn);
+Cell *lm_progn (LM *lm, Cell *progn);
+
 #endif
