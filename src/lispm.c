@@ -11,7 +11,12 @@
 #include "types.h"
 #include "xalloc.h"
 
-#define POP(lm) ((lm)->stk.cells[--(lm)->stk.sp])
+#define POP(lm)                                                               \
+  ({                                                                          \
+    if ((lm)->stk.sp == 0)                                                    \
+      goto underflow;                                                         \
+    (lm)->stk.cells[--(lm)->stk.sp];                                          \
+  })
 #define PUSH(__lm, __val)                                                     \
   do                                                                          \
     {                                                                         \
@@ -20,8 +25,12 @@
       (__lm)->stk.cells[(__lm)->stk.sp++] = __val;                            \
     }                                                                         \
   while (0)
-
-#define STATE_POP(lm) ((lm)->ctl.states[--(lm)->ctl.sp])
+#define STATE_POP(lm)                                                         \
+  ({                                                                          \
+    if ((lm)->ctl.sp == 0)                                                    \
+      goto underflow;                                                         \
+    (lm)->ctl.states[--(lm)->ctl.sp];                                         \
+  })
 #define STATE_PUSH(__lm, __s)                                                 \
   do                                                                          \
     {                                                                         \
@@ -51,19 +60,19 @@ typedef struct state
     struct
     {
       Cell *fn, *arglist;
-    } FUNCALL;
-    struct
+    } FUNCALL, APPLY, LISPM;
+    struct lispm
     {
-      Cell *fn, *arglist;
-    } APPLY;
-    struct
-    {
-      Cell *fn, *arglist;
-    } LISPM;
+      Cell *res, *arglist;
+    } PROGN;
     struct
     {
       Cell *acc, *arglist;
     } LIST;
+    struct
+    {
+      Cell *form;
+    } IF;
   };
 } State;
 
@@ -116,7 +125,7 @@ lispm (LMSecd *lm, Context *ctx)
         }
     __EVAL:
       {
-        Cell *arg = s.EVAL.arg;
+        Cell *arg = (s.EVAL.arg) ? s.EVAL.arg : POP (lm);
 
         if (IS (arg, SYMBOL))
           {
@@ -167,14 +176,14 @@ lispm (LMSecd *lm, Context *ctx)
         Cell *fn = POP (lm);
         Cell *arglist = s.EVAL.arg;
 
-        // one of the functions this C function handles
-        // if (IS (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
-        //   {
-        //     STATE_PUSH (lm, ((State){ .state = LISPM,
-        //                               .LISPM.fn = fn,
-        //                               .LISPM.arglist = arglist }));
-        //     continue;
-        //   }
+        // one of the fns this C code handles
+        if (IS (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
+          {
+            STATE_PUSH (lm, ((State){ .state = LISPM,
+                                      .LISPM.fn = fn,
+                                      .LISPM.arglist = arglist }));
+            continue;
+          }
 
         STATE_PUSH (lm, ((State){
                             .state = FUNCALL,
@@ -230,33 +239,6 @@ lispm (LMSecd *lm, Context *ctx)
             continue;
           }
 
-        if (fn->builtin_fn->is_lispm)
-          {
-            continue;
-          }
-
-        // if (fn == KEYWORD (FUNCALL))
-        //   {
-        //     STATE_PUSH (lm, ((State){ .state = FUNCALL,
-        //                               .FUNCALL.arglist = CDR (arglist) }));
-        //     STATE_PUSH (lm,
-        //                 ((State){ .state = EVAL, .EVAL.arg = CAR (arglist)
-        //                 }));
-        //     continue;
-        //   }
-
-        // if (fn == KEYWORD (APPLY))
-        //   {
-        //     STATE_PUSH (lm,
-        //                 ((State){ .state = APPLY,  // XXX
-        //                           .FUNCALL.arglist = CAR (CDR (arglist))
-        //                           }));
-        //     STATE_PUSH (lm,
-        //                 ((State){ .state = EVAL, .EVAL.arg = CAR (arglist)
-        //                 }));
-        //     continue;
-        //   }
-
         if (!builtin_fn->fn)
           {
             goto error;
@@ -302,9 +284,6 @@ lispm (LMSecd *lm, Context *ctx)
                                   .LIST.arglist = s.LIST.arglist,
                                   .LIST.acc = rev2 }));
         continue;
-      }
-    __PROGN:
-      {
       }
     __APPLY:
       {
@@ -363,6 +342,129 @@ lispm (LMSecd *lm, Context *ctx)
       }
     __LISPM:
       {
+        Cell *fn = s.FUNCALL.fn;
+        Cell *arglist = s.FUNCALL.arglist;
+
+        if (fn == KEYWORD (LIST))
+          {
+            STATE_PUSH (lm, ((State){ .state = LIST,
+                                      .LIST.acc = NIL,
+                                      .LIST.arglist = arglist }));
+            continue;
+          }
+
+        if (fn == KEYWORD (FUNCALL))
+          {
+            STATE_PUSH (lm, ((State){ .state = FUNCALL,
+                                      .FUNCALL.arglist = CDR (arglist) }));
+            STATE_PUSH (lm,
+                        ((State){ .state = EVAL, .EVAL.arg = CAR (arglist) }));
+            continue;
+          }
+
+        if (fn == KEYWORD (APPLY))
+          {
+            STATE_PUSH (lm, ((State){ .state = APPLY,
+                                      .APPLY.arglist = CAR (CDR (arglist)) }));
+            STATE_PUSH (lm,
+                        ((State){ .state = EVAL, .EVAL.arg = CAR (arglist) }));
+            continue;
+          }
+
+        if (fn == KEYWORD (EVAL))
+          {
+            STATE_PUSH (lm,
+                        ((State){ .state = EVAL, .EVAL.arg = CAR (arglist) }));
+            STATE_PUSH (lm, ((State){ .state = EVAL }));
+            continue;
+          }
+
+        if (fn == KEYWORD (PROGN))
+          {
+            STATE_PUSH (lm, ((State){ .state = PROGN,
+                                      .PROGN.res = NIL,
+                                      .PROGN.arglist = arglist }));
+            continue;
+          }
+
+        // if (fn == KEYWORD (AND))
+        //   {
+        //   }
+        // return and_form (cdr, ctx);
+
+        // if (fn == KEYWORD (IF))
+        //   {
+        //   }
+        // return if_form (cdr, ctx);
+
+        // if (fn == KEYWORD (OR))
+        //   {
+        //   }
+        // return or_form (cdr, ctx);
+
+        goto error;
+      }
+    __PROGN:
+      {
+        Cell *res = s.PROGN.res;
+        Cell *arglist = s.PROGN.arglist;
+
+        if (IS_NIL (arglist))
+          {
+            PUSH (lm, res);
+            continue;
+          }
+
+        STATE_PUSH (lm, ((State){ .state = PROGN_CONT,
+                                  .PROGN.res = res,
+                                  .PROGN.arglist = arglist }));
+        STATE_PUSH (lm, ((State){ .state = EVAL, .EVAL.arg = CAR (arglist) }));
+        continue;
+      }
+    __PROGN_CONT:
+      {
+        Cell *arglist = s.PROGN.arglist;
+        Cell *new_res = POP (lm);
+
+        STATE_PUSH (lm, ((State){ .state = PROGN,
+                                  .PROGN.res = new_res,
+                                  .PROGN.arglist = CDR (arglist) }));
+        continue;
+      }
+    __IF:
+      {
+        Cell *form = s.IF.form;
+        Cell *pred_form = CAR (form);
+
+        STATE_PUSH (lm, ((State){ .state = IF_CONT, .IF.form = form }));
+        STATE_PUSH (lm, ((State){ .state = EVAL, .EVAL.arg = pred_form }));
+        continue;
+      }
+
+    __IF_CONT:
+      {
+        Cell *form = s.IF.form;
+        Cell *pred_val = POP (lm);
+
+        if (!IS_NIL (pred_val))
+          {
+            Cell *then_form = CAR (CDR (form));
+            STATE_PUSH (lm, ((State){ .state = EVAL, .EVAL.arg = then_form }));
+          }
+        else
+          {
+            Cell *else_form = CAR (CDR (CDR (form)));
+            if (else_form)
+              {
+                STATE_PUSH (lm,
+                            ((State){ .state = EVAL, .EVAL.arg = else_form }));
+              }
+            else
+              {
+                PUSH (lm, NIL);
+              }
+          }
+        continue;
       }
     }
 
@@ -372,6 +474,8 @@ lispm (LMSecd *lm, Context *ctx)
 error:;
   perror ("**Error:");
   return NIL;
+
+underflow:
 
 overflow:;
   perror ("**Overflow:");
@@ -384,16 +488,14 @@ lispm_progn (Cell *progn, Context *ctx)
   LMSecd lm;
   lm_secd_init (&lm);
 
-  Cell *rev_progn = reverse (progn, ctx);
-
-  for (Cell *c = rev_progn; !IS_NIL (c); c = CDR (c))
-    STATE_PUSH (&lm, ((State){ .state = EVAL, .EVAL.arg = CAR (c) }));
+  STATE_PUSH (&lm, ((State){ .state = PROGN, .PROGN.arglist = progn }));
 
   Cell *ret = lispm (&lm, ctx);
   lm_secd_destroy (&lm);
   return ret;
 
 overflow:
+underflow:
   lm_secd_destroy (&lm);
   perror ("Reset");
   return NIL;
