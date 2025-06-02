@@ -181,7 +181,6 @@ or_form (Cell *form, Context *ctx)
   while (!IS_NIL (form))
     {
       eval_res = eval (CAR (form), ctx);
-
       if (!nil_eq (NIL, eval_res))
         return eval_res;
 

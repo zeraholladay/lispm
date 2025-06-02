@@ -108,8 +108,6 @@ lm_secd_destroy (LMSecd *lm)
 static Cell *
 lispm (LMSecd *lm, Context *ctx)
 {
-  char *err_msg;
-
   while (lm->ctl.sp)
     {
       State s = STATE_POP (lm);
@@ -226,11 +224,11 @@ lispm (LMSecd *lm, Context *ctx)
             goto error; // return ERROR (err, builtin_fn->name, ctx);
           }
 
-        if (fn == KEYWORD (LIST))
-          {
-            PUSH (lm, arglist); // LIST is __EVAL_LIST, which was already done
-            continue;
-          }
+        // if (fn == KEYWORD (LIST))
+        //   {
+        //     PUSH (lm, arglist); // LIST is __EVAL_LIST, which was already done
+        //     continue;
+        //   }
 
         if (!builtin_fn->fn)
           {
@@ -242,8 +240,8 @@ lispm (LMSecd *lm, Context *ctx)
       }
     __FUNCALL_LAMBDA:
       {
-        Cell *fn = s.FUNCALL.fn;
-        Cell *arglist = s.FUNCALL.arglist;
+        // Cell *fn = s.FUNCALL.fn;
+        // Cell *arglist = s.FUNCALL.arglist;
       }
     __LIST:
       {
@@ -286,13 +284,13 @@ lispm (LMSecd *lm, Context *ctx)
 
         Cell *fixd_args = butlast (arglist, ctx);
 
-        STATE_PUSH (lm, .state = APPLY_EVAL_LAST_ARG, .APPLY.fn = fn,
+        STATE_PUSH (lm, .state = APPLY_CONT, .APPLY.fn = fn,
                     .APPLY.arglist = arglist);
         STATE_PUSH (lm, .state = LIST, .LIST.arglist = fixd_args,
                     .LIST.acc = NIL);
         continue;
       }
-    __APPLY_EVAL_LAST_ARG:
+    __APPLY_CONT:
       {
         Cell *fixed_rev = POP (lm);
         Cell *arglist = s.APPLY.arglist;
@@ -355,13 +353,10 @@ lispm (LMSecd *lm, Context *ctx)
           STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = arglist);
         else if (fn == KEYWORD (AND))
           STATE_PUSH (lm, .state = AND, .AND.arglist = arglist);
-        else if (fn == KEYWORD (IF))
-          {
-          }
-
         else if (fn == KEYWORD (OR))
-          {
-          }
+          STATE_PUSH (lm, .state = OR, .OR.arglist = arglist);
+        else if (fn == KEYWORD (IF))
+          STATE_PUSH (lm, .state = IF, .IF.form = arglist);
         else
           {
             goto error;
@@ -437,35 +432,71 @@ lispm (LMSecd *lm, Context *ctx)
             continue;
           }
 
-        STATE_PUSH (lm, .state = AND_CONT, .AND.res = T,
-                    .AND.arglist = arglist);
-
+        STATE_PUSH (lm, .state = AND_CONT, .AND.arglist = arglist);
         STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
         continue;
       }
     __AND_CONT:
       {
         Cell *arglist = s.AND.arglist;
-        Cell *prev_res = s.AND.res;
-        Cell *curr_val = POP (lm);
+        Cell *eval_res = POP (lm);
 
-        if (IS_NIL (curr_val))
+        if (IS_NIL (eval_res))
           {
             PUSH (lm, NIL);
             continue;
           }
 
-        Cell *rest = CDR (arglist);
-        if (IS_NIL (rest))
+        Cell *cdr = CDR (arglist);
+
+        if (IS_NIL (cdr))
           {
-            PUSH (lm, curr_val);
+            PUSH (lm, eval_res);
             continue;
           }
 
-        STATE_PUSH (lm, .state = AND_CONT, .AND.res = curr_val,
-                    .AND.arglist = rest);
+        STATE_PUSH (lm, .state = AND_CONT, .AND.res = eval_res,
+                    .AND.arglist = cdr);
 
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (rest));
+        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (cdr));
+        continue;
+      }
+    __OR:
+      {
+        Cell *arglist = s.OR.arglist;
+
+        if (IS_NIL (arglist))
+          {
+            PUSH (lm, NIL);
+            continue;
+          }
+
+        STATE_PUSH (lm, .state = OR_CONT, .OR.arglist = arglist);
+        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
+        continue;
+      }
+    __OR_CONT:
+      {
+        Cell *arglist = s.OR.arglist;
+        Cell *eval_res = POP (lm);
+
+        if (IS_NIL (eval_res))
+          {
+            PUSH (lm, T);
+            continue;
+          }
+
+        Cell *cdr = CDR (arglist);
+
+        if (!IS_NIL (cdr))
+          {
+            PUSH (lm, eval_res);
+            continue;
+          }
+
+        STATE_PUSH (lm, .state = OR_CONT, .OR.res = eval_res,
+                    .OR.arglist = cdr);
+        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (cdr));
         continue;
       }
     }
@@ -477,10 +508,12 @@ error:;
   perror ("**Error:");
   return NIL;
 
-underflow:
+underflow:;
+  perror ("**Underflow:");
+  return NIL;
 
 overflow:;
-  perror ("**Overflow:");
+  perror ("**Overflow");
   return NIL;
 }
 
@@ -497,7 +530,6 @@ lispm_progn (Cell *progn, Context *ctx)
   return ret;
 
 overflow:
-underflow:
   lm_secd_destroy (&lm);
   perror ("Reset");
   return NIL;
