@@ -151,20 +151,14 @@ lispm (LMSecd *lm, Context *ctx)
             Cell *cdr = CDR (arg);
 
             if (car == KEYWORD (QUOTE))
+              PUSH (lm, CAR (cdr));
+            else if (IS (car, LAMBDA))
+              PUSH (lm, car);
+            else
               {
-                PUSH (lm, CAR (cdr));
-                continue;
+                STATE_PUSH (lm, .state = EVAL_CONT, .EVAL.arg = cdr);
+                STATE_PUSH (lm, .state = EVAL, .EVAL.arg = car);
               }
-
-            if (IS (car, LAMBDA))
-              {
-                PUSH (lm, car);
-                continue;
-              }
-
-            // to __EVAL_CONT:
-            STATE_PUSH (lm, .state = EVAL_CONT, .EVAL.arg = cdr);
-            STATE_PUSH (lm, .state = EVAL, .EVAL.arg = car);
             continue;
           }
         goto error;
@@ -193,20 +187,15 @@ lispm (LMSecd *lm, Context *ctx)
         Cell *fn = (s.FUNCALL.fn) ? (s.FUNCALL.fn) : POP (lm);
 
         if (IS (fn, BUILTIN_FN))
-          {
-            STATE_PUSH (lm, .state = FUNCALL_BUILTIN, .FUNCALL.fn = fn,
-                        .FUNCALL.arglist = arglist);
-            continue;
-          }
+          STATE_PUSH (lm, .state = FUNCALL_BUILTIN, .FUNCALL.fn = fn,
+                      .FUNCALL.arglist = arglist);
+        else if (IS (fn, LAMBDA))
+          STATE_PUSH (lm, .state = FUNCALL_LAMBDA, .FUNCALL.fn = fn,
+                      .FUNCALL.arglist = arglist);
+        else
+          goto error;
 
-        if (IS (fn, LAMBDA))
-          {
-            STATE_PUSH (lm, .state = FUNCALL_LAMBDA, .FUNCALL.fn = fn,
-                        .FUNCALL.arglist = arglist);
-            continue;
-          }
-
-        goto error;
+        continue;
       }
     __FUNCALL_BUILTIN:
       {
@@ -224,18 +213,13 @@ lispm (LMSecd *lm, Context *ctx)
             goto error; // return ERROR (err, builtin_fn->name, ctx);
           }
 
-        // if (fn == KEYWORD (LIST))
-        //   {
-        //     PUSH (lm, arglist); // LIST is __EVAL_LIST, which was already done
-        //     continue;
-        //   }
-
         if (!builtin_fn->fn)
           {
             goto error;
           }
 
-        PUSH (lm, builtin_fn->fn (arglist, ctx));
+        Cell *res = builtin_fn->fn (arglist, ctx);
+        PUSH (lm, res);
         continue;
       }
     __FUNCALL_LAMBDA:
@@ -296,7 +280,7 @@ lispm (LMSecd *lm, Context *ctx)
         Cell *arglist = s.APPLY.arglist;
         Cell *tail_list = last (arglist, ctx);
 
-        if (!LISTP (tail_list))
+        if (!LISTP (tail_list)) // ie (apply fn NIL)
           {
             STATE_PUSH (lm, .state = FUNCALL, .FUNCALL.fn = s.APPLY.fn,
                         .FUNCALL.arglist = NIL);
@@ -412,13 +396,9 @@ lispm (LMSecd *lm, Context *ctx)
           {
             Cell *else_form = CAR (CDR (CDR (form)));
             if (else_form)
-              {
-                STATE_PUSH (lm, .state = EVAL, .EVAL.arg = else_form);
-              }
+              STATE_PUSH (lm, .state = EVAL, .EVAL.arg = else_form);
             else
-              {
-                PUSH (lm, NIL);
-              }
+              PUSH (lm, NIL);
           }
         continue;
       }
