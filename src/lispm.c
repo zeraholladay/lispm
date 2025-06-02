@@ -44,6 +44,15 @@
     }                                                                         \
   while (0)
 
+#define LM_ERR(code, msg)                                                     \
+  do                                                                          \
+    {                                                                         \
+      DEBUG (DEBUG_LOCATION);                                                 \
+      fprintf (stderr, "[%s:%s] %s\n", #code, error_messages[code], msg);     \
+      goto error;                                                             \
+    }                                                                         \
+  while (0);
+
 typedef enum
 {
 #define STATE(name) name,
@@ -97,6 +106,13 @@ typedef struct lispm_secd
   Pool *pool;
 } LM;
 
+static void
+lm_reset (LM *lm)
+{
+  lm->stk.sp = lm->ctl.sp = 0;
+  env_reset (lm->env);
+}
+
 static Cell *
 lm_eval (LM *lm)
 {
@@ -111,18 +127,18 @@ lm_eval (LM *lm)
 #include "lispm_states.def"
 #undef STATE
         default:
-          goto error;
+          LM_ERR (ERR_INTERNAL, "No such state.");
         }
     __ENV_ENTER_FRAME:
-        {
-          env_enter_frame (&lm->env);
-          continue;
-        }
-    ___ENV_LEAVE_FRAME:
-        {
-          env_leave_frame (&lm->env);
-          continue;
-        }
+      {
+        env_enter_frame (&lm->env);
+        continue;
+      }
+    __ENV_LEAVE_FRAME:
+      {
+        env_leave_frame (&lm->env);
+        continue;
+      }
     __EVAL:
       {
         Cell *arg = (s.EVAL.arg) ? s.EVAL.arg : POP (lm);
@@ -163,7 +179,7 @@ lm_eval (LM *lm)
               }
             continue;
           }
-        goto error;
+        LM_ERR (ERR_INTERNAL, "EVAL");
       }
     __EVAL_CONT:
       {
@@ -195,7 +211,7 @@ lm_eval (LM *lm)
           STATE_PUSH (lm, .state = FUNCALL_LAMBDA, .FUNCALL.fn = fn,
                       .FUNCALL.arglist = arglist);
         else
-          goto error;
+          LM_ERR (ERR_INTERNAL, "FUNCALL");
 
         continue;
       }
@@ -212,13 +228,11 @@ lm_eval (LM *lm)
             ErrorCode err = (received < builtin_fn->arity)
                                 ? ERR_MISSING_ARG
                                 : ERR_UNEXPECTED_ARG;
-            goto error; // return ERROR (err, builtin_fn->name, lm);
+            LM_ERR (err, builtin_fn->name);
           }
 
         if (!builtin_fn->fn)
-          {
-            goto error;
-          }
+          LM_ERR (ERR_NOT_A_FUNCTION, builtin_fn->name)
 
         Cell *res = builtin_fn->fn (arglist, lm);
         PUSH (lm, res);
@@ -236,31 +250,32 @@ lm_eval (LM *lm)
           {
             ErrorCode err
                 = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
-            goto error;
+            LM_ERR (err, "LAMBDA");
           }
 
-        Cell *pairs
-            = mapcar (KEYWORD (LIST), LIST2 (fn->lambda.params, arglist, lm), lm);
-
-  while (!IS_NIL (pairs))
-    {
-      Cell *pair = CAR (pairs);
-      // env_let (lm->env, (CAR (pair))->symbol.str, CADR (pair));
-      lm_env_let (lm, (CAR (pair))->symbol.str, CADR (pair));
-      pairs = CDR (pairs);
-    }
-
-  Cell *res = eval_progn (fn->lambda.body, lm);
-
-  env_leave_frame (&lm->env);
-
-  // return res;
-
-        goto error; // not yet done
+        STATE_PUSH (lm, .state = ENV_LEAVE_FRAME);
+        STATE_PUSH (lm, .state = FUNCALL_LAMBDA_CONT, .FUNCALL.fn = fn,
+                    .FUNCALL.arglist = arglist);
+        STATE_PUSH (lm, .state = ENV_ENTER_FRAME);
+        continue;
       }
     __FUNCALL_LAMBDA_CONT:
       {
+        Cell *fn = s.FUNCALL.fn;
+        Cell *arglist = s.FUNCALL.arglist;
 
+        Cell *pairs = mapcar (KEYWORD (LIST),
+                              LIST2 (fn->lambda.params, arglist, lm), lm);
+
+        while (!IS_NIL (pairs))
+          {
+            Cell *pair = CAR (pairs);
+            lm_env_let (lm, (CAR (pair))->symbol.str, CADR (pair));
+            pairs = CDR (pairs);
+          }
+
+        STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = arglist);
+        continue;
       }
     __LIST:
       {
@@ -299,7 +314,7 @@ lm_eval (LM *lm)
         Cell *fn = s.APPLY.fn ? s.APPLY.fn : POP (lm);
 
         if (!LISTP (arglist))
-          goto error;
+          LM_ERR (ERR_MISSING_ARG, "APPLY");
 
         Cell *fixd_args = butlast (arglist, lm);
 
@@ -316,15 +331,14 @@ lm_eval (LM *lm)
         Cell *tail_list = last (arglist, lm);
 
         if (!LISTP (tail_list)) // ie (apply fn NIL)
+          STATE_PUSH (lm, .state = FUNCALL, .FUNCALL.fn = s.APPLY.fn,
+                      .FUNCALL.arglist = NIL);
+        else
           {
-            STATE_PUSH (lm, .state = FUNCALL, .FUNCALL.fn = s.APPLY.fn,
-                        .FUNCALL.arglist = NIL);
-            continue;
+            STATE_PUSH (lm, .state = APPLY_FUNCALL, .APPLY.fn = s.APPLY.fn,
+                        .APPLY.arglist = fixed_rev);
+            STATE_PUSH (lm, .state = EVAL, .EVAL.arg = tail_list);
           }
-
-        STATE_PUSH (lm, .state = APPLY_FUNCALL, .APPLY.fn = s.APPLY.fn,
-                    .APPLY.arglist = fixed_rev);
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = tail_list);
         continue;
       }
     __APPLY_FUNCALL:
@@ -332,7 +346,7 @@ lm_eval (LM *lm)
         Cell *tail_list = POP (lm);
 
         if (!LISTP (tail_list))
-          goto error;
+          LM_ERR (ERR_MISSING_ARG, "FUNCALL");
 
         Cell *fixed_rev = s.APPLY.arglist; // the reversed list of fixed‐values
         Cell *fn = s.APPLY.fn;
@@ -377,9 +391,7 @@ lm_eval (LM *lm)
         else if (fn == KEYWORD (IF))
           STATE_PUSH (lm, .state = IF, .IF.form = arglist);
         else
-          {
-            goto error;
-          }
+          LM_ERR (ERR_INTERNAL, "LISPM");
         continue;
       }
     __PROGN:
@@ -520,15 +532,15 @@ lm_eval (LM *lm)
   return evl_ret;
 
 error:;
-  perror ("**Error:");
+  fputs ("**Error:", stderr);
   return NIL;
 
 underflow:;
-  perror ("**Underflow:");
+  fputs ("**Underflow:", stderr);
   return NIL;
 
 overflow:;
-  perror ("**Overflow");
+  fputs ("**Overflow", stderr);
   return NIL;
 }
 
@@ -584,16 +596,12 @@ lm_env_set (LM *lm, const char *key, Cell *val)
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
-  lm = lm_create ();
-
   STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = progn);
 
   Cell *ret = lm_eval (lm);
-  lm_destroy (lm);
   return ret;
 
 overflow:
-  lm_destroy (lm);
-  perror ("Reset");
+  lm_reset (lm);
   return NIL;
 }

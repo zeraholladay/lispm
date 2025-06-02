@@ -85,3 +85,16 @@ env_leave_frame (Env **frame)
   *frame = (*frame)->parent;
   env_destroy (chld_frame);
 }
+
+void
+env_reset (Env *frame)
+{
+  Env *cur = frame, *next;
+
+  while (cur->parent)
+    {
+      next = cur->parent;
+      env_destroy (cur);
+      cur = next;
+    }
+}
