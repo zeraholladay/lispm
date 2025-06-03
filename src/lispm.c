@@ -12,6 +12,31 @@
 #include "types.h"
 #include "xalloc.h"
 
+// clang-format off
+#define AND_CONT              _and_cont
+#define AND                   _and
+#define APPLY_CONT            apply_cont
+#define APPLY_FUNCALL         apply_funcall
+#define APPLY                 apply
+#define ENV_ENTER_FRAME       env_enter_frame
+#define ENV_LEAVE_FRAME       env_leave_frame
+#define EVAL_CONT             eval_cont
+#define EVAL                  eval
+#define FUNCALL_BUILTIN       funcall_builtin
+#define FUNCALL_LAMBDA_CONT   funcall_lambda_cont
+#define FUNCALL_LAMBDA        funcall_lambda
+#define FUNCALL               funcall
+#define IF_CONT               _if_cont
+#define IF                    _if
+#define LISPM                 lispm
+#define LIST_ACC              list_acc
+#define LIST                  list
+#define OR_CONT               _or_cont
+#define OR                    _or
+#define PROGN_CONT            progn_cont
+#define PROGN                 progn
+// clang-format on
+
 #define POP(lm)                                                               \
   ({                                                                          \
     if ((lm)->stk.sp == 0)                                                    \
@@ -35,12 +60,13 @@
     (lm)->ctl.states[--(lm)->ctl.sp];                                         \
   })
 
-#define STATE_PUSH(lm, ...)                                                   \
+#define STATE_PUSH(lm, tag, ...)                                              \
   do                                                                          \
     {                                                                         \
-      if (((lm)->ctl.sp) >= LISPM_CTL_MAX)                                    \
+      if ((lm)->ctl.sp >= LISPM_CTL_MAX)                                      \
         goto overflow;                                                        \
-      (lm)->ctl.states[(lm)->ctl.sp++] = (State){ __VA_ARGS__ };              \
+      (lm)->ctl.states[(lm)->ctl.sp++]                                        \
+          = (State){ .state = (tag), .u.tag = { __VA_ARGS__ } };              \
     }                                                                         \
   while (0)
 
@@ -55,8 +81,8 @@
 
 typedef enum
 {
-#define STATE(name) name,
-#include "lispm_states.def"
+#define STATE(tag, name, ...) tag,
+#include "lispm.def"
 #undef STATE
   COUNT,
 } StateEnum;
@@ -66,27 +92,14 @@ typedef struct state
   StateEnum state;
   union
   {
-    struct
-    {
-      Cell *arg;
-    } EVAL;
-    struct
-    {
-      Cell *fn, *arglist;
-    } FUNCALL, APPLY, LISPM;
-    struct lispm
-    {
-      Cell *res, *arglist;
-    } PROGN, AND, OR;
-    struct
-    {
-      Cell *acc, *arglist;
-    } LIST;
-    struct
-    {
-      Cell *form;
-    } IF;
-  };
+#define STATE(tag, name, ...)                                                 \
+  struct                                                                      \
+  {                                                                           \
+    __VA_ARGS__;                                                              \
+  } name;
+#include "lispm.def"
+#undef STATE
+  } u;
 } State;
 
 typedef struct lispm_secd
@@ -121,27 +134,27 @@ lm_eval (LM *lm)
       State s = STATE_POP (lm);
       switch (s.state)
         {
-#define STATE(name)                                                           \
-  case name:                                                                  \
-    goto __##name;
-#include "lispm_states.def"
+#define STATE(tag, name, ...)                                                 \
+  case tag:                                                                   \
+    goto S_##tag;
+#include "lispm.def"
 #undef STATE
         default:
           LM_ERR (ERR_INTERNAL, "No such state.");
         }
-    __ENV_ENTER_FRAME:
+    S_ENV_ENTER_FRAME:
       {
         env_enter_frame (&lm->env);
         continue;
       }
-    __ENV_LEAVE_FRAME:
+    S_ENV_LEAVE_FRAME:
       {
         env_leave_frame (&lm->env);
         continue;
       }
-    __EVAL:
+    S_EVAL:
       {
-        Cell *arg = (s.EVAL.arg) ? s.EVAL.arg : POP (lm);
+        Cell *arg = (s.u.eval.arg) ? s.u.eval.arg : POP (lm);
 
         if (IS (arg, SYMBOL))
           {
@@ -174,17 +187,17 @@ lm_eval (LM *lm)
               PUSH (lm, car);
             else
               {
-                STATE_PUSH (lm, .state = EVAL_CONT, .EVAL.arg = cdr);
-                STATE_PUSH (lm, .state = EVAL, .EVAL.arg = car);
+                STATE_PUSH (lm, EVAL_CONT, arg);
+                STATE_PUSH (lm, EVAL, eval, car);
               }
             continue;
           }
         LM_ERR (ERR_INTERNAL, "EVAL");
       }
-    __EVAL_CONT:
+    S_EVAL_CONT:
       {
         Cell *fn = POP (lm);
-        Cell *arglist = s.EVAL.arg;
+        Cell *arglist = s.u.eval.arg;
 
         // one of the fns this C code handles
         if (IS (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
@@ -199,7 +212,7 @@ lm_eval (LM *lm)
                     .LIST.arglist = arglist);
         continue;
       }
-    __FUNCALL:
+    S_FUNCALL:
       {
         Cell *arglist = (s.FUNCALL.arglist) ? (s.FUNCALL.arglist) : POP (lm);
         Cell *fn = (s.FUNCALL.fn) ? (s.FUNCALL.fn) : POP (lm);
@@ -215,7 +228,7 @@ lm_eval (LM *lm)
 
         continue;
       }
-    __FUNCALL_BUILTIN:
+    S_FUNCALL_BUILTIN:
       {
         Cell *fn = s.FUNCALL.fn;
         Cell *arglist = s.FUNCALL.arglist;
@@ -245,7 +258,7 @@ lm_eval (LM *lm)
         PUSH (lm, res);
         continue;
       }
-    __FUNCALL_LAMBDA:
+    S_FUNCALL_LAMBDA:
       {
         Cell *fn = s.FUNCALL.fn;
         Cell *arglist = s.FUNCALL.arglist;
@@ -266,7 +279,7 @@ lm_eval (LM *lm)
         STATE_PUSH (lm, .state = ENV_ENTER_FRAME);
         continue;
       }
-    __FUNCALL_LAMBDA_CONT:
+    S_FUNCALL_LAMBDA_CONT:
       {
         Cell *fn = s.FUNCALL.fn;
         Cell *arglist = s.FUNCALL.arglist;
@@ -284,7 +297,7 @@ lm_eval (LM *lm)
         STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = fn->lambda.body);
         continue;
       }
-    __LIST:
+    S_LIST:
       {
         Cell *arglist = s.LIST.arglist;
         Cell *rev = s.LIST.acc;
@@ -304,7 +317,7 @@ lm_eval (LM *lm)
         STATE_PUSH (lm, .state = EVAL, .EVAL.arg = car);
         continue;
       }
-    __LIST_ACC:
+    S_LIST_ACC:
       {
         Cell *eval_res = POP (lm);
 
@@ -315,7 +328,7 @@ lm_eval (LM *lm)
                     .LIST.acc = rev2);
         continue;
       }
-    __APPLY:
+    S_APPLY:
       {
         Cell *arglist = s.APPLY.arglist ? s.APPLY.arglist : POP (lm);
         Cell *fn = s.APPLY.fn ? s.APPLY.fn : POP (lm);
@@ -331,7 +344,7 @@ lm_eval (LM *lm)
                     .LIST.acc = NIL);
         continue;
       }
-    __APPLY_CONT:
+    S_APPLY_CONT:
       {
         Cell *fixed_rev = POP (lm);
         Cell *arglist = s.APPLY.arglist;
@@ -348,7 +361,7 @@ lm_eval (LM *lm)
           }
         continue;
       }
-    __APPLY_FUNCALL:
+    S_APPLY_FUNCALL:
       {
         Cell *tail_list = POP (lm);
 
@@ -364,7 +377,7 @@ lm_eval (LM *lm)
                     .FUNCALL.arglist = all_args);
         continue;
       }
-    __LISPM:
+    S_LISPM:
       {
         Cell *fn = s.FUNCALL.fn;
         Cell *arglist = s.FUNCALL.arglist;
@@ -380,8 +393,7 @@ lm_eval (LM *lm)
           }
         else if (fn == KEYWORD (APPLY))
           {
-            STATE_PUSH (lm, .state = APPLY,
-                        .APPLY.arglist = CAR (CDR (arglist)));
+            STATE_PUSH (lm, .state = APPLY, .APPLY.arglist = CDR (arglist));
             STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
           }
         else if (fn == KEYWORD (EVAL))
@@ -401,7 +413,7 @@ lm_eval (LM *lm)
           LM_ERR (ERR_INTERNAL, "LISPM");
         continue;
       }
-    __PROGN:
+    S_PROGN:
       {
         Cell *res = (s.PROGN.res) ? (s.PROGN.res) : NIL;
         Cell *arglist = s.PROGN.arglist;
@@ -417,7 +429,7 @@ lm_eval (LM *lm)
         STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
         continue;
       }
-    __PROGN_CONT:
+    S_PROGN_CONT:
       {
         Cell *arglist = s.PROGN.arglist;
         Cell *new_res = POP (lm);
@@ -426,7 +438,7 @@ lm_eval (LM *lm)
                     .PROGN.arglist = CDR (arglist));
         continue;
       }
-    __IF:
+    S_IF:
       {
         Cell *form = s.IF.form;
         Cell *pred_form = CAR (form);
@@ -436,7 +448,7 @@ lm_eval (LM *lm)
         continue;
       }
 
-    __IF_CONT:
+    S_IF_CONT:
       {
         Cell *form = s.IF.form;
         Cell *pred_val = POP (lm);
@@ -456,7 +468,7 @@ lm_eval (LM *lm)
           }
         continue;
       }
-    __AND:
+    S_AND:
       {
         Cell *arglist = s.AND.arglist;
 
@@ -470,7 +482,7 @@ lm_eval (LM *lm)
         STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
         continue;
       }
-    __AND_CONT:
+    S_AND_CONT:
       {
         Cell *arglist = s.AND.arglist;
         Cell *eval_res = POP (lm);
@@ -495,7 +507,7 @@ lm_eval (LM *lm)
         STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (cdr));
         continue;
       }
-    __OR:
+    S_OR:
       {
         Cell *arglist = s.OR.arglist;
 
@@ -509,7 +521,7 @@ lm_eval (LM *lm)
         STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
         continue;
       }
-    __OR_CONT:
+    S_OR_CONT:
       {
         Cell *arglist = s.OR.arglist;
         Cell *eval_res = POP (lm);
