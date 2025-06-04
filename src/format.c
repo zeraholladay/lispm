@@ -114,7 +114,7 @@ fmt_cons (StrBuf *sb, Cell *n)
   Cell *cur;
   appendf (sb, "(");
 
-  for (cur = n; IS (cur, CONS); cur = CDR (cur))
+  for (cur = n; IS_INST (cur, CONS); cur = CDR (cur))
     {
       Cell *car = CAR (cur);
       Cell *cdr = CDR (cur);

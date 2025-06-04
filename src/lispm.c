@@ -28,14 +28,14 @@
     }                                                                         \
   while (0)
 
-#define STATE_POP(lm)                                                         \
+#define SPOP(lm)                                                              \
   ({                                                                          \
     if ((lm)->ctl.sp == 0)                                                    \
       goto underflow;                                                         \
     (lm)->ctl.states[--(lm)->ctl.sp];                                         \
   })
 
-#define STATE_PUSH(lm, tag, ...)                                              \
+#define SPUSH(lm, tag, ...)                                                   \
   do                                                                          \
     {                                                                         \
       if ((lm)->ctl.sp >= LISPM_CTL_MAX)                                      \
@@ -106,7 +106,7 @@ lm_eval (LM *lm)
 {
   while (lm->ctl.sp)
     {
-      State s = STATE_POP (lm);
+      State s = SPOP (lm);
       switch (s.state)
         {
 #define X(tag, ...)                                                           \
@@ -131,7 +131,7 @@ lm_eval (LM *lm)
       {
         Cell *arg = (s.uf_eval.arg) ? s.uf_eval.arg : POP (lm);
 
-        if (IS (arg, SYMBOL))
+        if (IS_INST (arg, SYMBOL))
           {
             PUSH (lm, lookup (arg, lm));
             continue;
@@ -158,12 +158,12 @@ lm_eval (LM *lm)
 
             if (car == KEYWORD (QUOTE))
               PUSH (lm, CAR (cdr));
-            else if (IS (car, LAMBDA))
+            else if (IS_INST (car, LAMBDA))
               PUSH (lm, car);
             else
               {
-                STATE_PUSH (lm, eval_cont, cdr);
-                STATE_PUSH (lm, eval, car);
+                SPUSH (lm, eval_cont, cdr);
+                SPUSH (lm, eval, car);
               }
             continue;
           }
@@ -175,14 +175,14 @@ lm_eval (LM *lm)
         Cell *arglist = s.uf_eval.arg;
 
         // one of the fns this C code handles
-        if (IS (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
+        if (IS_INST (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
           {
-            STATE_PUSH (lm, lispm, fn, arglist);
+            SPUSH (lm, lispm, fn, arglist);
             continue;
           }
 
-        STATE_PUSH (lm, funcall, fn, NULL);
-        STATE_PUSH (lm, list, NIL, arglist);
+        SPUSH (lm, funcall, fn, NULL);
+        SPUSH (lm, list, NIL, arglist);
         continue;
       }
     label_funcall:
@@ -191,10 +191,10 @@ lm_eval (LM *lm)
         Cell *arglist
             = (s.uf_funcall.arglist) ? (s.uf_funcall.arglist) : POP (lm);
 
-        if (IS (fn, BUILTIN_FN))
-          STATE_PUSH (lm, funcall_builtin, fn, arglist);
-        else if (IS (fn, LAMBDA))
-          STATE_PUSH (lm, funcall_lambda, fn, arglist);
+        if (IS_INST (fn, BUILTIN_FN))
+          SPUSH (lm, funcall_builtin, fn, arglist);
+        else if (IS_INST (fn, LAMBDA))
+          SPUSH (lm, funcall_lambda, fn, arglist);
         else
           LM_ERR (ERR_INTERNAL, "FUNCALL");
         continue;
@@ -220,7 +220,7 @@ lm_eval (LM *lm)
 
         Cell *res = builtin_fn->fn (arglist, lm);
 
-        if (IS (res, ERROR))
+        if (IS_INST (res, ERROR))
           {
             PERROR (res);
             goto error;
@@ -244,9 +244,9 @@ lm_eval (LM *lm)
             LM_ERR (err, "LAMBDA");
           }
 
-        STATE_PUSH (lm, env_leave_frame);
-        STATE_PUSH (lm, funcall_lambda_cont, fn, arglist);
-        STATE_PUSH (lm, env_enter_frame);
+        SPUSH (lm, env_leave_frame);
+        SPUSH (lm, funcall_lambda_cont, fn, arglist);
+        SPUSH (lm, env_enter_frame);
         continue;
       }
     label_funcall_lambda_cont:
@@ -264,7 +264,7 @@ lm_eval (LM *lm)
             pairs = CDR (pairs);
           }
 
-        STATE_PUSH (lm, progn, NIL, fn->lambda.body);
+        SPUSH (lm, progn, NIL, fn->lambda.body);
         continue;
       }
     label_list:
@@ -282,8 +282,8 @@ lm_eval (LM *lm)
         Cell *car = CAR (arglist);
         Cell *cdr = CDR (arglist);
 
-        STATE_PUSH (lm, list_acc, rev, cdr);
-        STATE_PUSH (lm, eval, car);
+        SPUSH (lm, list_acc, rev, cdr);
+        SPUSH (lm, eval, car);
         continue;
       }
     label_list_acc:
@@ -293,7 +293,7 @@ lm_eval (LM *lm)
         Cell *old_rev = s.uf_list.acc;
         Cell *rev2 = CONS (eval_res, old_rev, lm);
 
-        STATE_PUSH (lm, list, rev2, s.uf_list_acc.arglist);
+        SPUSH (lm, list, rev2, s.uf_list_acc.arglist);
         continue;
       }
     label_apply:
@@ -306,8 +306,8 @@ lm_eval (LM *lm)
 
         Cell *fixd_args = butlast (arglist, lm);
 
-        STATE_PUSH (lm, apply_cont, fn, arglist);
-        STATE_PUSH (lm, list, NIL, fixd_args);
+        SPUSH (lm, apply_cont, fn, arglist);
+        SPUSH (lm, list, NIL, fixd_args);
         continue;
       }
     label_apply_cont:
@@ -318,11 +318,11 @@ lm_eval (LM *lm)
         Cell *tail_list = last (arglist, lm);
 
         if (!LISTP (tail_list)) // ie (apply fn NIL)
-          STATE_PUSH (lm, funcall, fn, NIL);
+          SPUSH (lm, funcall, fn, NIL);
         else
           {
-            STATE_PUSH (lm, apply_funcall, fn, fixed_rev);
-            STATE_PUSH (lm, eval, tail_list);
+            SPUSH (lm, apply_funcall, fn, fixed_rev);
+            SPUSH (lm, eval, tail_list);
           }
         continue;
       }
@@ -338,7 +338,7 @@ lm_eval (LM *lm)
           LM_ERR (ERR_MISSING_ARG, "FUNCALL");
 
         Cell *all_args = append_inplace (fixed_rev, tail_list);
-        STATE_PUSH (lm, funcall, fn, all_args);
+        SPUSH (lm, funcall, fn, all_args);
         continue;
       }
     label_lispm:
@@ -347,30 +347,30 @@ lm_eval (LM *lm)
         Cell *arglist = s.uf_lispm.arglist;
 
         if (fn == KEYWORD (LIST))
-          STATE_PUSH (lm, list, NIL, arglist);
+          SPUSH (lm, list, NIL, arglist);
         else if (fn == KEYWORD (FUNCALL))
           {
-            STATE_PUSH (lm, funcall, NULL, CDR (arglist));
-            STATE_PUSH (lm, eval, CAR (arglist));
+            SPUSH (lm, funcall, NULL, CDR (arglist));
+            SPUSH (lm, eval, CAR (arglist));
           }
         else if (fn == KEYWORD (APPLY))
           {
-            STATE_PUSH (lm, apply, NULL, CDR (arglist));
-            STATE_PUSH (lm, eval, CAR (arglist));
+            SPUSH (lm, apply, NULL, CDR (arglist));
+            SPUSH (lm, eval, CAR (arglist));
           }
         else if (fn == KEYWORD (EVAL))
           {
-            STATE_PUSH (lm, eval, NULL);
-            STATE_PUSH (lm, eval, CAR (arglist));
+            SPUSH (lm, eval, NULL);
+            SPUSH (lm, eval, CAR (arglist));
           }
         else if (fn == KEYWORD (PROGN))
-          STATE_PUSH (lm, progn, NIL, arglist);
+          SPUSH (lm, progn, NIL, arglist);
         else if (fn == KEYWORD (AND))
-          STATE_PUSH (lm, and, NIL, arglist);
+          SPUSH (lm, and, NIL, arglist);
         else if (fn == KEYWORD (OR))
-          STATE_PUSH (lm, or, NIL, arglist);
+          SPUSH (lm, or, NIL, arglist);
         else if (fn == KEYWORD (IF))
-          STATE_PUSH (lm, if, arglist);
+          SPUSH (lm, if, arglist);
         else
           LM_ERR (ERR_INTERNAL, "LISPM");
         continue;
@@ -386,8 +386,8 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, progn_cont, res, arglist);
-        STATE_PUSH (lm, eval, CAR (arglist));
+        SPUSH (lm, progn_cont, res, arglist);
+        SPUSH (lm, eval, CAR (arglist));
         continue;
       }
     label_progn_cont:
@@ -395,7 +395,7 @@ lm_eval (LM *lm)
         Cell *arglist = s.uf_progn_cont.arglist;
         Cell *new_res = POP (lm);
 
-        STATE_PUSH (lm, progn, new_res, CDR (arglist));
+        SPUSH (lm, progn, new_res, CDR (arglist));
         continue;
       }
     label_if:
@@ -403,8 +403,8 @@ lm_eval (LM *lm)
         Cell *form = s.uf_if.form;
         Cell *pred_form = CAR (form);
 
-        STATE_PUSH (lm, if_cont, form);
-        STATE_PUSH (lm, eval, pred_form);
+        SPUSH (lm, if_cont, form);
+        SPUSH (lm, eval, pred_form);
         continue;
       }
 
@@ -416,13 +416,13 @@ lm_eval (LM *lm)
         if (!IS_NIL (pred_val))
           {
             Cell *then_form = CAR (CDR (form));
-            STATE_PUSH (lm, eval, then_form);
+            SPUSH (lm, eval, then_form);
           }
         else
           {
             Cell *else_form = CAR (CDR (CDR (form)));
             if (else_form)
-              STATE_PUSH (lm, eval, else_form);
+              SPUSH (lm, eval, else_form);
             else
               PUSH (lm, NIL);
           }
@@ -438,8 +438,8 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, and_cont, NIL, arglist);
-        STATE_PUSH (lm, eval, CAR (arglist));
+        SPUSH (lm, and_cont, NIL, arglist);
+        SPUSH (lm, eval, CAR (arglist));
         continue;
       }
     label_and_cont:
@@ -461,8 +461,8 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, and_cont, eval_res, cdr);
-        STATE_PUSH (lm, eval, CAR (cdr));
+        SPUSH (lm, and_cont, eval_res, cdr);
+        SPUSH (lm, eval, CAR (cdr));
         continue;
       }
     label_or:
@@ -475,8 +475,8 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, or_cont, NIL, arglist);
-        STATE_PUSH (lm, eval, CAR (arglist));
+        SPUSH (lm, or_cont, NIL, arglist);
+        SPUSH (lm, eval, CAR (arglist));
         continue;
       }
     label_or_cont:
@@ -498,8 +498,8 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, or_cont, eval_res, cdr);
-        STATE_PUSH (lm, eval, CAR (cdr));
+        SPUSH (lm, or_cont, eval_res, cdr);
+        SPUSH (lm, eval, CAR (cdr));
         continue;
       }
     }
@@ -572,7 +572,7 @@ lm_env_set (LM *lm, const char *key, Cell *val)
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
-  STATE_PUSH (lm, progn, NIL, progn);
+  SPUSH (lm, progn, NIL, progn);
 
   Cell *ret = lm_eval (lm);
   return ret;

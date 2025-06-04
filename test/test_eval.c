@@ -116,13 +116,13 @@ START_TEST (test_set_and_lookup)
   ck_assert (eval_res->integer == 42);
 
   eval_res = run_eval_progn ("(set 'bar 'foo)");
-  ck_assert (IS (eval_res, SYMBOL));
+  ck_assert (IS_INST (eval_res, SYMBOL));
 
   eval_res = run_eval_progn ("(set 'bar '(1 2 3))");
-  ck_assert (IS (eval_res, CONS));
+  ck_assert (IS_INST (eval_res, CONS));
 
   eval_res = run_eval_progn ("(set 'bar (lambda () ()))");
-  ck_assert (IS (eval_res, LAMBDA));
+  ck_assert (IS_INST (eval_res, LAMBDA));
 }
 END_TEST
 
@@ -134,11 +134,11 @@ START_TEST (test_first)
   ck_assert (IS_NIL (eval_res));
 
   eval_res = run_eval_progn ("(first '(foo bar))");
-  ck_assert (IS (eval_res, SYMBOL));
+  ck_assert (IS_INST (eval_res, SYMBOL));
   ck_assert_str_eq (eval_res->symbol.str, "foo");
 
   // eval_res = run_eval_progn ("(first)");
-  // ck_assert (IS (eval_res, ERROR));
+  // ck_assert (IS_INST (eval_res, ERROR));
 }
 END_TEST
 
@@ -150,12 +150,12 @@ START_TEST (test_rest)
   ck_assert (IS_NIL (eval_res));
 
   eval_res = run_eval_progn ("(rest '(foo bar))");
-  ck_assert (IS (eval_res, CONS));
-  ck_assert (IS (CAR (eval_res), SYMBOL));
+  ck_assert (IS_INST (eval_res, CONS));
+  ck_assert (IS_INST (CAR (eval_res), SYMBOL));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
 
   // eval_res = run_eval_progn ("(rest)");
-  // ck_assert (IS (eval_res, ERROR));
+  // ck_assert (IS_INST (eval_res, ERROR));
 }
 END_TEST
 
@@ -226,7 +226,7 @@ START_TEST (test_lambda)
 
   // define
   eval_res = run_eval_progn ("(lambda () ())");
-  ck_assert (IS (eval_res, LAMBDA));
+  ck_assert (IS_INST (eval_res, LAMBDA));
 
   // run
   eval_res = run_eval_progn ("((lambda () ()))");
@@ -234,21 +234,21 @@ START_TEST (test_lambda)
 
   // run
   eval_res = run_eval_progn ("((lambda () (cons 'a 'b) 42))");
-  ck_assert (IS (eval_res, INTEGER) && eval_res->integer == 42);
+  ck_assert (IS_INST (eval_res, INTEGER) && eval_res->integer == 42);
 
   // run body with a=42
   eval_res = run_eval_progn ("((lambda (a) a) 42)");
-  ck_assert (IS (eval_res, INTEGER) && eval_res->integer == 42);
+  ck_assert (IS_INST (eval_res, INTEGER) && eval_res->integer == 42);
 
   // define 'foo and run
   eval_res = run_eval_progn ("(set 'foo (lambda () (cons 'a 'b)))"
                              "(foo)");
-  ck_assert (IS (eval_res, CONS));
+  ck_assert (IS_INST (eval_res, CONS));
 
   // with parameters
   eval_res = run_eval_progn ("(set 'foo (lambda (a b) (cons a b)))"
                              "(foo 'bar 'biz)");
-  ck_assert (IS (eval_res, CONS));
+  ck_assert (IS_INST (eval_res, CONS));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
 
   // test lexical scope

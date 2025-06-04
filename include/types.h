@@ -8,8 +8,7 @@
 #include "lispm.h"
 #include "palloc.h"
 
-#define IS(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
-#define IS_NOT(ptr, x) (!(IS (ptr, x)))
+#define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 
 #define INTEGER(integer, lm) (new (lm, TYPE_INTEGER, integer))
 #define SYMBOL(str, len, lm) (new (lm, TYPE_SYMBOL, str, len))

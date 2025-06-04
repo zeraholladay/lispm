@@ -8,10 +8,10 @@
 Cell *
 funcall (Cell *fn, Cell *arglist, LM *lm)
 {
-  if (IS (fn, BUILTIN_FN))
+  if (IS_INST (fn, BUILTIN_FN))
     return funcall_builtin (fn, arglist, lm);
 
-  if (IS (fn, LAMBDA))
+  if (IS_INST (fn, LAMBDA))
     return funcall_lambda (fn, arglist, lm);
 
   return ERROR (ERR_NOT_A_FUNCTION, fn, lm);
@@ -156,7 +156,7 @@ last (Cell *list, LM *lm)
 size_t
 length (Cell *list)
 {
-  if (!IS (list, CONS))
+  if (!IS_INST (list, CONS))
     return 0;
 
   size_t i = 1;
@@ -290,7 +290,7 @@ lookup (Cell *cell, LM *lm)
 Cell *
 set (Cell *car, Cell *cdr, LM *lm)
 {
-  if (!IS (car, SYMBOL))
+  if (!IS_INST (car, SYMBOL))
     return ERROR (ERR_INVALID_ARG, "set", lm);
 
   const char *key = car->symbol.str;

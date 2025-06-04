@@ -123,7 +123,7 @@ START_TEST (test_div)
   ck_assert_int_eq (eval_res->integer, 42);
 
   eval_res = run_eval_progn ("(div 10 0)");
-  ck_assert (IS (eval_res, NIL));
+  ck_assert (IS_INST (eval_res, NIL));
 }
 END_TEST
 

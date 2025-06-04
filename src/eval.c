@@ -68,7 +68,7 @@ eval_list (Cell *args, LM *lm)
 Cell *
 eval (Cell *form, LM *lm)
 {
-  if (IS (form, SYMBOL))
+  if (IS_INST (form, SYMBOL))
     return lookup (form, lm);
 
   // literals, numbers, strings, etc.
@@ -86,12 +86,12 @@ eval (Cell *form, LM *lm)
       if (car == KEYWORD (QUOTE))
         return CAR (cdr);
 
-      if (IS (car, LAMBDA))
+      if (IS_INST (car, LAMBDA))
         return car;
 
       Cell *fn = eval (car, lm);
 
-      if (IS (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
+      if (IS_INST (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
         {
           if (fn == KEYWORD (APPLY))
             return eval_apply (cdr, lm);
@@ -261,7 +261,7 @@ eval_mapcar (Cell *args, LM *lm)
 
   Cell *fn = CAR (args);
 
-  if (IS_NOT (fn, BUILTIN_FN) && IS_NOT (fn, LAMBDA))
+  if (!IS_INST (fn, BUILTIN_FN) && !IS_INST (fn, LAMBDA))
     return ERROR (ERR_INVALID_ARG, "mapcar: not a function or lambda", lm);
 
   for (Cell *item = CDR (args); !IS_NIL (item); item = CDR (item))
@@ -276,7 +276,7 @@ eval_nth (Cell *args, LM *lm)
 {
   (void)lm;
 
-  if (IS_NOT (args, CONS) || IS_NOT (CAR (args), INTEGER)
+  if (!IS_INST (args, CONS) || !IS_INST (CAR (args), INTEGER)
       || !LISTP (CAR (CDR (args))))
     return ERROR (ERR_ARG_NOT_ITERABLE, "nth: i list", lm);
 
@@ -317,7 +317,7 @@ eval_reverse (Cell *args, LM *lm)
 Cell *
 eval_set (Cell *args, LM *lm)
 {
-  if (IS_NOT (CAR (args), SYMBOL))
+  if (!IS_INST (CAR (args), SYMBOL))
     return ERROR (ERR_INVALID_ARG, "set", lm);
 
   return set (CAR (args), CAR (CDR (args)), lm);

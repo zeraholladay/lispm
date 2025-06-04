@@ -11,13 +11,11 @@
 
 #define IS_NIL(nptr) (nptr == NIL)
 #define LISTP(nptr) (IS_NIL (nptr) || CONSP (nptr))
-#define CONSP(nptr) (IS (nptr, CONS))
+#define CONSP(nptr) (IS_INST (nptr, CONS))
 
 #define CAR(nptr) ((nptr)->cons.car)
 #define CDR(nptr) ((nptr)->cons.cdr)
 #define CADR(nptr) (CAR (CDR (nptr)))
-#define FIRST(nptr) ((nptr)->cons.car)
-#define REST(nptr) ((nptr)->cons.cdr)
 
 #define LIST1(car, lm) (CONS (car, NIL, lm))
 #define LIST2(car, cdr, lm) (CONS (car, LIST1 (cdr, lm), lm))
