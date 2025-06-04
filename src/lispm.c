@@ -12,31 +12,6 @@
 #include "types.h"
 #include "xalloc.h"
 
-// clang-format off
-#define AND_CONT              _and_cont
-#define AND                   _and
-#define APPLY_CONT            apply_cont
-#define APPLY_FUNCALL         apply_funcall
-#define APPLY                 apply
-#define ENV_ENTER_FRAME       env_enter_frame
-#define ENV_LEAVE_FRAME       env_leave_frame
-#define EVAL_CONT             eval_cont
-#define EVAL                  eval
-#define FUNCALL_BUILTIN       funcall_builtin
-#define FUNCALL_LAMBDA_CONT   funcall_lambda_cont
-#define FUNCALL_LAMBDA        funcall_lambda
-#define FUNCALL               funcall
-#define IF_CONT               _if_cont
-#define IF                    _if
-#define LISPM                 lispm
-#define LIST_ACC              list_acc
-#define LIST                  list
-#define OR_CONT               _or_cont
-#define OR                    _or
-#define PROGN_CONT            progn_cont
-#define PROGN                 progn
-// clang-format on
-
 #define POP(lm)                                                               \
   ({                                                                          \
     if ((lm)->stk.sp == 0)                                                    \
@@ -66,7 +41,7 @@
       if ((lm)->ctl.sp >= LISPM_CTL_MAX)                                      \
         goto overflow;                                                        \
       (lm)->ctl.states[(lm)->ctl.sp++]                                        \
-          = (State){ .state = (tag), .u.tag = { __VA_ARGS__ } };              \
+          = (State){ .state = s_##tag, .uf_##tag = { __VA_ARGS__ } };         \
     }                                                                         \
   while (0)
 
@@ -81,9 +56,9 @@
 
 typedef enum
 {
-#define STATE(tag, name, ...) tag,
+#define X(tag, ...) s##tag,
 #include "lispm.def"
-#undef STATE
+#undef X
   COUNT,
 } StateEnum;
 
@@ -92,14 +67,14 @@ typedef struct state
   StateEnum state;
   union
   {
-#define STATE(tag, name, ...)                                                 \
+#define X(tag, ...)                                                           \
   struct                                                                      \
   {                                                                           \
     __VA_ARGS__;                                                              \
-  } name;
+  } uf##tag;
 #include "lispm.def"
-#undef STATE
-  } u;
+#undef X
+  };
 } State;
 
 typedef struct lispm_secd
@@ -134,27 +109,27 @@ lm_eval (LM *lm)
       State s = STATE_POP (lm);
       switch (s.state)
         {
-#define STATE(tag, name, ...)                                                 \
-  case tag:                                                                   \
-    goto S_##tag;
+#define X(tag, ...)                                                           \
+  case s##tag:                                                                \
+    goto label##tag;
 #include "lispm.def"
 #undef STATE
         default:
           LM_ERR (ERR_INTERNAL, "No such state.");
         }
-    S_ENV_ENTER_FRAME:
+    label_env_enter_frame:
       {
         env_enter_frame (&lm->env);
         continue;
       }
-    S_ENV_LEAVE_FRAME:
+    label_env_leave_frame:
       {
         env_leave_frame (&lm->env);
         continue;
       }
-    S_EVAL:
+    label_eval:
       {
-        Cell *arg = (s.u.eval.arg) ? s.u.eval.arg : POP (lm);
+        Cell *arg = (s.uf_eval.arg) ? s.uf_eval.arg : POP (lm);
 
         if (IS (arg, SYMBOL))
           {
@@ -187,51 +162,47 @@ lm_eval (LM *lm)
               PUSH (lm, car);
             else
               {
-                STATE_PUSH (lm, EVAL_CONT, arg);
-                STATE_PUSH (lm, EVAL, eval, car);
+                STATE_PUSH (lm, eval_cont, cdr);
+                STATE_PUSH (lm, eval, car);
               }
             continue;
           }
         LM_ERR (ERR_INTERNAL, "EVAL");
       }
-    S_EVAL_CONT:
+    label_eval_cont:
       {
         Cell *fn = POP (lm);
-        Cell *arglist = s.u.eval.arg;
+        Cell *arglist = s.uf_eval.arg;
 
         // one of the fns this C code handles
         if (IS (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
           {
-            STATE_PUSH (lm, .state = LISPM, .LISPM.fn = fn,
-                        .LISPM.arglist = arglist);
+            STATE_PUSH (lm, lispm, fn, arglist);
             continue;
           }
 
-        STATE_PUSH (lm, .state = FUNCALL, .FUNCALL.fn = fn, );
-        STATE_PUSH (lm, .state = LIST, .LIST.acc = NIL,
-                    .LIST.arglist = arglist);
+        STATE_PUSH (lm, funcall, fn, NULL);
+        STATE_PUSH (lm, list, NIL, arglist);
         continue;
       }
-    S_FUNCALL:
+    label_funcall:
       {
-        Cell *arglist = (s.FUNCALL.arglist) ? (s.FUNCALL.arglist) : POP (lm);
-        Cell *fn = (s.FUNCALL.fn) ? (s.FUNCALL.fn) : POP (lm);
+        Cell *fn = (s.uf_funcall.fn) ? (s.uf_funcall.fn) : POP (lm);
+        Cell *arglist
+            = (s.uf_funcall.arglist) ? (s.uf_funcall.arglist) : POP (lm);
 
         if (IS (fn, BUILTIN_FN))
-          STATE_PUSH (lm, .state = FUNCALL_BUILTIN, .FUNCALL.fn = fn,
-                      .FUNCALL.arglist = arglist);
+          STATE_PUSH (lm, funcall_builtin, fn, arglist);
         else if (IS (fn, LAMBDA))
-          STATE_PUSH (lm, .state = FUNCALL_LAMBDA, .FUNCALL.fn = fn,
-                      .FUNCALL.arglist = arglist);
+          STATE_PUSH (lm, funcall_lambda, fn, arglist);
         else
           LM_ERR (ERR_INTERNAL, "FUNCALL");
-
         continue;
       }
-    S_FUNCALL_BUILTIN:
+    label_funcall_builtin:
       {
-        Cell *fn = s.FUNCALL.fn;
-        Cell *arglist = s.FUNCALL.arglist;
+        Cell *fn = s.uf_funcall_builtin.fn;
+        Cell *arglist = s.uf_funcall_builtin.arglist;
 
         const BuiltinFn *builtin_fn = fn->builtin_fn;
         int received = (int)length (arglist);
@@ -258,10 +229,10 @@ lm_eval (LM *lm)
         PUSH (lm, res);
         continue;
       }
-    S_FUNCALL_LAMBDA:
+    label_funcall_lambda:
       {
-        Cell *fn = s.FUNCALL.fn;
-        Cell *arglist = s.FUNCALL.arglist;
+        Cell *fn = s.uf_funcall_lambda.fn;
+        Cell *arglist = s.uf_funcall_lambda.arglist;
 
         size_t expected = length (fn->lambda.params);
         size_t received = length (arglist);
@@ -273,16 +244,15 @@ lm_eval (LM *lm)
             LM_ERR (err, "LAMBDA");
           }
 
-        STATE_PUSH (lm, .state = ENV_LEAVE_FRAME);
-        STATE_PUSH (lm, .state = FUNCALL_LAMBDA_CONT, .FUNCALL.fn = fn,
-                    .FUNCALL.arglist = arglist);
-        STATE_PUSH (lm, .state = ENV_ENTER_FRAME);
+        STATE_PUSH (lm, env_leave_frame);
+        STATE_PUSH (lm, funcall_lambda_cont, fn, arglist);
+        STATE_PUSH (lm, env_enter_frame);
         continue;
       }
-    S_FUNCALL_LAMBDA_CONT:
+    label_funcall_lambda_cont:
       {
-        Cell *fn = s.FUNCALL.fn;
-        Cell *arglist = s.FUNCALL.arglist;
+        Cell *fn = s.uf_funcall_lambda_cont.fn;
+        Cell *arglist = s.uf_funcall_lambda_cont.arglist;
 
         Cell *pairs = mapcar (KEYWORD (LIST),
                               LIST2 (fn->lambda.params, arglist, lm), lm);
@@ -294,13 +264,13 @@ lm_eval (LM *lm)
             pairs = CDR (pairs);
           }
 
-        STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = fn->lambda.body);
+        STATE_PUSH (lm, progn, NIL, fn->lambda.body);
         continue;
       }
-    S_LIST:
+    label_list:
       {
-        Cell *arglist = s.LIST.arglist;
-        Cell *rev = s.LIST.acc;
+        Cell *rev = s.uf_list_acc.acc;
+        Cell *arglist = s.uf_list.arglist;
 
         if (IS_NIL (arglist))
           {
@@ -312,111 +282,103 @@ lm_eval (LM *lm)
         Cell *car = CAR (arglist);
         Cell *cdr = CDR (arglist);
 
-        STATE_PUSH (lm, .state = LIST_ACC, .LIST.arglist = cdr,
-                    .LIST.acc = rev);
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = car);
+        STATE_PUSH (lm, list_acc, rev, cdr);
+        STATE_PUSH (lm, eval, car);
         continue;
       }
-    S_LIST_ACC:
+    label_list_acc:
       {
         Cell *eval_res = POP (lm);
 
-        Cell *old_rev = s.LIST.acc;
+        Cell *old_rev = s.uf_list.acc;
         Cell *rev2 = CONS (eval_res, old_rev, lm);
 
-        STATE_PUSH (lm, .state = LIST, .LIST.arglist = s.LIST.arglist,
-                    .LIST.acc = rev2);
+        STATE_PUSH (lm, list, rev2, s.uf_list_acc.arglist);
         continue;
       }
-    S_APPLY:
+    label_apply:
       {
-        Cell *arglist = s.APPLY.arglist ? s.APPLY.arglist : POP (lm);
-        Cell *fn = s.APPLY.fn ? s.APPLY.fn : POP (lm);
+        Cell *fn = s.uf_apply.fn ? s.uf_apply.fn : POP (lm);
+        Cell *arglist = s.uf_apply.arglist ? s.uf_apply.arglist : POP (lm);
 
         if (!LISTP (arglist))
           LM_ERR (ERR_MISSING_ARG, "APPLY");
 
         Cell *fixd_args = butlast (arglist, lm);
 
-        STATE_PUSH (lm, .state = APPLY_CONT, .APPLY.fn = fn,
-                    .APPLY.arglist = arglist);
-        STATE_PUSH (lm, .state = LIST, .LIST.arglist = fixd_args,
-                    .LIST.acc = NIL);
+        STATE_PUSH (lm, apply_cont, fn, arglist);
+        STATE_PUSH (lm, list, NIL, fixd_args);
         continue;
       }
-    S_APPLY_CONT:
+    label_apply_cont:
       {
         Cell *fixed_rev = POP (lm);
-        Cell *arglist = s.APPLY.arglist;
+        Cell *fn = s.uf_apply_cont.fn;
+        Cell *arglist = s.uf_apply_cont.arglist;
         Cell *tail_list = last (arglist, lm);
 
         if (!LISTP (tail_list)) // ie (apply fn NIL)
-          STATE_PUSH (lm, .state = FUNCALL, .FUNCALL.fn = s.APPLY.fn,
-                      .FUNCALL.arglist = NIL);
+          STATE_PUSH (lm, funcall, fn, NIL);
         else
           {
-            STATE_PUSH (lm, .state = APPLY_FUNCALL, .APPLY.fn = s.APPLY.fn,
-                        .APPLY.arglist = fixed_rev);
-            STATE_PUSH (lm, .state = EVAL, .EVAL.arg = tail_list);
+            STATE_PUSH (lm, apply_funcall, fn, fixed_rev);
+            STATE_PUSH (lm, eval, tail_list);
           }
         continue;
       }
-    S_APPLY_FUNCALL:
+    label_apply_funcall:
       {
+        Cell *fn = s.uf_apply_funcall.fn;
+        Cell *fixed_rev
+            = s.uf_apply_funcall.arglist; // the reversed list of fixed‐values
+
         Cell *tail_list = POP (lm);
 
         if (!LISTP (tail_list))
           LM_ERR (ERR_MISSING_ARG, "FUNCALL");
 
-        Cell *fixed_rev = s.APPLY.arglist; // the reversed list of fixed‐values
-        Cell *fn = s.APPLY.fn;
-
         Cell *all_args = append_inplace (fixed_rev, tail_list);
-
-        STATE_PUSH (lm, .state = FUNCALL, .FUNCALL.fn = fn,
-                    .FUNCALL.arglist = all_args);
+        STATE_PUSH (lm, funcall, fn, all_args);
         continue;
       }
-    S_LISPM:
+    label_lispm:
       {
-        Cell *fn = s.FUNCALL.fn;
-        Cell *arglist = s.FUNCALL.arglist;
+        Cell *fn = s.uf_lispm.fn;
+        Cell *arglist = s.uf_lispm.arglist;
 
         if (fn == KEYWORD (LIST))
-          STATE_PUSH (lm, .state = LIST, .LIST.acc = NIL,
-                      .LIST.arglist = arglist);
+          STATE_PUSH (lm, list, NIL, arglist);
         else if (fn == KEYWORD (FUNCALL))
           {
-            STATE_PUSH (lm, .state = FUNCALL,
-                        .FUNCALL.arglist = CDR (arglist));
-            STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
+            STATE_PUSH (lm, funcall, NULL, CDR (arglist));
+            STATE_PUSH (lm, eval, CAR (arglist));
           }
         else if (fn == KEYWORD (APPLY))
           {
-            STATE_PUSH (lm, .state = APPLY, .APPLY.arglist = CDR (arglist));
-            STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
+            STATE_PUSH (lm, apply, NULL, CDR (arglist));
+            STATE_PUSH (lm, eval, CAR (arglist));
           }
         else if (fn == KEYWORD (EVAL))
           {
-            STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
-            STATE_PUSH (lm, .state = EVAL);
+            STATE_PUSH (lm, eval, NULL);
+            STATE_PUSH (lm, eval, CAR (arglist));
           }
         else if (fn == KEYWORD (PROGN))
-          STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = arglist);
+          STATE_PUSH (lm, progn, NIL, arglist);
         else if (fn == KEYWORD (AND))
-          STATE_PUSH (lm, .state = AND, .AND.arglist = arglist);
+          STATE_PUSH (lm, and, NIL, arglist);
         else if (fn == KEYWORD (OR))
-          STATE_PUSH (lm, .state = OR, .OR.arglist = arglist);
+          STATE_PUSH (lm, or, NIL, arglist);
         else if (fn == KEYWORD (IF))
-          STATE_PUSH (lm, .state = IF, .IF.form = arglist);
+          STATE_PUSH (lm, if, arglist);
         else
           LM_ERR (ERR_INTERNAL, "LISPM");
         continue;
       }
-    S_PROGN:
+    label_progn:
       {
-        Cell *res = (s.PROGN.res) ? (s.PROGN.res) : NIL;
-        Cell *arglist = s.PROGN.arglist;
+        Cell *res = s.uf_progn.res;
+        Cell *arglist = s.uf_progn.arglist;
 
         if (IS_NIL (arglist))
           {
@@ -424,53 +386,51 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, .state = PROGN_CONT, .PROGN.res = res,
-                    .PROGN.arglist = arglist);
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
+        STATE_PUSH (lm, progn_cont, res, arglist);
+        STATE_PUSH (lm, eval, CAR (arglist));
         continue;
       }
-    S_PROGN_CONT:
+    label_progn_cont:
       {
-        Cell *arglist = s.PROGN.arglist;
+        Cell *arglist = s.uf_progn_cont.arglist;
         Cell *new_res = POP (lm);
 
-        STATE_PUSH (lm, .state = PROGN, .PROGN.res = new_res,
-                    .PROGN.arglist = CDR (arglist));
+        STATE_PUSH (lm, progn, new_res, CDR (arglist));
         continue;
       }
-    S_IF:
+    label_if:
       {
-        Cell *form = s.IF.form;
+        Cell *form = s.uf_if.form;
         Cell *pred_form = CAR (form);
 
-        STATE_PUSH (lm, .state = IF_CONT, .IF.form = form);
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = pred_form);
+        STATE_PUSH (lm, if_cont, form);
+        STATE_PUSH (lm, eval, pred_form);
         continue;
       }
 
-    S_IF_CONT:
+    label_if_cont:
       {
-        Cell *form = s.IF.form;
         Cell *pred_val = POP (lm);
+        Cell *form = s.uf_if_cont.form;
 
         if (!IS_NIL (pred_val))
           {
             Cell *then_form = CAR (CDR (form));
-            STATE_PUSH (lm, .state = EVAL, .EVAL.arg = then_form);
+            STATE_PUSH (lm, eval, then_form);
           }
         else
           {
             Cell *else_form = CAR (CDR (CDR (form)));
             if (else_form)
-              STATE_PUSH (lm, .state = EVAL, .EVAL.arg = else_form);
+              STATE_PUSH (lm, eval, else_form);
             else
               PUSH (lm, NIL);
           }
         continue;
       }
-    S_AND:
+    label_and:
       {
-        Cell *arglist = s.AND.arglist;
+        Cell *arglist = s.uf_and.arglist;
 
         if (IS_NIL (arglist))
           {
@@ -478,14 +438,14 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, .state = AND_CONT, .AND.arglist = arglist);
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
+        STATE_PUSH (lm, and_cont, NIL, arglist);
+        STATE_PUSH (lm, eval, CAR (arglist));
         continue;
       }
-    S_AND_CONT:
+    label_and_cont:
       {
-        Cell *arglist = s.AND.arglist;
         Cell *eval_res = POP (lm);
+        Cell *arglist = s.uf_and_cont.arglist;
 
         if (IS_NIL (eval_res))
           {
@@ -501,15 +461,13 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, .state = AND_CONT, .AND.res = eval_res,
-                    .AND.arglist = cdr);
-
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (cdr));
+        STATE_PUSH (lm, and_cont, eval_res, cdr);
+        STATE_PUSH (lm, eval, CAR (cdr));
         continue;
       }
-    S_OR:
+    label_or:
       {
-        Cell *arglist = s.OR.arglist;
+        Cell *arglist = s.uf_or.arglist;
 
         if (IS_NIL (arglist))
           {
@@ -517,32 +475,31 @@ lm_eval (LM *lm)
             continue;
           }
 
-        STATE_PUSH (lm, .state = OR_CONT, .OR.arglist = arglist);
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (arglist));
+        STATE_PUSH (lm, or_cont, NIL, arglist);
+        STATE_PUSH (lm, eval, CAR (arglist));
         continue;
       }
-    S_OR_CONT:
+    label_or_cont:
       {
-        Cell *arglist = s.OR.arglist;
         Cell *eval_res = POP (lm);
+        Cell *arglist = s.uf_or_cont.arglist;
 
-        if (IS_NIL (eval_res))
-          {
-            PUSH (lm, T);
-            continue;
-          }
-
-        Cell *cdr = CDR (arglist);
-
-        if (!IS_NIL (cdr))
+        if (!IS_NIL (eval_res))
           {
             PUSH (lm, eval_res);
             continue;
           }
 
-        STATE_PUSH (lm, .state = OR_CONT, .OR.res = eval_res,
-                    .OR.arglist = cdr);
-        STATE_PUSH (lm, .state = EVAL, .EVAL.arg = CAR (cdr));
+        Cell *cdr = CDR (arglist);
+
+        if (IS_NIL (cdr))
+          {
+            PUSH (lm, eval_res);
+            continue;
+          }
+
+        STATE_PUSH (lm, or_cont, eval_res, cdr);
+        STATE_PUSH (lm, eval, CAR (cdr));
         continue;
       }
     }
@@ -615,7 +572,7 @@ lm_env_set (LM *lm, const char *key, Cell *val)
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
-  STATE_PUSH (lm, .state = PROGN, .PROGN.arglist = progn);
+  STATE_PUSH (lm, progn, NIL, progn);
 
   Cell *ret = lm_eval (lm);
   return ret;
