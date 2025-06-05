@@ -111,50 +111,52 @@ lm_eval (LM *lm)
         {
 #define X(tag, ...)                                                           \
   case s##tag:                                                                \
-    goto label##tag;
+    goto tag;
 #include "lispm.def"
 #undef STATE
         default:
           LM_ERR (ERR_INTERNAL, "No such state.");
         }
-    label_env_enter_frame:
+    _env_enter_frame:
       {
         env_enter_frame (&lm->env);
         continue;
       }
-    label_env_leave_frame:
+    _env_leave_frame:
       {
         env_leave_frame (&lm->env);
         continue;
       }
-    label_eval:
+    _eval:
       {
-        Cell *arg = (s.uf_eval.arg) ? s.uf_eval.arg : POP (lm);
+        typeof (s.uf_eval) *st = &s.uf_eval;
 
-        if (IS_INST (arg, SYMBOL))
+        st->arg = st->arg ?: POP (lm);
+
+        if (IS_INST (st->arg, SYMBOL))
           {
-            PUSH (lm, lookup (arg, lm));
+            PUSH (lm, lookup (st->arg, lm));
             continue;
           }
 
         // literals: numbers, strings, etc.
-        if (!LISTP (arg))
+        if (!LISTP (st->arg))
           {
-            PUSH (lm, arg);
+            PUSH (lm, st->arg);
             continue;
           }
 
         // cons and NIL
-        if (LISTP (arg))
+        if (LISTP (st->arg))
           {
-            if (IS_NIL (arg))
+            if (IS_NIL (st->arg))
               {
                 PUSH (lm, NIL);
                 continue;
               }
 
-            Cell *car = CAR (arg);
-            Cell *cdr = CDR (arg);
+            Cell *car = CAR (st->arg);
+            Cell *cdr = CDR (st->arg);
 
             if (car == KEYWORD (QUOTE))
               PUSH (lm, CAR (cdr));
@@ -169,27 +171,28 @@ lm_eval (LM *lm)
           }
         LM_ERR (ERR_INTERNAL, "EVAL");
       }
-    label_eval_cont:
+    _eval_cont:
       {
+        typeof (s.uf_eval_cont) *st = &s.uf_eval_cont;
+
         Cell *fn = POP (lm);
-        Cell *arglist = s.uf_eval.arg;
 
         // one of the fns this C code handles
         if (IS_INST (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
+          SPUSH (lm, lispm, fn, st->arglist);
+        else
           {
-            SPUSH (lm, lispm, fn, arglist);
-            continue;
+            SPUSH (lm, funcall, fn, NULL);
+            SPUSH (lm, list, NIL, st->arglist);
           }
-
-        SPUSH (lm, funcall, fn, NULL);
-        SPUSH (lm, list, NIL, arglist);
         continue;
       }
-    label_funcall:
+    _funcall:
       {
-        Cell *fn = (s.uf_funcall.fn) ? (s.uf_funcall.fn) : POP (lm);
-        Cell *arglist
-            = (s.uf_funcall.arglist) ? (s.uf_funcall.arglist) : POP (lm);
+        typeof (s.uf_funcall) *st = &s.uf_funcall;
+
+        Cell *fn = st->fn ?: POP (lm);
+        Cell *arglist = st->arglist ?: POP (lm);
 
         if (IS_INST (fn, BUILTIN_FN))
           SPUSH (lm, funcall_builtin, fn, arglist);
@@ -199,13 +202,13 @@ lm_eval (LM *lm)
           LM_ERR (ERR_INTERNAL, "FUNCALL");
         continue;
       }
-    label_funcall_builtin:
+    _funcall_builtin:
       {
-        Cell *fn = s.uf_funcall_builtin.fn;
-        Cell *arglist = s.uf_funcall_builtin.arglist;
+        typeof (s.uf_funcall_builtin) *st = &s.uf_funcall_builtin;
 
-        const BuiltinFn *builtin_fn = fn->builtin_fn;
-        int received = (int)length (arglist);
+        const BuiltinFn *builtin_fn = st->fn->builtin_fn;
+
+        int received = (int)length (st->arglist);
 
         if (builtin_fn->arity > 0 && builtin_fn->arity != received)
           {
@@ -218,7 +221,7 @@ lm_eval (LM *lm)
         if (!builtin_fn->fn)
           LM_ERR (ERR_NOT_A_FUNCTION, builtin_fn->name)
 
-        Cell *res = builtin_fn->fn (arglist, lm);
+        Cell *res = builtin_fn->fn (st->arglist, lm);
 
         if (IS_INST (res, ERROR))
           {
@@ -229,13 +232,12 @@ lm_eval (LM *lm)
         PUSH (lm, res);
         continue;
       }
-    label_funcall_lambda:
+    _funcall_lambda:
       {
-        Cell *fn = s.uf_funcall_lambda.fn;
-        Cell *arglist = s.uf_funcall_lambda.arglist;
+        typeof (s.uf_funcall_lambda) *st = &s.uf_funcall_lambda;
 
-        size_t expected = length (fn->lambda.params);
-        size_t received = length (arglist);
+        size_t expected = length (st->fn->lambda.params);
+        size_t received = length (st->arglist);
 
         if (expected != received)
           {
@@ -245,17 +247,17 @@ lm_eval (LM *lm)
           }
 
         SPUSH (lm, env_leave_frame);
-        SPUSH (lm, funcall_lambda_cont, fn, arglist);
+        SPUSH (lm, funcall_lambda_cont, st->fn, st->arglist);
         SPUSH (lm, env_enter_frame);
         continue;
       }
-    label_funcall_lambda_cont:
+    _funcall_lambda_cont:
       {
-        Cell *fn = s.uf_funcall_lambda_cont.fn;
-        Cell *arglist = s.uf_funcall_lambda_cont.arglist;
+        typeof (s.uf_funcall_lambda_cont) *st = &s.uf_funcall_lambda_cont;
 
-        Cell *pairs = mapcar (KEYWORD (LIST),
-                              LIST2 (fn->lambda.params, arglist, lm), lm);
+        Cell *params = st->fn->lambda.params;
+        Cell *pairs
+            = mapcar (KEYWORD (LIST), LIST2 (params, st->arglist, lm), lm);
 
         while (!IS_NIL (pairs))
           {
@@ -264,42 +266,44 @@ lm_eval (LM *lm)
             pairs = CDR (pairs);
           }
 
-        SPUSH (lm, progn, NIL, fn->lambda.body);
+        SPUSH (lm, progn, NIL, st->fn->lambda.body);
         continue;
       }
-    label_list:
+    _list:
       {
-        Cell *rev = s.uf_list_acc.acc;
-        Cell *arglist = s.uf_list.arglist;
+        typeof (s.uf_list) *st = &s.uf_list;
 
-        if (IS_NIL (arglist))
+        if (IS_NIL (st->arglist))
           {
-            Cell *res = reverse_inplace (rev);
+            Cell *res = reverse_inplace (st->acc);
             PUSH (lm, res);
             continue;
           }
+        else
+          {
+            Cell *car = CAR (st->arglist);
+            Cell *cdr = CDR (st->arglist);
 
-        Cell *car = CAR (arglist);
-        Cell *cdr = CDR (arglist);
-
-        SPUSH (lm, list_acc, rev, cdr);
-        SPUSH (lm, eval, car);
+            SPUSH (lm, list_acc, st->acc, cdr);
+            SPUSH (lm, eval, car);
+          }
         continue;
       }
-    label_list_acc:
+    _list_acc:
       {
+        typeof (s.uf_list_acc) *st = &s.uf_list_acc;
+
         Cell *eval_res = POP (lm);
-
-        Cell *old_rev = s.uf_list.acc;
-        Cell *rev2 = CONS (eval_res, old_rev, lm);
-
-        SPUSH (lm, list, rev2, s.uf_list_acc.arglist);
+        Cell *acc = CONS (eval_res, st->acc, lm);
+        SPUSH (lm, list, acc, st->arglist);
         continue;
       }
-    label_apply:
+    _apply:
       {
-        Cell *fn = s.uf_apply.fn ? s.uf_apply.fn : POP (lm);
-        Cell *arglist = s.uf_apply.arglist ? s.uf_apply.arglist : POP (lm);
+        typeof (s.uf_apply) *st = &s.uf_apply;
+
+        Cell *fn = st->fn ?: POP (lm);
+        Cell *arglist = st->arglist ?: POP (lm);
 
         if (!LISTP (arglist))
           LM_ERR (ERR_MISSING_ARG, "APPLY");
@@ -310,117 +314,113 @@ lm_eval (LM *lm)
         SPUSH (lm, list, NIL, fixd_args);
         continue;
       }
-    label_apply_cont:
+    _apply_cont:
       {
+        typeof (s.uf_apply_cont) *st = &s.uf_apply_cont;
+
         Cell *fixed_rev = POP (lm);
-        Cell *fn = s.uf_apply_cont.fn;
-        Cell *arglist = s.uf_apply_cont.arglist;
-        Cell *tail_list = last (arglist, lm);
+        Cell *tail_list = last (st->arglist, lm);
 
         if (!LISTP (tail_list)) // ie (apply fn NIL)
-          SPUSH (lm, funcall, fn, NIL);
+          SPUSH (lm, funcall, st->fn, NIL);
         else
           {
-            SPUSH (lm, apply_funcall, fn, fixed_rev);
+            SPUSH (lm, apply_funcall, st->fn, fixed_rev);
             SPUSH (lm, eval, tail_list);
           }
         continue;
       }
-    label_apply_funcall:
+    _apply_funcall:
       {
-        Cell *fn = s.uf_apply_funcall.fn;
-        Cell *fixed_rev
-            = s.uf_apply_funcall.arglist; // the reversed list of fixed‐values
+        typeof (s.uf_apply_funcall) *st = &s.uf_apply_funcall;
 
         Cell *tail_list = POP (lm);
 
         if (!LISTP (tail_list))
           LM_ERR (ERR_MISSING_ARG, "FUNCALL");
 
-        Cell *all_args = append_inplace (fixed_rev, tail_list);
-        SPUSH (lm, funcall, fn, all_args);
+        Cell *all_args = append_inplace (st->arglist, tail_list);
+        SPUSH (lm, funcall, st->fn, all_args);
         continue;
       }
-    label_lispm:
+    _lispm:
       {
-        Cell *fn = s.uf_lispm.fn;
-        Cell *arglist = s.uf_lispm.arglist;
+        typeof (s.uf_lispm) *st = &s.uf_lispm;
 
-        if (fn == KEYWORD (LIST))
-          SPUSH (lm, list, NIL, arglist);
-        else if (fn == KEYWORD (FUNCALL))
+        if (st->fn == KEYWORD (LIST))
+          SPUSH (lm, list, NIL, st->arglist);
+        else if (st->fn == KEYWORD (FUNCALL))
           {
-            SPUSH (lm, funcall, NULL, CDR (arglist));
-            SPUSH (lm, eval, CAR (arglist));
+            SPUSH (lm, funcall, NULL, CDR (st->arglist));
+            SPUSH (lm, eval, CAR (st->arglist));
           }
-        else if (fn == KEYWORD (APPLY))
+        else if (st->fn == KEYWORD (APPLY))
           {
-            SPUSH (lm, apply, NULL, CDR (arglist));
-            SPUSH (lm, eval, CAR (arglist));
+            SPUSH (lm, apply, NULL, CDR (st->arglist));
+            SPUSH (lm, eval, CAR (st->arglist));
           }
-        else if (fn == KEYWORD (EVAL))
+        else if (st->fn == KEYWORD (EVAL))
           {
             SPUSH (lm, eval, NULL);
-            SPUSH (lm, eval, CAR (arglist));
+            SPUSH (lm, eval, CAR (st->arglist));
           }
-        else if (fn == KEYWORD (PROGN))
-          SPUSH (lm, progn, NIL, arglist);
-        else if (fn == KEYWORD (AND))
-          SPUSH (lm, and, NIL, arglist);
-        else if (fn == KEYWORD (OR))
-          SPUSH (lm, or, NIL, arglist);
-        else if (fn == KEYWORD (IF))
-          SPUSH (lm, if, arglist);
+        else if (st->fn == KEYWORD (PROGN))
+          SPUSH (lm, progn, NIL, st->arglist);
+        else if (st->fn == KEYWORD (AND))
+          SPUSH (lm, and, st->arglist);
+        else if (st->fn == KEYWORD (OR))
+          SPUSH (lm, or, st->arglist);
+        else if (st->fn == KEYWORD (IF))
+          SPUSH (lm, if, st->arglist);
         else
           LM_ERR (ERR_INTERNAL, "LISPM");
         continue;
       }
-    label_progn:
+    _progn:
       {
-        Cell *res = s.uf_progn.res;
-        Cell *arglist = s.uf_progn.arglist;
+        typeof (s.uf_progn) *st = &s.uf_progn;
 
-        if (IS_NIL (arglist))
+        if (IS_NIL (st->arglist))
+          PUSH (lm, st->res);
+        else
           {
-            PUSH (lm, res);
-            continue;
+            SPUSH (lm, progn_cont, st->res, st->arglist);
+            SPUSH (lm, eval, CAR (st->arglist));
           }
-
-        SPUSH (lm, progn_cont, res, arglist);
-        SPUSH (lm, eval, CAR (arglist));
         continue;
       }
-    label_progn_cont:
+    _progn_cont:
       {
-        Cell *arglist = s.uf_progn_cont.arglist;
+        typeof (s.uf_progn_cont) *st = &s.uf_progn_cont;
+
         Cell *new_res = POP (lm);
-
-        SPUSH (lm, progn, new_res, CDR (arglist));
+        SPUSH (lm, progn, new_res, CDR (st->arglist));
         continue;
       }
-    label_if:
+    _if:
       {
-        Cell *form = s.uf_if.form;
-        Cell *pred_form = CAR (form);
+        typeof (s.uf_if) *st = &s.uf_if;
 
-        SPUSH (lm, if_cont, form);
+        Cell *pred_form = CAR (st->form);
+        SPUSH (lm, if_cont, st->form);
         SPUSH (lm, eval, pred_form);
         continue;
       }
 
-    label_if_cont:
+    _if_cont:
       {
+        typeof (s.uf_if_cont) *st = &s.uf_if_cont;
+
         Cell *pred_val = POP (lm);
-        Cell *form = s.uf_if_cont.form;
 
         if (!IS_NIL (pred_val))
           {
-            Cell *then_form = CAR (CDR (form));
+            Cell *then_form = CAR (CDR (st->form));
             SPUSH (lm, eval, then_form);
           }
         else
           {
-            Cell *else_form = CAR (CDR (CDR (form)));
+            Cell *else_form = CAR (CDR (CDR (st->form)));
             if (else_form)
               SPUSH (lm, eval, else_form);
             else
@@ -428,24 +428,24 @@ lm_eval (LM *lm)
           }
         continue;
       }
-    label_and:
+    _and:
       {
-        Cell *arglist = s.uf_and.arglist;
+        typeof (s.uf_and) *st = &s.uf_and;
 
-        if (IS_NIL (arglist))
+        if (IS_NIL (st->arglist))
+          PUSH (lm, T);
+        else
           {
-            PUSH (lm, T);
-            continue;
+            SPUSH (lm, and_cont, st->arglist);
+            SPUSH (lm, eval, CAR (st->arglist));
           }
-
-        SPUSH (lm, and_cont, NIL, arglist);
-        SPUSH (lm, eval, CAR (arglist));
         continue;
       }
-    label_and_cont:
+    _and_cont:
       {
+        typeof (s.uf_and_cont) *st = &s.uf_and_cont;
+
         Cell *eval_res = POP (lm);
-        Cell *arglist = s.uf_and_cont.arglist;
 
         if (IS_NIL (eval_res))
           {
@@ -453,36 +453,35 @@ lm_eval (LM *lm)
             continue;
           }
 
-        Cell *cdr = CDR (arglist);
+        Cell *cdr = CDR (st->arglist);
 
         if (IS_NIL (cdr))
+          PUSH (lm, eval_res);
+        else
           {
-            PUSH (lm, eval_res);
-            continue;
+            SPUSH (lm, and_cont, cdr);
+            SPUSH (lm, eval, CAR (cdr));
           }
-
-        SPUSH (lm, and_cont, eval_res, cdr);
-        SPUSH (lm, eval, CAR (cdr));
         continue;
       }
-    label_or:
+    _or:
       {
-        Cell *arglist = s.uf_or.arglist;
+        typeof (s.uf_or) *st = &s.uf_or;
 
-        if (IS_NIL (arglist))
+        if (IS_NIL (st->arglist))
+          PUSH (lm, NIL);
+        else
           {
-            PUSH (lm, NIL);
-            continue;
+            SPUSH (lm, or_cont, st->arglist);
+            SPUSH (lm, eval, CAR (st->arglist));
           }
-
-        SPUSH (lm, or_cont, NIL, arglist);
-        SPUSH (lm, eval, CAR (arglist));
         continue;
       }
-    label_or_cont:
+    _or_cont:
       {
+        typeof (s.uf_or_cont) *st = &s.uf_or_cont;
+
         Cell *eval_res = POP (lm);
-        Cell *arglist = s.uf_or_cont.arglist;
 
         if (!IS_NIL (eval_res))
           {
@@ -490,16 +489,15 @@ lm_eval (LM *lm)
             continue;
           }
 
-        Cell *cdr = CDR (arglist);
+        Cell *cdr = CDR (st->arglist);
 
         if (IS_NIL (cdr))
+          PUSH (lm, eval_res);
+        else
           {
-            PUSH (lm, eval_res);
-            continue;
+            SPUSH (lm, or_cont, cdr);
+            SPUSH (lm, eval, CAR (cdr));
           }
-
-        SPUSH (lm, or_cont, eval_res, cdr);
-        SPUSH (lm, eval, CAR (cdr));
         continue;
       }
     }

@@ -4,11 +4,6 @@
 #include "lispm.h"
 #include "types.h"
 
-// funcalls
-Cell *funcall (Cell *fn, Cell *arglist, LM *lm);
-Cell *funcall_builtin (Cell *fn, Cell *args, LM *lm);
-Cell *funcall_lambda (Cell *fn, Cell *args, LM *lm);
-
 // sequence operations
 Cell *append_inplace (Cell *list1, Cell *list2);
 Cell *append_list (Cell *list1, Cell *list2, LM *lm);
