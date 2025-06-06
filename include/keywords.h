@@ -14,7 +14,7 @@ typedef struct Keyword
   Cell cell;
 } Keyword;
 
-/* KEYWORD.gperf */
+// keywords.gperf
 struct Cell *keyword_lookup (const char *str, size_t len);
 const char *is_keyword_strncmp (const char *text, int state);
 

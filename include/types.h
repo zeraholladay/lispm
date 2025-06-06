@@ -4,21 +4,19 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "context.h"
 #include "error.h"
+#include "lispm.h"
 #include "palloc.h"
 
-#define IS(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
-#define IS_NOT(ptr, x) (!(IS (ptr, x)))
+#define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 
-#define INTEGER(integer, ctx) (new (&(ctx)->pool, TYPE_INTEGER, integer))
-#define SYMBOL(str, len, ctx) (new (&(ctx)->pool, TYPE_SYMBOL, str, len))
-#define STRING(str, ctx) (new (&(ctx)->pool, TYPE_STRING, str))
-#define CONS(car, cdr, ctx) (new (&(ctx)->pool, TYPE_CONS, car, cdr))
-#define LAMBDA(params, body, ctx)                                             \
-  (new (&(ctx)->pool, TYPE_LAMBDA, params, body))
-#define ERROR(err_code, msg, ctx)                                             \
-  (new (&(ctx)->pool, TYPE_ERROR, err_code, STRING (msg, ctx)))
+#define INTEGER(integer, lm) (new (lm, TYPE_INTEGER, integer))
+#define SYMBOL(str, len, lm) (new (lm, TYPE_SYMBOL, str, len))
+#define STRING(str, lm) (new (lm, TYPE_STRING, str))
+#define CONS(car, cdr, lm) (new (lm, TYPE_CONS, car, cdr))
+#define LAMBDA(params, body, lm) (new (lm, TYPE_LAMBDA, params, body))
+#define ERROR(err_code, msg, lm)                                              \
+  (new (lm, TYPE_ERROR, err_code, STRING (msg, lm)))
 
 // forward decls
 struct Cell;
@@ -61,12 +59,12 @@ typedef struct
   Cell *cdr; // Contents of the Decrement Register
 } Cons;
 
-typedef struct Cell *(*Fn) (struct Cell *, struct Context *);
+typedef struct Cell *(*Fn) (struct Cell *, LM *);
 
 typedef struct
 {
   const char *name;
-  int sform, arity;
+  int is_lispm, arity;
   Fn fn;
 } BuiltinFn;
 
@@ -102,6 +100,6 @@ struct Cell
 };
 
 const Type *type (Cell *self);
-Cell *new (Pool **p, TypeEnum type, ...);
+Cell *new (LM *lm, TypeEnum type, ...);
 
 #endif

@@ -2,27 +2,27 @@
 #include "eval.h"
 
 Cell *
-eval_gt (Cell *args, Context *ctx)
+eval_gt (Cell *args, LM *lm)
 {
-  (void)ctx;
+  (void)lm;
   Cell *result = T;
 
-  if (!IS (args, CONS))
-    return ERROR (ERR_ARG_NOT_ITERABLE, "gt: argument is not a list", ctx);
+  if (!IS_INST (args, CONS))
+    return ERROR (ERR_ARG_NOT_ITERABLE, "gt: argument is not a list", lm);
 
   if (IS_NIL (args))
-    return ERROR (ERR_INVALID_ARG_LENGTH, "gt: expected >= 1 arguments", ctx);
+    return ERROR (ERR_INVALID_ARG_LENGTH, "gt: expected >= 1 arguments", lm);
 
-  if (!IS (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "gt: argument is not integer", ctx);
+  if (!IS_INST (CAR (args), INTEGER))
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "gt: argument is not integer", lm);
 
   Cell *prev = CAR (args);
 
   for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS (CAR (rest), INTEGER))
+      if (!IS_INST (CAR (rest), INTEGER))
         return ERROR (ERR_ARG_TYPE_MISMATCH, "gt: argument is not integer",
-                      ctx);
+                      lm);
 
       if (!(prev->integer > CAR (rest)->integer))
         return NIL;
@@ -34,27 +34,27 @@ eval_gt (Cell *args, Context *ctx)
 }
 
 Cell *
-eval_lt (Cell *args, Context *ctx)
+eval_lt (Cell *args, LM *lm)
 {
-  (void)ctx;
+  (void)lm;
   Cell *result = T;
 
-  if (!IS (args, CONS))
-    return ERROR (ERR_ARG_NOT_ITERABLE, "lt: argument is not a list", ctx);
+  if (!IS_INST (args, CONS))
+    return ERROR (ERR_ARG_NOT_ITERABLE, "lt: argument is not a list", lm);
 
   if (IS_NIL (args))
-    return ERROR (ERR_INVALID_ARG_LENGTH, "lt: expected >= 1 arguments", ctx);
+    return ERROR (ERR_INVALID_ARG_LENGTH, "lt: expected >= 1 arguments", lm);
 
-  if (!IS (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "lt: argument is not integer", ctx);
+  if (!IS_INST (CAR (args), INTEGER))
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "lt: argument is not integer", lm);
 
   Cell *prev = CAR (args);
 
   for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS (CAR (rest), INTEGER))
+      if (!IS_INST (CAR (rest), INTEGER))
         return ERROR (ERR_ARG_TYPE_MISMATCH, "lt: argument is not integer",
-                      ctx);
+                      lm);
 
       if (!(prev->integer < CAR (rest)->integer))
         return NIL;
@@ -69,108 +69,108 @@ eval_lt (Cell *args, Context *ctx)
 // TODO: check for over/underflow someday
 
 Cell *
-eval_add (Cell *args, Context *ctx)
+eval_add (Cell *args, LM *lm)
 {
-  if (!IS (args, CONS))
-    return ERROR (ERR_ARG_NOT_ITERABLE, "add: argument is not a list", ctx);
+  if (!IS_INST (args, CONS))
+    return ERROR (ERR_ARG_NOT_ITERABLE, "add: argument is not a list", lm);
 
   if (IS_NIL (args))
-    return ERROR (ERR_INVALID_ARG_LENGTH, "add: expected >= 1 arguments", ctx);
+    return ERROR (ERR_INVALID_ARG_LENGTH, "add: expected >= 1 arguments", lm);
 
-  if (!IS (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "add: argument is not integer", ctx);
+  if (!IS_INST (CAR (args), INTEGER))
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "add: argument is not integer", lm);
 
   Integer sum = CAR (args)->integer;
 
   for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS (CAR (rest), INTEGER))
+      if (!IS_INST (CAR (rest), INTEGER))
         return ERROR (ERR_ARG_TYPE_MISMATCH, "add: argument is not integer",
-                      ctx);
+                      lm);
 
       sum += CAR (rest)->integer;
     }
 
-  return INTEGER (sum, ctx);
+  return INTEGER (sum, lm);
 }
 
 Cell *
-eval_sub (Cell *args, Context *ctx)
+eval_sub (Cell *args, LM *lm)
 {
-  if (!IS (args, CONS))
-    return ERROR (ERR_ARG_NOT_ITERABLE, "sub: argument is not a list", ctx);
+  if (!IS_INST (args, CONS))
+    return ERROR (ERR_ARG_NOT_ITERABLE, "sub: argument is not a list", lm);
 
   if (IS_NIL (args))
-    return ERROR (ERR_INVALID_ARG_LENGTH, "sub: expected >= 1 arguments", ctx);
+    return ERROR (ERR_INVALID_ARG_LENGTH, "sub: expected >= 1 arguments", lm);
 
-  if (!IS (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "sub: argument is not integer", ctx);
+  if (!IS_INST (CAR (args), INTEGER))
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "sub: argument is not integer", lm);
 
   Integer total = CAR (args)->integer;
 
   for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS (CAR (rest), INTEGER))
+      if (!IS_INST (CAR (rest), INTEGER))
         return ERROR (ERR_ARG_TYPE_MISMATCH, "sub: argument is not integer",
-                      ctx);
+                      lm);
 
       total -= CAR (rest)->integer;
     }
 
-  return INTEGER (total, ctx);
+  return INTEGER (total, lm);
 }
 
 Cell *
-eval_mul (Cell *args, Context *ctx)
+eval_mul (Cell *args, LM *lm)
 {
-  if (!IS (args, CONS))
-    return ERROR (ERR_ARG_NOT_ITERABLE, "mul: argument is not a list", ctx);
+  if (!IS_INST (args, CONS))
+    return ERROR (ERR_ARG_NOT_ITERABLE, "mul: argument is not a list", lm);
 
   if (IS_NIL (args))
-    return ERROR (ERR_INVALID_ARG_LENGTH, "mul: expected >= 1 arguments", ctx);
+    return ERROR (ERR_INVALID_ARG_LENGTH, "mul: expected >= 1 arguments", lm);
 
-  if (!IS (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "mul: argument is not integer", ctx);
+  if (!IS_INST (CAR (args), INTEGER))
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "mul: argument is not integer", lm);
 
   Integer result = CAR (args)->integer;
 
   for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS (CAR (rest), INTEGER))
+      if (!IS_INST (CAR (rest), INTEGER))
         return ERROR (ERR_ARG_TYPE_MISMATCH, "mul: argument is not integer",
-                      ctx);
+                      lm);
 
       result *= CAR (rest)->integer;
     }
 
-  return INTEGER (result, ctx);
+  return INTEGER (result, lm);
 }
 
 Cell *
-eval_div (Cell *args, Context *ctx)
+eval_div (Cell *args, LM *lm)
 {
-  if (!IS (args, CONS))
-    return ERROR (ERR_ARG_NOT_ITERABLE, "div: argument is not a list", ctx);
+  if (!IS_INST (args, CONS))
+    return ERROR (ERR_ARG_NOT_ITERABLE, "div: argument is not a list", lm);
 
   if (IS_NIL (args))
-    return ERROR (ERR_INVALID_ARG_LENGTH, "div: expected >= 1 arguments", ctx);
+    return ERROR (ERR_INVALID_ARG_LENGTH, "div: expected >= 1 arguments", lm);
 
-  if (!IS (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "div: argument is not integer", ctx);
+  if (!IS_INST (CAR (args), INTEGER))
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "div: argument is not integer", lm);
 
   Integer result = CAR (args)->integer;
 
   for (Cell *rest = CDR (args); !IS_NIL (rest); rest = CDR (rest))
     {
-      if (!IS (CAR (rest), INTEGER))
+      if (!IS_INST (CAR (rest), INTEGER))
         return ERROR (ERR_ARG_TYPE_MISMATCH, "div: argument is not integer",
-                      ctx);
+                      lm);
 
       if (CAR (rest)->integer == 0)
-        return ERROR (ERR_DIVISION_BY_0, "div: argument is zero", ctx);
+        return ERROR (ERR_DIVISION_BY_0, "div: argument is zero", lm);
 
       result /= CAR (rest)->integer;
     }
 
-  return INTEGER (result, ctx);
+  return INTEGER (result, lm);
 }

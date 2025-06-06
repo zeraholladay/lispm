@@ -16,6 +16,15 @@
     }                                                                         \
   while (0)
 
+#define PERROR(cell)                                                          \
+  do                                                                          \
+    {                                                                         \
+      char *str = format (cell);                                              \
+      fputs (str, stderr);                                                    \
+      free (str);                                                             \
+    }                                                                         \
+  while (0)
+
 char *format (Cell *n);
 
 #endif

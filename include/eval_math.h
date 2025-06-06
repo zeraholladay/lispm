@@ -3,11 +3,11 @@
 
 #include "eval.h"
 
-Cell *eval_gt (Cell *args, Context *ctx);
-Cell *eval_lt (Cell *args, Context *ctx);
-Cell *eval_add (Cell *args, Context *ctx);
-Cell *eval_sub (Cell *args, Context *ctx);
-Cell *eval_mul (Cell *args, Context *ctx);
-Cell *eval_div (Cell *args, Context *ctx);
+Cell *eval_gt (Cell *args, LM *lm);
+Cell *eval_lt (Cell *args, LM *lm);
+Cell *eval_add (Cell *args, LM *lm);
+Cell *eval_sub (Cell *args, LM *lm);
+Cell *eval_mul (Cell *args, LM *lm);
+Cell *eval_div (Cell *args, LM *lm);
 
 #endif

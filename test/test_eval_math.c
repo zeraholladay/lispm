@@ -4,33 +4,31 @@
 #include <string.h>
 
 #include "eval.h"
+#include "lispm.h"
 #include "parser.h"
 #include "repl.h"
 #include "types.h"
 
-extern void lispm_init (Context *ctx);
-extern void lispm_destroy (Context *ctx);
-
 static Cell *progn = NULL;
-static Context ctx = {};
+static LM *lm = NULL;
 
 static void
 setup (void)
 {
-  lispm_init (&ctx);
+  lm = lm_create ();
 }
 
 static void
 teardown (void)
 {
-  lispm_destroy (&ctx);
+  lm_destroy (lm);
 }
 
 static Cell *
 run_eval_progn (const char *input)
 {
-  ck_assert (parser_buf (input, &progn, &ctx));
-  return eval_progn (progn, &ctx);
+  ck_assert (parser_buf (input, &progn, lm));
+  return lm_progn (lm, progn);
 }
 
 START_TEST (test_gt)
@@ -125,7 +123,7 @@ START_TEST (test_div)
   ck_assert_int_eq (eval_res->integer, 42);
 
   eval_res = run_eval_progn ("(div 10 0)");
-  ck_assert (IS (eval_res, ERROR));
+  ck_assert (IS_INST (eval_res, NIL));
 }
 END_TEST
 

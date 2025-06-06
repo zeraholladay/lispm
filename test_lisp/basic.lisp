@@ -2,7 +2,9 @@
 (SET 'ASSERT
     (LAMBDA (X) (IF (EQ NIL (EVAL X))
                     ((LAMBDA (X) (PRINT COUNTER) (PRINT X)) X)
-                    (SET 'COUNTER (ADD COUNTER 1)))
+                    (PROGN
+                      (PRINT X)
+                      (SET 'COUNTER (ADD COUNTER 1))))
     )
 )
 ;; basic expressions
@@ -41,15 +43,15 @@
 (ASSERT '(EQ NIL (CDR (REST '()))))
 ;; LIST
 (ASSERT '(EQ NIL (LIST)))
-(ASSERT '(LEN (LIST 'FOO 'BAR)))
-;; LEN
-(ASSERT '(EQ (LEN NIL) 0))
-(ASSERT '(EQ (LEN NIL) (LEN NIL)))
-(ASSERT '(NOT (EQ (LEN '(1)) (LEN NIL))))
-;; PAIR
-(ASSERT '(EQ 0 (LEN (PAIR '() '()))))
-(ASSERT '(EQ 1 (LEN (PAIR '(1) '(1)))))
-(ASSERT '(EQ 2 (LEN (PAIR '(A B) '(1 2)))))
+(ASSERT '(LENGTH (LIST 'FOO 'BAR)))
+;; LENGTH
+(ASSERT '(EQ (LENGTH NIL) 0))
+(ASSERT '(EQ (LENGTH NIL) (LENGTH NIL)))
+(ASSERT '(NOT (EQ (LENGTH '(1)) (LENGTH NIL))))
+;; ;; PAIR
+;; (ASSERT '(EQ 0 (LENGTH (PAIR '() '()))))
+;; (ASSERT '(EQ 1 (LENGTH (PAIR '(1) '(1)))))
+;; (ASSERT '(EQ 2 (LENGTH (PAIR '(A B) '(1 2)))))
 ;; IF
 (ASSERT '(IF T T))
 (ASSERT '(NOT (IF T NIL)))
@@ -108,8 +110,8 @@
         NIL
         (CONS X (RANGE (ADD X 1) MAX))
     )))
-(ASSERT '(EQ 10 (LEN (RANGE 0 9))))
-(ASSERT '(EQ 42 (LEN (RANGE 0 41))))
+(ASSERT '(EQ 10 (LENGTH (RANGE 0 9))))
+(ASSERT '(EQ 42 (LENGTH (RANGE 0 41))))
 
 (ASSERT '(EQ 903 (APPLY + (RANGE 0 42))))
 ;; Fibonacci

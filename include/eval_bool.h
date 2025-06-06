@@ -3,7 +3,7 @@
 
 #include "eval.h"
 
-Cell *eval_eq (Cell *args, Context *ctx);
-Cell *eval_not (Cell *args, Context *ctx);
+Cell *eval_eq (Cell *args, LM *lm);
+Cell *eval_not (Cell *args, LM *lm);
 
 #endif
