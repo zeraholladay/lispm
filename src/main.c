@@ -60,7 +60,8 @@ run (int argc, char **argv)
           break; // TODO: syntax error
         }
 
-      Cell *eval_res = lm_progn (lm, progn);
+      // Cell *eval_res = lm_progn (lm, progn);
+      lm_progn (lm, progn);
 
       // if ()
       //   {

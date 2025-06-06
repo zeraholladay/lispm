@@ -49,7 +49,7 @@
   do                                                                          \
     {                                                                         \
       DEBUG (DEBUG_LOCATION);                                                 \
-      fprintf (stderr, "[%s:%s] %s\n", #code, error_messages[code], msg);     \
+      fprintf (stderr, "%s:%s %s\n", #code, error_messages[code], msg);       \
       goto error;                                                             \
     }                                                                         \
   while (0);
@@ -77,6 +77,11 @@ typedef struct state
   };
 } State;
 
+typedef struct dump
+{
+  size_t stk_sp, ctl_sp;
+} Dump;
+
 typedef struct lispm_secd
 {
   struct
@@ -90,15 +95,50 @@ typedef struct lispm_secd
     size_t sp;
     State states[LISPM_CTL_MAX];
   } ctl;
-  void *dmp; // temporary
+  struct
+  {
+    size_t sp;
+    Dump dumps[LISPM_DUMP_MAX];
+  } dmp;
   Pool *pool;
 } LM;
 
 static void
 lm_reset (LM *lm)
 {
+  fputs ("**Reset\n", stderr);
   lm->stk.sp = lm->ctl.sp = 0;
   env_reset (lm->env);
+}
+
+static bool
+lm_dump (LM *lm)
+{
+  if ((lm)->dmp.sp >= LISPM_DUMP_MAX)
+    return false;
+
+  lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){
+    .stk_sp = lm->stk.sp,
+    .ctl_sp = lm->ctl.sp,
+  };
+  env_enter_frame (&lm->env);
+
+  return true;
+}
+
+static bool
+lm_restore (LM *lm)
+{
+  if (lm->dmp.sp == 0)
+    return false;
+
+  Dump dump = lm->dmp.dumps[--lm->dmp.sp];
+
+  lm->stk.sp = dump.stk_sp;
+  lm->ctl.sp = dump.ctl_sp;
+  env_leave_frame (&lm->env);
+
+  return true;
 }
 
 static Cell *
@@ -187,6 +227,50 @@ lm_eval (LM *lm)
           }
         continue;
       }
+    _progn:
+      {
+        typeof (s.uf_progn) *st = &s.uf_progn;
+
+        if (IS_NIL (st->arglist))
+          PUSH (lm, st->res);
+        else
+          {
+            SPUSH (lm, progn_eval, CDR (st->arglist));
+            SPUSH (lm, eval, CAR (st->arglist));
+          }
+
+        continue;
+      }
+    _progn_eval:
+      {
+        typeof (s.uf_progn_eval) *st = &s.uf_progn_eval;
+
+        Cell *eval_res = POP (lm);
+        SPUSH (lm, progn, eval_res, st->arglist);
+
+        continue;
+      }
+    _apply:
+      {
+        typeof (s.uf_apply) *st = &s.uf_apply;
+
+        Cell *fn = st->fn ?: POP (lm);
+        Cell *arglist = st->arglist ?: POP (lm);
+
+        if (!LISTP (arglist))
+          LM_ERR (ERR_MISSING_ARG, "APPLY: not a list.");
+
+        Cell *fixed = butlast (arglist, lm);
+        Cell *tail_list = CAR (last (arglist, lm));
+
+        if (!LISTP (tail_list))
+          LM_ERR (ERR_MISSING_ARG, "APPLY: last not a list.");
+
+        Cell *all = append_inplace (fixed, tail_list);
+
+        SPUSH (lm, funcall, fn, all);
+        continue;
+      }
     _funcall:
       {
         typeof (s.uf_funcall) *st = &s.uf_funcall;
@@ -197,9 +281,9 @@ lm_eval (LM *lm)
         if (IS_INST (fn, BUILTIN_FN))
           SPUSH (lm, funcall_builtin, fn, arglist);
         else if (IS_INST (fn, LAMBDA))
-          SPUSH (lm, funcall_lambda, fn, arglist);
+          SPUSH (lm, lambda, fn, arglist);
         else
-          LM_ERR (ERR_INTERNAL, "FUNCALL");
+          LM_ERR (ERR_NOT_A_FUNCTION, "FUNCALL");
         continue;
       }
     _funcall_builtin:
@@ -232,11 +316,13 @@ lm_eval (LM *lm)
         PUSH (lm, res);
         continue;
       }
-    _funcall_lambda:
+    _lambda:
       {
-        typeof (s.uf_funcall_lambda) *st = &s.uf_funcall_lambda;
+        typeof (s.uf_lambda) *st = &s.uf_lambda;
 
-        size_t expected = length (st->fn->lambda.params);
+        Lambda *lambda = &st->fn->lambda;
+
+        size_t expected = length (lambda->params);
         size_t received = length (st->arglist);
 
         if (expected != received)
@@ -246,18 +332,9 @@ lm_eval (LM *lm)
             LM_ERR (err, "LAMBDA");
           }
 
-        SPUSH (lm, env_leave_frame);
-        SPUSH (lm, funcall_lambda_cont, st->fn, st->arglist);
-        SPUSH (lm, env_enter_frame);
-        continue;
-      }
-    _funcall_lambda_cont:
-      {
-        typeof (s.uf_funcall_lambda_cont) *st = &s.uf_funcall_lambda_cont;
+        env_enter_frame (&lm->env);
 
-        Cell *params = st->fn->lambda.params;
-        Cell *pairs
-            = mapcar (KEYWORD (LIST), LIST2 (params, st->arglist, lm), lm);
+        Cell *pairs = zip (LIST2 (lambda->params, st->arglist, lm), lm);
 
         while (!IS_NIL (pairs))
           {
@@ -266,7 +343,9 @@ lm_eval (LM *lm)
             pairs = CDR (pairs);
           }
 
-        SPUSH (lm, progn, NIL, st->fn->lambda.body);
+        SPUSH (lm, env_leave_frame);
+        SPUSH (lm, progn, NIL, lambda->body);
+
         continue;
       }
     _list:
@@ -298,51 +377,6 @@ lm_eval (LM *lm)
         SPUSH (lm, list, acc, st->arglist);
         continue;
       }
-    _apply:
-      {
-        typeof (s.uf_apply) *st = &s.uf_apply;
-
-        Cell *fn = st->fn ?: POP (lm);
-        Cell *arglist = st->arglist ?: POP (lm);
-
-        if (!LISTP (arglist))
-          LM_ERR (ERR_MISSING_ARG, "APPLY");
-
-        Cell *fixd_args = butlast (arglist, lm);
-
-        SPUSH (lm, apply_cont, fn, arglist);
-        SPUSH (lm, list, NIL, fixd_args);
-        continue;
-      }
-    _apply_cont:
-      {
-        typeof (s.uf_apply_cont) *st = &s.uf_apply_cont;
-
-        Cell *fixed_rev = POP (lm);
-        Cell *tail_list = last (st->arglist, lm);
-
-        if (!LISTP (tail_list)) // ie (apply fn NIL)
-          SPUSH (lm, funcall, st->fn, NIL);
-        else
-          {
-            SPUSH (lm, apply_funcall, st->fn, fixed_rev);
-            SPUSH (lm, eval, tail_list);
-          }
-        continue;
-      }
-    _apply_funcall:
-      {
-        typeof (s.uf_apply_funcall) *st = &s.uf_apply_funcall;
-
-        Cell *tail_list = POP (lm);
-
-        if (!LISTP (tail_list))
-          LM_ERR (ERR_MISSING_ARG, "FUNCALL");
-
-        Cell *all_args = append_inplace (st->arglist, tail_list);
-        SPUSH (lm, funcall, st->fn, all_args);
-        continue;
-      }
     _lispm:
       {
         typeof (s.uf_lispm) *st = &s.uf_lispm;
@@ -351,13 +385,15 @@ lm_eval (LM *lm)
           SPUSH (lm, list, NIL, st->arglist);
         else if (st->fn == KEYWORD (FUNCALL))
           {
-            SPUSH (lm, funcall, NULL, CDR (st->arglist));
+            SPUSH (lm, funcall, NULL, NULL);
             SPUSH (lm, eval, CAR (st->arglist));
+            SPUSH (lm, list, NIL, CDR (st->arglist));
           }
         else if (st->fn == KEYWORD (APPLY))
           {
-            SPUSH (lm, apply, NULL, CDR (st->arglist));
+            SPUSH (lm, apply, NULL, NULL);
             SPUSH (lm, eval, CAR (st->arglist));
+            SPUSH (lm, list, NIL, CDR (st->arglist));
           }
         else if (st->fn == KEYWORD (EVAL))
           {
@@ -376,34 +412,13 @@ lm_eval (LM *lm)
           LM_ERR (ERR_INTERNAL, "LISPM");
         continue;
       }
-    _progn:
-      {
-        typeof (s.uf_progn) *st = &s.uf_progn;
-
-        if (IS_NIL (st->arglist))
-          PUSH (lm, st->res);
-        else
-          {
-            SPUSH (lm, progn_cont, st->res, st->arglist);
-            SPUSH (lm, eval, CAR (st->arglist));
-          }
-        continue;
-      }
-    _progn_cont:
-      {
-        typeof (s.uf_progn_cont) *st = &s.uf_progn_cont;
-
-        Cell *new_res = POP (lm);
-        SPUSH (lm, progn, new_res, CDR (st->arglist));
-        continue;
-      }
     _if:
       {
         typeof (s.uf_if) *st = &s.uf_if;
 
-        Cell *pred_form = CAR (st->form);
-        SPUSH (lm, if_cont, st->form);
-        SPUSH (lm, eval, pred_form);
+        SPUSH (lm, if_cont, CDR (st->form));
+        SPUSH (lm, eval, CAR (st->form));
+
         continue;
       }
 
@@ -415,12 +430,12 @@ lm_eval (LM *lm)
 
         if (!IS_NIL (pred_val))
           {
-            Cell *then_form = CAR (CDR (st->form));
+            Cell *then_form = CAR (st->form);
             SPUSH (lm, eval, then_form);
           }
         else
           {
-            Cell *else_form = CAR (CDR (CDR (st->form)));
+            Cell *else_form = CAR (CDR (st->form));
             if (else_form)
               SPUSH (lm, eval, else_form);
             else
@@ -502,19 +517,18 @@ lm_eval (LM *lm)
       }
     }
 
-  Cell *evl_ret = POP (lm);
-  return evl_ret;
+  return POP (lm);
 
 error:;
-  fputs ("**Error\n", stderr);
+  lm_reset (lm);
   return NIL;
 
 underflow:;
-  fputs ("**Underflow\n", stderr);
+  lm_reset (lm);
   return NIL;
 
 overflow:;
-  fputs ("**Overflow\n", stderr);
+  lm_reset (lm);
   return NIL;
 }
 
@@ -570,10 +584,9 @@ lm_env_set (LM *lm, const char *key, Cell *val)
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
-  SPUSH (lm, progn, NIL, progn);
-
-  Cell *ret = lm_eval (lm);
-  return ret;
+  SPUSH (lm, progn, NIL,
+         progn); // FIXME: one at a time & check for err after each
+  return lm_eval (lm);
 
 overflow:
   lm_reset (lm);

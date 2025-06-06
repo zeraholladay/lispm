@@ -15,6 +15,10 @@
 #define LM_OBJ_POOL_CAP 1024
 #endif
 
+#ifndef LISPM_DUMP_MAX
+#define LISPM_DUMP_MAX 512
+#endif
+
 // Forward decls
 // forward decls
 typedef struct Cell Cell;
@@ -32,7 +36,7 @@ Cell *lm_env_lkup (LM *lm, const char *key);
 bool lm_env_let (LM *lm, const char *key, Cell *val);
 bool lm_env_set (LM *lm, const char *key, Cell *val);
 
-// execute progn
+// execute
 Cell *lm_progn (LM *lm, Cell *progn);
 
 #endif

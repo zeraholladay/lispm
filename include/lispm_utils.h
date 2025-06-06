@@ -10,7 +10,6 @@ Cell *append_list (Cell *list1, Cell *list2, LM *lm);
 Cell *butlast (Cell *args, LM *lm);
 Cell *last (Cell *args, LM *lm);
 size_t length (Cell *list);
-Cell *mapcar (Cell *fn, Cell *arglist, LM *lm);
 Cell *nth (size_t idx, Cell *list);
 Cell *reverse (Cell *list, LM *lm);
 Cell *reverse_inplace (Cell *list);

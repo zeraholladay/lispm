@@ -36,21 +36,21 @@
     }                                                                         \
   while (0)
 
-Cell *eval_append (Cell *args, LM *lm);
-Cell *eval_butlast (Cell *expr, LM *lm);
+Cell *eval_append (Cell *lst, LM *lm);
+Cell *eval_butlast (Cell *lst, LM *lm);
 Cell *eval_cons (Cell *args, LM *lm);
 Cell *eval_car (Cell *args, LM *lm);
 Cell *eval_cdr (Cell *args, LM *lm);
-Cell *eval_last (Cell *expr, LM *lm);
-Cell *eval_length (Cell *args, LM *lm);
+Cell *eval_last (Cell *lst, LM *lm);
+Cell *eval_length (Cell *lst, LM *lm);
 Cell *eval_list (Cell *args, LM *lm);
-Cell *eval_mapcar (Cell *args, LM *lm);
+// Cell *eval_mapcar (Cell *args, LM *lm);
 Cell *eval_nth (Cell *expr, LM *lm);
-Cell *eval_pair (Cell *args, LM *lm);
+// Cell *eval_pair (Cell *args, LM *lm);
 Cell *eval_print (Cell *args, LM *lm);
-Cell *eval_reverse (Cell *args, LM *lm);
+Cell *eval_reverse (Cell *lst, LM *lm);
 Cell *eval_set (Cell *args, LM *lm);
 Cell *eval_string (Cell *args, LM *lm);
-Cell *eval (Cell *form, LM *lm);
+Cell *eval_zip (Cell *lst, LM *lm);
 
 #endif

@@ -1,6 +1,7 @@
 #include "stdlib.h"
 
 #include "eval.h"
+#include "format.h"
 #include "lispm_utils.h"
 #include "xalloc.h"
 
@@ -71,7 +72,7 @@ last (Cell *list, LM *lm)
   Cell *rev = reverse_inplace (list);
   Cell *last = CAR (rev);
   reverse_inplace (rev);
-  return last;
+  return LIST1 (last, lm);
 }
 
 size_t
@@ -86,21 +87,6 @@ length (Cell *list)
     ++i;
 
   return i;
-}
-
-Cell *
-mapcar (Cell *fn, Cell *arglist, LM *lm)
-{
-  Cell *zip_args = zip (arglist, lm);
-  Cell *rev = NIL;
-
-  for (Cell *l = zip_args; !IS_NIL (l); l = CDR (l))
-    {
-      Cell *res = funcall (fn, CAR (l), lm);
-      rev = CONS (res, rev, lm);
-    }
-
-  return reverse_inplace (rev);
 }
 
 Cell *
