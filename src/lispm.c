@@ -218,9 +218,40 @@ lm_eval (LM *lm)
             else
               {
                 CTL_PUSH (lm, funcall, fn, NULL);
-                CTL_PUSH (lm, list, NIL, st->arglist);
+                CTL_PUSH (lm, evlis, NIL, st->arglist);
               }
           }
+        continue;
+      }
+    state_evlis:
+      {
+        typeof (s.uf_evlis) *st = &s.uf_evlis;
+
+        if (IS_NIL (st->arglist))
+          {
+            Cell *res = reverse_inplace (st->acc);
+            STK_PUSH (lm, res);
+          }
+        else
+          {
+            Cell *car = CAR (st->arglist);
+            Cell *cdr = CDR (st->arglist);
+
+            CTL_PUSH (lm, evlis_acc, st->acc, cdr);
+            CTL_PUSH (lm, eval, car);
+          }
+
+        continue;
+      }
+    state_evlis_acc:
+      {
+        typeof (s.uf_evlis_acc) *st = &s.uf_evlis_acc;
+
+        Cell *eval_res = STK_POP (lm);
+        Cell *acc = CONS (eval_res, st->acc, lm);
+
+        CTL_PUSH (lm, evlis, acc, st->arglist);
+
         continue;
       }
     state_funcall:
@@ -345,54 +376,23 @@ lm_eval (LM *lm)
 
         continue;
       }
-    state_list:
-      {
-        typeof (s.uf_list) *st = &s.uf_list;
-
-        if (IS_NIL (st->arglist))
-          {
-            Cell *res = reverse_inplace (st->acc);
-            STK_PUSH (lm, res);
-          }
-        else
-          {
-            Cell *car = CAR (st->arglist);
-            Cell *cdr = CDR (st->arglist);
-
-            CTL_PUSH (lm, list_acc, st->acc, cdr);
-            CTL_PUSH (lm, eval, car);
-          }
-
-        continue;
-      }
-    state_list_acc:
-      {
-        typeof (s.uf_list_acc) *st = &s.uf_list_acc;
-
-        Cell *eval_res = STK_POP (lm);
-        Cell *acc = CONS (eval_res, st->acc, lm);
-
-        CTL_PUSH (lm, list, acc, st->arglist);
-
-        continue;
-      }
     state_lispm:
       {
         typeof (s.uf_lispm) *st = &s.uf_lispm;
 
         if (st->fn == KEYWORD (LIST))
-          CTL_PUSH (lm, list, NIL, st->arglist);
+          CTL_PUSH (lm, evlis, NIL, st->arglist);
         else if (st->fn == KEYWORD (FUNCALL))
           {
             CTL_PUSH (lm, funcall, NULL, NULL);
             CTL_PUSH (lm, eval, CAR (st->arglist));
-            CTL_PUSH (lm, list, NIL, CDR (st->arglist));
+            CTL_PUSH (lm, evlis, NIL, CDR (st->arglist));
           }
         else if (st->fn == KEYWORD (APPLY))
           {
             CTL_PUSH (lm, apply, NULL, NULL);
             CTL_PUSH (lm, eval, CAR (st->arglist));
-            CTL_PUSH (lm, list, NIL, CDR (st->arglist));
+            CTL_PUSH (lm, evlis, NIL, CDR (st->arglist));
           }
         else if (st->fn == KEYWORD (EVAL))
           {
