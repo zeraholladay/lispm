@@ -1,8 +1,9 @@
 #ifndef SYM_INTERN_H
 #define SYM_INTERN_H
 
-#include "rb_tree.h"
 #include <stdlib.h>
+
+#include "rb_tree.h"
 
 #ifndef STR_INTERN_POOL_CAPACITY
 #define STR_INTERN_POOL_CAPACITY 4096

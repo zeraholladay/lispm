@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "eval.h"
-#include "lispm.h"
+#include "lisp_mach.h"
+#include "lisp_headers.h"
+#include "lisp_types.h"
 #include "parser.h"
 #include "repl.h"
-#include "types.h"
 
 static Cell *progn = NULL;
 static LM *lm = NULL;
@@ -42,10 +42,10 @@ START_TEST (test_gt)
   ck_assert_str_eq (eval_res->symbol.str, "T");
 
   eval_res = run_eval_progn ("(gt 2 3)");
-  ck_assert (IS_NIL (eval_res));
+  ck_assert (NILP (eval_res));
 
   eval_res = run_eval_progn ("(gt 3 3)");
-  ck_assert (IS_NIL (eval_res));
+  ck_assert (NILP (eval_res));
 }
 END_TEST
 
@@ -60,10 +60,10 @@ START_TEST (test_lt)
   ck_assert_str_eq (eval_res->symbol.str, "T");
 
   eval_res = run_eval_progn ("(lt 3 2)");
-  ck_assert (IS_NIL (eval_res));
+  ck_assert (NILP (eval_res));
 
   eval_res = run_eval_progn ("(lt 4 4)");
-  ck_assert (IS_NIL (eval_res));
+  ck_assert (NILP (eval_res));
 }
 END_TEST
 

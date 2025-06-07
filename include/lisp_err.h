@@ -1,5 +1,5 @@
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef LISP_ERR_H
+#define LISP_ERR_H
 
 typedef enum
 {

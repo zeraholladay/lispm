@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "format.h"
+#include "lisp_fmt.h"
 #include "parser.h"
 #include "repl.h"
 

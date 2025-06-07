@@ -2,44 +2,42 @@
 %{
 #include <string.h>
 
-#include "eval.h"
-#include "eval_bool.h"
-#include "eval_math.h"
-#include "keywords.h"
+#include "lisp_builtins.h"
+#include "lisp_keywords.h"
 
 #define AS_SYM(name) { .str   = name, .len = sizeof(name) - 1      }
 
-static BuiltinFn builtin_and      = { .name = "AND",     .is_lispm = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_append   = { .name = "APPEND",  .is_lispm = 0, .arity = -1, .fn = eval_append     };
-static BuiltinFn builtin_apply    = { .name = "APPLY",   .is_lispm = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_butlast  = { .name = "BUTLAST", .is_lispm = 0, .arity =  1, .fn = eval_butlast    };
-static BuiltinFn builtin_car      = { .name = "CAR",     .is_lispm = 0, .arity =  1, .fn = eval_car        };
-static BuiltinFn builtin_cdr      = { .name = "CDR",     .is_lispm = 0, .arity =  1, .fn = eval_cdr        };
-static BuiltinFn builtin_cons     = { .name = "CONS",    .is_lispm = 0, .arity =  2, .fn = eval_cons       };
-static BuiltinFn builtin_eq       = { .name = "EQ",      .is_lispm = 0, .arity =  2, .fn = eval_eq         };
-static BuiltinFn builtin_eval     = { .name = "EVAL",    .is_lispm = 1, .arity =  1, .fn = NULL            };
-static BuiltinFn builtin_progn    = { .name = "PROGN",   .is_lispm = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_first    = { .name = "FIRST",   .is_lispm = 0, .arity =  1, .fn = eval_car        };
-static BuiltinFn builtin_funcall  = { .name = "FUNCALL", .is_lispm = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_gt       = { .name = "GT",      .is_lispm = 0, .arity = -1, .fn = eval_gt         };
-static BuiltinFn builtin_if       = { .name = "IF",      .is_lispm = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_length   = { .name = "LENGTH",  .is_lispm = 0, .arity =  1, .fn = eval_length     };
-static BuiltinFn builtin_last     = { .name = "LAST",    .is_lispm = 0, .arity =  1, .fn = eval_last       };
-static BuiltinFn builtin_lt       = { .name = "LT",      .is_lispm = 0, .arity = -1, .fn = eval_lt         };
-static BuiltinFn builtin_mapcar   = { .name = "MAPCAR",  .is_lispm = 0, .arity = -1, .fn = eval_mapcar     };
-static BuiltinFn builtin_nth      = { .name = "NTH",     .is_lispm = 0, .arity =  2, .fn = eval_nth        };
-static BuiltinFn builtin_not      = { .name = "NOT",     .is_lispm = 0, .arity =  1, .fn = eval_not        };
-static BuiltinFn builtin_list     = { .name = "LIST",    .is_lispm = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_or       = { .name = "OR",      .is_lispm = 1, .arity = -1, .fn = NULL            };
-static BuiltinFn builtin_print    = { .name = "PRINT",   .is_lispm = 0, .arity =  1, .fn = eval_print      };
-static BuiltinFn builtin_rest     = { .name = "REST",    .is_lispm = 0, .arity =  1, .fn = eval_cdr        };
-static BuiltinFn builtin_reverse  = { .name = "REVERSE", .is_lispm = 0, .arity =  1, .fn = eval_reverse    };
-static BuiltinFn builtin_set      = { .name = "SET",     .is_lispm = 0, .arity =  2, .fn = eval_set        };
-static BuiltinFn builtin_str      = { .name = "STRING",  .is_lispm = 0, .arity =  1, .fn = eval_string     };
-static BuiltinFn builtin_add      = { .name = "ADD",     .is_lispm = 0, .arity = -1, .fn = eval_add        };
-static BuiltinFn builtin_sub      = { .name = "SUB",     .is_lispm = 0, .arity = -1, .fn = eval_sub        };
-static BuiltinFn builtin_mul      = { .name = "MUL",     .is_lispm = 0, .arity = -1, .fn = eval_mul        };
-static BuiltinFn builtin_div      = { .name = "DIV",     .is_lispm = 0, .arity = -1, .fn = eval_div        };
+static BuiltinFn builtin_and      = { .name = "AND",     .is_lispm = 1, .arity = -1, .fn = NULL          };
+static BuiltinFn builtin_append   = { .name = "APPEND",  .is_lispm = 0, .arity = -1, .fn = fn_append     };
+static BuiltinFn builtin_apply    = { .name = "APPLY",   .is_lispm = 1, .arity = -1, .fn = NULL          };
+static BuiltinFn builtin_butlast  = { .name = "BUTLAST", .is_lispm = 0, .arity =  1, .fn = fn_butlast    };
+static BuiltinFn builtin_car      = { .name = "CAR",     .is_lispm = 0, .arity =  1, .fn = fn_car        };
+static BuiltinFn builtin_cdr      = { .name = "CDR",     .is_lispm = 0, .arity =  1, .fn = fn_cdr        };
+static BuiltinFn builtin_cons     = { .name = "CONS",    .is_lispm = 0, .arity =  2, .fn = fn_cons       };
+static BuiltinFn builtin_eq       = { .name = "EQ",      .is_lispm = 0, .arity =  2, .fn = fn_eq         };
+static BuiltinFn builtin_eval     = { .name = "EVAL",    .is_lispm = 1, .arity =  1, .fn = NULL          };
+static BuiltinFn builtin_progn    = { .name = "PROGN",   .is_lispm = 1, .arity = -1, .fn = NULL          };
+static BuiltinFn builtin_first    = { .name = "FIRST",   .is_lispm = 0, .arity =  1, .fn = fn_car        };
+static BuiltinFn builtin_funcall  = { .name = "FUNCALL", .is_lispm = 1, .arity = -1, .fn = NULL          };
+static BuiltinFn builtin_gt       = { .name = "GT",      .is_lispm = 0, .arity = -1, .fn = fn_gt         };
+static BuiltinFn builtin_if       = { .name = "IF",      .is_lispm = 1, .arity = -1, .fn = NULL          };
+static BuiltinFn builtin_length   = { .name = "LENGTH",  .is_lispm = 0, .arity =  1, .fn = fn_length     };
+static BuiltinFn builtin_last     = { .name = "LAST",    .is_lispm = 0, .arity =  1, .fn = fn_last       };
+static BuiltinFn builtin_lt       = { .name = "LT",      .is_lispm = 0, .arity = -1, .fn = fn_lt         };
+static BuiltinFn builtin_mapcar   = { .name = "MAPCAR",  .is_lispm = 0, .arity = -1, .fn = fn_mapcar     };
+static BuiltinFn builtin_nth      = { .name = "NTH",     .is_lispm = 0, .arity =  2, .fn = fn_nth        };
+static BuiltinFn builtin_not      = { .name = "NOT",     .is_lispm = 0, .arity =  1, .fn = fn_not        };
+static BuiltinFn builtin_list     = { .name = "LIST",    .is_lispm = 1, .arity = -1, .fn = NULL          };
+static BuiltinFn builtin_or       = { .name = "OR",      .is_lispm = 1, .arity = -1, .fn = NULL          };
+static BuiltinFn builtin_print    = { .name = "PRINT",   .is_lispm = 0, .arity =  1, .fn = fn_print      };
+static BuiltinFn builtin_rest     = { .name = "REST",    .is_lispm = 0, .arity =  1, .fn = fn_cdr        };
+static BuiltinFn builtin_reverse  = { .name = "REVERSE", .is_lispm = 0, .arity =  1, .fn = fn_reverse    };
+static BuiltinFn builtin_set      = { .name = "SET",     .is_lispm = 0, .arity =  2, .fn = fn_set        };
+static BuiltinFn builtin_str      = { .name = "STRING",  .is_lispm = 0, .arity =  1, .fn = fn_string     };
+static BuiltinFn builtin_add      = { .name = "ADD",     .is_lispm = 0, .arity = -1, .fn = fn_add        };
+static BuiltinFn builtin_sub      = { .name = "SUB",     .is_lispm = 0, .arity = -1, .fn = fn_sub        };
+static BuiltinFn builtin_mul      = { .name = "MUL",     .is_lispm = 0, .arity = -1, .fn = fn_mul        };
+static BuiltinFn builtin_div      = { .name = "DIV",     .is_lispm = 0, .arity = -1, .fn = fn_div        };
 %}
 
 %includes

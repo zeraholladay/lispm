@@ -1,8 +1,6 @@
 #include "stdlib.h"
 
-#include "eval.h"
-#include "format.h"
-#include "lispm_utils.h"
+#include "lisp_headers.h"
 #include "xalloc.h"
 
 // sequence operations
@@ -10,12 +8,12 @@
 Cell *
 append_inplace (Cell *lst1, Cell *lst2)
 {
-  if (IS_NIL (lst1))
+  if (NILP (lst1))
     return lst2;
 
   Cell *l1 = lst1;
 
-  while (!IS_NIL (CDR (l1)))
+  while (!NILP (CDR (l1)))
     l1 = CDR (l1);
 
   RPLACD (l1, lst2);
@@ -26,13 +24,13 @@ append_inplace (Cell *lst1, Cell *lst2)
 Cell *
 append_list (LM *lm, Cell *lst1, Cell *lst2)
 {
-  if (IS_NIL (lst1))
+  if (NILP (lst1))
     return lst2;
 
   Cell *new_head = NULL;
   Cell *new_tail = NULL;
 
-  for (Cell *l1 = lst1; !IS_NIL (l1); l1 = CDR (l1))
+  for (Cell *l1 = lst1; !NILP (l1); l1 = CDR (l1))
     {
       Cell *cpy = CONS (CAR (l1), NIL, lm);
 
@@ -92,7 +90,7 @@ mapcar (LM *lm, Cell *fn, Cell *arglst)
   Cell *zip_args = zip (lm, arglst);
   Cell *rev = NIL;
 
-  for (Cell *l = zip_args; !IS_NIL (l); l = CDR (l))
+  for (Cell *l = zip_args; !NILP (l); l = CDR (l))
     {
       Cell *res = lm_funcall (lm, fn, CAR (l));
       rev = CONS (res, rev, lm);
@@ -106,12 +104,12 @@ nth (size_t idx, Cell *lst)
 {
   for (size_t i = 0; i < idx; ++i)
     {
-      if (IS_NIL (lst))
+      if (NILP (lst))
         return NIL;
       lst = CDR (lst);
     }
 
-  return (IS_NIL (lst)) ? NIL : CAR (lst);
+  return (NILP (lst)) ? NIL : CAR (lst);
 }
 
 Cell *
@@ -132,7 +130,7 @@ reverse_inplace (Cell *lst)
   Cell *prev = NIL;
   Cell *cur = lst;
 
-  while (!IS_NIL (cur))
+  while (!NILP (cur))
     {
       Cell *next = CDR (cur);
       RPLACD (cur, prev);
@@ -164,7 +162,7 @@ zip (LM *lm, Cell *lsts)
       int done = 0;
 
       for (size_t i = 0; i < len; ++i)
-        if (IS_NIL (heads[i]))
+        if (NILP (heads[i]))
           {
             done = 1;
             break;

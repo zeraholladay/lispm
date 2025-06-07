@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "types.h"
+#include "lisp_types.h"
 
 #define KEYWORD(name) keyword_lookup (#name, sizeof (#name) - 1)
 #define KEYWORD_LIT(str) keyword_lookup (str, sizeof (str) - 1)

@@ -1,15 +1,9 @@
-#include "lispm.h"
-
 #include <stdarg.h>
 #include <stdbool.h>
 
-#include "debug.h"
 #include "env.h"
-#include "error.h"
-#include "eval.h"
-#include "format.h"
-#include "lispm_utils.h"
-#include "types.h"
+#include "lisp_headers.h"
+#include "palloc.h"
 #include "xalloc.h"
 
 #define STK_POP(lm)                                                           \
@@ -48,7 +42,6 @@
 #define ERR_EXIT(code, msg)                                                   \
   do                                                                          \
     {                                                                         \
-      DEBUG (DEBUG_LOCATION);                                                 \
       fprintf (stderr, "%s:%s %s\n", #code, error_messages[code], msg);       \
       goto error;                                                             \
     }                                                                         \
@@ -57,7 +50,7 @@
 typedef enum
 {
 #define X(tag, ...) s##tag,
-#include "lispm.def"
+#include "lisp_mach.x-macros"
 #undef X
   COUNT,
 } StateEnum;
@@ -72,7 +65,7 @@ typedef struct state
   {                                                                           \
     __VA_ARGS__;                                                              \
   } uf##tag;
-#include "lispm.def"
+#include "lisp_mach.x-macros"
 #undef X
   };
 } State;
@@ -160,7 +153,7 @@ lm_eval (LM *lm)
 #define X(tag, ...)                                                           \
   case s##tag:                                                                \
     goto state##tag;
-#include "lispm.def"
+#include "lisp_mach.x-macros"
 #undef STATE
         default:
           ERR_EXIT (ERR_INTERNAL, "No such state.");
@@ -188,7 +181,7 @@ lm_eval (LM *lm)
           STK_PUSH (lm, st->arg);
         else if (LISTP (st->arg))
           {
-            if (IS_NIL (st->arg))
+            if (NILP (st->arg))
               STK_PUSH (lm, NIL);
             else
               {
@@ -236,7 +229,7 @@ lm_eval (LM *lm)
       {
         typeof (s.uf_evlis) *st = &s.uf_evlis;
 
-        if (IS_NIL (st->arglist))
+        if (NILP (st->arglist))
           {
             Cell *res = reverse_inplace (st->acc);
             STK_PUSH (lm, res);
@@ -298,7 +291,7 @@ lm_eval (LM *lm)
         if (!builtin_fn->fn)
           ERR_EXIT (ERR_NOT_A_FUNCTION, builtin_fn->name)
 
-        Cell *res = builtin_fn->fn (st->arglist, lm);
+        Cell *res = builtin_fn->fn (lm, st->arglist);
 
         if (IS_INST (res, ERROR))
           {
@@ -330,7 +323,7 @@ lm_eval (LM *lm)
 
         Cell *pairs = zip (lm, LIST2 (lambda->params, st->arglist, lm));
 
-        while (!IS_NIL (pairs))
+        while (!NILP (pairs))
           {
             Cell *pair = CAR (pairs);
             lm_env_let (lm, (CAR (pair))->symbol.str, CADR (pair));
@@ -368,7 +361,7 @@ lm_eval (LM *lm)
       {
         typeof (s.uf_progn) *st = &s.uf_progn;
 
-        if (IS_NIL (st->arglist))
+        if (NILP (st->arglist))
           STK_PUSH (lm, st->res);
         else
           {
@@ -438,7 +431,7 @@ lm_eval (LM *lm)
 
         Cell *pred_val = STK_POP (lm);
 
-        if (!IS_NIL (pred_val))
+        if (!NILP (pred_val))
           {
             Cell *then_form = CAR (st->form);
             CTL_PUSH (lm, eval, then_form);
@@ -458,7 +451,7 @@ lm_eval (LM *lm)
       {
         typeof (s.uf_and) *st = &s.uf_and;
 
-        if (IS_NIL (st->arglist))
+        if (NILP (st->arglist))
           STK_PUSH (lm, T);
         else
           {
@@ -474,13 +467,13 @@ lm_eval (LM *lm)
 
         Cell *eval_res = STK_POP (lm);
 
-        if (IS_NIL (eval_res))
+        if (NILP (eval_res))
           STK_PUSH (lm, NIL);
         else
           {
             Cell *cdr = CDR (st->arglist);
 
-            if (IS_NIL (cdr))
+            if (NILP (cdr))
               STK_PUSH (lm, eval_res);
             else
               {
@@ -495,7 +488,7 @@ lm_eval (LM *lm)
       {
         typeof (s.uf_or) *st = &s.uf_or;
 
-        if (IS_NIL (st->arglist))
+        if (NILP (st->arglist))
           STK_PUSH (lm, NIL);
         else
           {
@@ -511,13 +504,13 @@ lm_eval (LM *lm)
 
         Cell *eval_res = STK_POP (lm);
 
-        if (!IS_NIL (eval_res))
+        if (!NILP (eval_res))
           STK_PUSH (lm, eval_res);
         else
           {
             Cell *cdr = CDR (st->arglist);
 
-            if (IS_NIL (cdr))
+            if (NILP (cdr))
               STK_PUSH (lm, eval_res);
             else
               {

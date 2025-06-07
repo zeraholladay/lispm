@@ -1,12 +1,11 @@
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef LISP_TYPES_H
+#define LISP_TYPES_H
 
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "error.h"
-#include "lispm.h"
-#include "palloc.h"
+#include "lisp_err.h"
+#include "lisp_mach.h"
 
 #define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 
@@ -59,7 +58,7 @@ typedef struct
   Cell *cdr; // Contents of the Decrement Register
 } Cons;
 
-typedef struct Cell *(*Fn) (struct Cell *, LM *);
+typedef struct Cell *(*Fn) (LM *lm, struct Cell *);
 
 typedef struct
 {

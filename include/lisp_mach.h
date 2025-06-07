@@ -1,5 +1,5 @@
-#ifndef LISPM_H
-#define LISPM_H
+#ifndef LISP_MACH_H
+#define LISP_MACH_H
 
 #include <stdbool.h>
 
