@@ -5,16 +5,16 @@
 #include "types.h"
 
 // sequence operations
-Cell *append_inplace (Cell *list1, Cell *list2);
-Cell *append_list (LM *lm, Cell *list1, Cell *list2);
+Cell *append_inplace (Cell *lst1, Cell *lst2);
+Cell *append_list (LM *lm, Cell *lst1, Cell *lst2);
 Cell *butlast (LM *lm, Cell *args);
-Cell *last ( LM *lm, Cell *args);
-size_t length (Cell *list);
-Cell *mapcar (LM *lm, Cell *fn, Cell *arglist);
-Cell *nth (size_t idx, Cell *list);
-Cell *reverse (LM *lm, Cell *list);
-Cell *reverse_inplace (Cell *list);
-Cell *zip (LM *lm, Cell *lists);
+Cell *last (LM *lm, Cell *args);
+size_t length (Cell *lst);
+Cell *mapcar (LM *lm, Cell *fn, Cell *arglst);
+Cell *nth (size_t idx, Cell *lst);
+Cell *reverse (LM *lm, Cell *lst);
+Cell *reverse_inplace (Cell *lst);
+Cell *zip (LM *lm, Cell *lsts);
 
 // context operations
 Cell *lookup (LM *lm, Cell *cell);

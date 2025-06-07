@@ -146,4 +146,3 @@ eval_string (Cell *args, LM *lm)
 {
   return STRING (format (CAR (args)), lm);
 }
-
