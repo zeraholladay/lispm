@@ -18,7 +18,7 @@ eval_append (Cell *lst, LM *lm)
   Cell *result = CAR (lst);
 
   for (Cell *cdr = CDR (lst); !IS_NIL (cdr); cdr = CDR (cdr))
-    result = append_list (result, CAR (cdr), lm);
+    result = append_list (lm, result, CAR (cdr));
 
   return result;
 }
@@ -29,7 +29,7 @@ eval_butlast (Cell *lst, LM *lm)
   if (!LISTP (lst))
     return ERROR (ERR_INVALID_ARG, "butlast", lm);
 
-  return butlast (CAR (lst), lm);
+  return butlast (lm, CAR (lst));
 }
 
 Cell *
@@ -66,7 +66,7 @@ eval_last (Cell *lst, LM *lm)
   if (!LISTP (lst))
     return ERROR (ERR_INVALID_ARG, "last", lm);
 
-  return last (CAR (lst), lm);
+  return last (lm, CAR (lst));
 }
 
 Cell *
@@ -95,7 +95,7 @@ eval_mapcar (Cell *args, LM *lm)
     if (!LISTP (CAR (item)))
       return ERROR (ERR_INVALID_ARG, "mapcar: arg is not a list", lm);
 
-  return mapcar (fn, CDR (args), lm);
+  return mapcar (lm, fn, CDR (args));
 }
 
 Cell *
@@ -129,7 +129,7 @@ eval_reverse (Cell *lst, LM *lm)
   if (!LISTP (lst))
     return ERROR (ERR_INVALID_ARG, "cdr", lm);
 
-  return reverse (CAR (lst), lm);
+  return reverse (lm, CAR (lst));
 }
 
 Cell *
@@ -138,7 +138,7 @@ eval_set (Cell *args, LM *lm)
   if (!IS_INST (CAR (args), SYMBOL))
     return ERROR (ERR_INVALID_ARG, "set", lm);
 
-  return set (CAR (args), CAR (CDR (args)), lm);
+  return set (lm, CAR (args), CAR (CDR (args)));
 }
 
 Cell *
@@ -147,11 +147,3 @@ eval_string (Cell *args, LM *lm)
   return STRING (format (CAR (args)), lm);
 }
 
-Cell *
-eval_zip (Cell *lst, LM *lm)
-{
-  if (!LISTP (lst))
-    return ERROR (ERR_INVALID_ARG, "zip", lm);
-
-  return zip (lst, lm);
-}

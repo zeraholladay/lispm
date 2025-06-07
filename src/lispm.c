@@ -183,7 +183,7 @@ lm_eval (LM *lm)
         st->arg = st->arg ?: STK_POP (lm);
 
         if (IS_INST (st->arg, SYMBOL))
-          STK_PUSH (lm, lookup (st->arg, lm));
+          STK_PUSH (lm, lookup (lm, st->arg));
         else if (!LISTP (st->arg))
           STK_PUSH (lm, st->arg);
         else if (LISTP (st->arg))
@@ -328,7 +328,7 @@ lm_eval (LM *lm)
 
         env_enter_frame (&lm->env);
 
-        Cell *pairs = zip (LIST2 (lambda->params, st->arglist, lm), lm);
+        Cell *pairs = zip (lm, LIST2 (lambda->params, st->arglist, lm));
 
         while (!IS_NIL (pairs))
           {
@@ -352,8 +352,8 @@ lm_eval (LM *lm)
         if (!LISTP (arglist))
           ERR_EXIT (ERR_MISSING_ARG, "apply: not a list.");
 
-        Cell *fixed = butlast (arglist, lm);
-        Cell *tail_list = CAR (last (arglist, lm));
+        Cell *fixed = butlast (lm, arglist);
+        Cell *tail_list = CAR (last (lm, arglist));
 
         if (!LISTP (tail_list))
           ERR_EXIT (ERR_MISSING_ARG, "apply: last not a list.");

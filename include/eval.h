@@ -50,6 +50,5 @@ Cell *eval_print (Cell *args, LM *lm);
 Cell *eval_reverse (Cell *lst, LM *lm);
 Cell *eval_set (Cell *args, LM *lm);
 Cell *eval_string (Cell *args, LM *lm);
-Cell *eval_zip (Cell *lst, LM *lm);
 
 #endif

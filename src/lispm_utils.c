@@ -27,7 +27,7 @@ append_inplace (Cell *list1, Cell *list2)
 // Resulting list is shallow cpy of specified lists except for the last which
 // is directly shared.
 Cell *
-append_list (Cell *list1, Cell *list2, LM *lm)
+append_list (LM *lm, Cell *list1, Cell *list2)
 {
   if (IS_NIL (list1))
     return list2;
@@ -57,16 +57,16 @@ append_list (Cell *list1, Cell *list2, LM *lm)
 }
 
 Cell *
-butlast (Cell *list, LM *lm)
+butlast (LM *lm, Cell *list)
 {
   Cell *rev = reverse_inplace (list);
-  Cell *btl = reverse (CDR (rev), lm);
+  Cell *btl = reverse (lm, CDR (rev));
   reverse_inplace (rev);
   return btl;
 }
 
 Cell *
-last (Cell *list, LM *lm)
+last (LM *lm, Cell *list)
 {
   (void)lm;
   Cell *rev = reverse_inplace (list);
@@ -90,9 +90,9 @@ length (Cell *list)
 }
 
 Cell *
-mapcar (Cell *fn, Cell *arglist, LM *lm)
+mapcar (LM *lm, Cell *fn, Cell *arglist)
 {
-  Cell *zip_args = zip (arglist, lm);
+  Cell *zip_args = zip (lm, arglist);
   Cell *rev = NIL;
 
   for (Cell *l = zip_args; !IS_NIL (l); l = CDR (l))
@@ -118,7 +118,7 @@ nth (size_t idx, Cell *list)
 }
 
 Cell *
-reverse (Cell *list, LM *lm)
+reverse (LM *lm, Cell *list)
 {
   (void)lm;
   Cell *result = NIL;
@@ -147,7 +147,7 @@ reverse_inplace (Cell *list)
 }
 
 Cell *
-zip (Cell *lists, LM *lm)
+zip (LM *lm, Cell *lists)
 {
   scratch_t s;
 
@@ -193,7 +193,7 @@ zip (Cell *lists, LM *lm)
 
 // context operations
 Cell *
-lookup (Cell *cell, LM *lm)
+lookup (LM *lm, Cell *cell)
 {
   const char *key = cell->symbol.str;
   size_t len = cell->symbol.len;
@@ -210,7 +210,7 @@ lookup (Cell *cell, LM *lm)
 }
 
 Cell *
-set (Cell *car, Cell *cdr, LM *lm)
+set (LM *lm, Cell *car, Cell *cdr)
 {
   if (!IS_INST (car, SYMBOL))
     return ERROR (ERR_INVALID_ARG, "set", lm);

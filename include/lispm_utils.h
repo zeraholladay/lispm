@@ -6,18 +6,18 @@
 
 // sequence operations
 Cell *append_inplace (Cell *list1, Cell *list2);
-Cell *append_list (Cell *list1, Cell *list2, LM *lm);
-Cell *butlast (Cell *args, LM *lm);
-Cell *last (Cell *args, LM *lm);
+Cell *append_list (LM *lm, Cell *list1, Cell *list2);
+Cell *butlast (LM *lm, Cell *args);
+Cell *last ( LM *lm, Cell *args);
 size_t length (Cell *list);
-Cell *mapcar (Cell *fn, Cell *arglist, LM *lm);
+Cell *mapcar (LM *lm, Cell *fn, Cell *arglist);
 Cell *nth (size_t idx, Cell *list);
-Cell *reverse (Cell *list, LM *lm);
+Cell *reverse (LM *lm, Cell *list);
 Cell *reverse_inplace (Cell *list);
-Cell *zip (Cell *lists, LM *lm);
+Cell *zip (LM *lm, Cell *lists);
 
 // context operations
-Cell *lookup (Cell *cell, LM *lm);
-Cell *set (Cell *car, Cell *cdr, LM *lm);
+Cell *lookup (LM *lm, Cell *cell);
+Cell *set (LM *lm, Cell *car, Cell *cdr);
 
 #endif
