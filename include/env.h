@@ -16,5 +16,6 @@ bool env_let (Env *frame, const char *key, void *val);
 bool env_set (Env *frame, const char *key, void *val);
 void env_enter_frame (Env **frame);
 void env_leave_frame (Env **frame);
-void env_reset (Env *frame);
+void env_reset (Env **frame);
+
 #endif

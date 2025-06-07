@@ -2,11 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "error.h"
-#include "eval.h"
-#include "list.h"
-#include "safe_str.h"
-#include "types.h"
+#include "lisp_headers.h"
+#include "lisp_types.h"
 
 static inline int
 type_eq (Cell *self, Cell *other)
@@ -36,7 +33,7 @@ static int
 list_eq (Cell *self, Cell *other)
 {
   return type_eq (self, other)
-         && ((IS_NIL (self) && IS_NIL (other)) || &self->cons == &other->cons);
+         && ((NILP (self) && NILP (other)) || &self->cons == &other->cons);
 }
 
 static int
@@ -70,7 +67,7 @@ static Type type_tab[] = {
 const Type *
 type (Cell *self)
 {
-  if (!self || IS_NIL (self))
+  if (!self || NILP (self))
     return &type_tab[TYPE_NIL];
   return &type_tab[self->type];
 }

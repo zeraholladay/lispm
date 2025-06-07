@@ -1,41 +1,37 @@
 #include "stdlib.h"
 
-#include "eval.h"
-#include "format.h"
-#include "lispm_utils.h"
+#include "lisp_headers.h"
+#include "lisp_utils.h"
 #include "xalloc.h"
 
 // sequence operations
 
 Cell *
-append_inplace (Cell *list1, Cell *list2)
+append_inplace (Cell *lst1, Cell *lst2)
 {
-  if (IS_NIL (list1))
-    return list2;
+  if (NILP (lst1))
+    return lst2;
 
-  Cell *l1 = list1;
+  Cell *l1 = lst1;
 
-  while (!IS_NIL (CDR (l1)))
+  while (!NILP (CDR (l1)))
     l1 = CDR (l1);
 
-  RPLACD (l1, list2);
+  RPLACD (l1, lst2);
 
-  return list1;
+  return lst1;
 }
 
-// APPEND function concatenates list arguments into one list.
-// Resulting list is shallow cpy of specified lists except for the last which
-// is directly shared.
 Cell *
-append_list (Cell *list1, Cell *list2, LM *lm)
+append_list (LM *lm, Cell *lst1, Cell *lst2)
 {
-  if (IS_NIL (list1))
-    return list2;
+  if (NILP (lst1))
+    return lst2;
 
   Cell *new_head = NULL;
   Cell *new_tail = NULL;
 
-  for (Cell *l1 = list1; !IS_NIL (l1); l1 = CDR (l1))
+  for (Cell *l1 = lst1; !NILP (l1); l1 = CDR (l1))
     {
       Cell *cpy = CONS (CAR (l1), NIL, lm);
 
@@ -51,76 +47,91 @@ append_list (Cell *list1, Cell *list2, LM *lm)
         }
     }
 
-  RPLACD (new_tail, list2);
+  RPLACD (new_tail, lst2);
 
   return new_head;
 }
 
 Cell *
-butlast (Cell *list, LM *lm)
+butlast (LM *lm, Cell *lst)
 {
-  Cell *rev = reverse_inplace (list);
-  Cell *btl = reverse (CDR (rev), lm);
+  Cell *rev = reverse_inplace (lst);
+  Cell *btl = reverse (lm, CDR (rev));
   reverse_inplace (rev);
   return btl;
 }
 
 Cell *
-last (Cell *list, LM *lm)
+last (LM *lm, Cell *lst)
 {
   (void)lm;
-  Cell *rev = reverse_inplace (list);
+  Cell *rev = reverse_inplace (lst);
   Cell *last = CAR (rev);
   reverse_inplace (rev);
   return LIST1 (last, lm);
 }
 
 size_t
-length (Cell *list)
+length (Cell *lst)
 {
-  if (!IS_INST (list, CONS))
+  if (!IS_INST (lst, CONS))
     return 0;
 
   size_t i = 1;
 
-  for (Cell *cdr = CDR (list); cdr != NIL; cdr = CDR (cdr))
+  for (Cell *cdr = CDR (lst); cdr != NIL; cdr = CDR (cdr))
     ++i;
 
   return i;
 }
 
 Cell *
-nth (size_t idx, Cell *list)
+mapcar (LM *lm, Cell *fn, Cell *arglst)
 {
-  for (size_t i = 0; i < idx; ++i)
+  Cell *zip_args = zip (lm, arglst);
+  Cell *rev = NIL;
+
+  for (Cell *l = zip_args; !NILP (l); l = CDR (l))
     {
-      if (IS_NIL (list))
-        return NIL;
-      list = CDR (list);
+      Cell *res = lm_funcall (lm, fn, CAR (l));
+      rev = CONS (res, rev, lm);
     }
 
-  return (IS_NIL (list)) ? NIL : CAR (list);
+  return reverse_inplace (rev);
 }
 
 Cell *
-reverse (Cell *list, LM *lm)
+nth (size_t idx, Cell *lst)
+{
+  for (size_t i = 0; i < idx; ++i)
+    {
+      if (NILP (lst))
+        return NIL;
+      lst = CDR (lst);
+    }
+
+  return (NILP (lst)) ? NIL : CAR (lst);
+}
+
+Cell *
+reverse (LM *lm, Cell *lst)
 {
   (void)lm;
   Cell *result = NIL;
 
-  for (Cell *l = list; l != NIL; l = CDR (l))
+  for (Cell *l = lst; l != NIL; l = CDR (l))
     result = CONS (CAR (l), result, lm);
 
   return result;
 }
 
 Cell *
-reverse_inplace (Cell *list)
+reverse_inplace (Cell *lst)
 {
   Cell *prev = NIL;
-  Cell *cur = list;
+  Cell *cur = lst;
 
-  while (!IS_NIL (cur))
+  while (!NILP (cur))
     {
       Cell *next = CDR (cur);
       RPLACD (cur, prev);
@@ -132,18 +143,18 @@ reverse_inplace (Cell *list)
 }
 
 Cell *
-zip (Cell *lists, LM *lm)
+zip (LM *lm, Cell *lsts)
 {
   scratch_t s;
 
-  size_t len = length (lists);
+  size_t len = length (lsts);
   if (len == 0)
     return NIL;
 
   Cell **heads = xalloc_scratch (&s, len * sizeof *heads);
 
   for (size_t i = 0; i < len; ++i)
-    heads[i] = nth (i, lists);
+    heads[i] = nth (i, lsts);
 
   Cell *out_rev = NIL;
 
@@ -152,7 +163,7 @@ zip (Cell *lists, LM *lm)
       int done = 0;
 
       for (size_t i = 0; i < len; ++i)
-        if (IS_NIL (heads[i]))
+        if (NILP (heads[i]))
           {
             done = 1;
             break;
@@ -178,7 +189,7 @@ zip (Cell *lists, LM *lm)
 
 // context operations
 Cell *
-lookup (Cell *cell, LM *lm)
+lookup (LM *lm, Cell *cell)
 {
   const char *key = cell->symbol.str;
   size_t len = cell->symbol.len;
@@ -195,7 +206,7 @@ lookup (Cell *cell, LM *lm)
 }
 
 Cell *
-set (Cell *car, Cell *cdr, LM *lm)
+set (LM *lm, Cell *car, Cell *cdr)
 {
   if (!IS_INST (car, SYMBOL))
     return ERROR (ERR_INVALID_ARG, "set", lm);

@@ -2,16 +2,14 @@
 %{
 #include <stdio.h>
 
-#include "bison.h"
-#include "lispm.h"
-#include "eval.h"
-#include "flex.h"
-#include "types.h"
+#include "lisp_headers.h"
+#include "parser_bison.h"
+#include "parser_flex.h"
 
-#define yyerror(n, lm, s)                                                    \
+#define yyerror(n, lm, s)                                                     \
   do                                                                          \
     {                                                                         \
-      yyerror_handler (lm, s);                                               \
+      yyerror_handler (lm, s);                                                \
       YYABORT;                                                                \
     }                                                                         \
   while (0)
@@ -21,7 +19,7 @@ void yyerror_handler (LM *lm, const char *s);
 
 %code requires
 {
-#include "types.h"
+#include "lisp_types.h"
 }
 
 %parse-param {Cell **progn} {LM *lm}

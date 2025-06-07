@@ -5,9 +5,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "error.h"
-#include "eval.h"
-#include "format.h"
+#include "lisp_fmt.h"
+#include "lisp_headers.h"
 #include "xalloc.h"
 
 typedef struct str_sb
@@ -132,7 +131,7 @@ fmt_cons (StrBuf *sb, Cell *n)
   if (sb->str[sb->used - 1] == ' ')
     sb->used--;
 
-  if (!IS_NIL (cur))
+  if (!NILP (cur))
     {
       appendf (sb, ".");
       char *s = format (cur);
