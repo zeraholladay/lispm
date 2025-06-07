@@ -20,7 +20,7 @@
   do                                                                          \
     {                                                                         \
       char *str = format (cell);                                              \
-      fputs (str, stderr);                                                    \
+      fprintf (stderr, "%s\n", str);                                          \
       free (str);                                                             \
     }                                                                         \
   while (0)

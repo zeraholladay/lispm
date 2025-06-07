@@ -87,9 +87,9 @@ env_leave_frame (Env **frame)
 }
 
 void
-env_reset (Env *frame)
+env_reset (Env **frame)
 {
-  Env *cur = frame, *next;
+  Env *cur = *frame, *next;
 
   while (cur->parent)
     {
@@ -97,4 +97,6 @@ env_reset (Env *frame)
       env_destroy (cur);
       cur = next;
     }
+
+  *frame = cur;
 }

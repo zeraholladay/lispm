@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "eval.h"
+#include "format.h"
 #include "lispm.h"
 #include "parser.h"
 #include "repl.h"
@@ -399,7 +400,7 @@ eval_suite (void)
   tcase_add_test (tc_core, test_eval);
   tcase_add_test (tc_core, test_last);
   tcase_add_test (tc_core, test_butlast);
-  // tcase_add_test (tc_core, test_mapcar);
+  tcase_add_test (tc_core, test_mapcar);
 
   suite_add_tcase (s, tc_core);
   return s;

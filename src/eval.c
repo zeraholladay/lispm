@@ -80,23 +80,23 @@ eval_length (Cell *lst, LM *lm)
   return INTEGER (length (car), lm);
 }
 
-// Cell *
-// eval_mapcar (Cell *args, LM *lm)
-// {
-//   if (!LISTP (args))
-//     return ERROR (ERR_INVALID_ARG, "mapcar fn l1 ...", lm);
+Cell *
+eval_mapcar (Cell *args, LM *lm)
+{
+  if (!LISTP (args))
+    return ERROR (ERR_INVALID_ARG, "mapcar fn l1 ...", lm);
 
-//   Cell *fn = CAR (args);
+  Cell *fn = CAR (args);
 
-//   if (!IS_INST (fn, BUILTIN_FN) && !IS_INST (fn, LAMBDA))
-//     return ERROR (ERR_INVALID_ARG, "mapcar: not a function or lambda", lm);
+  if (!IS_INST (fn, BUILTIN_FN) && !IS_INST (fn, LAMBDA))
+    return ERROR (ERR_INVALID_ARG, "mapcar: not a function or lambda", lm);
 
-//   for (Cell *item = CDR (args); !IS_NIL (item); item = CDR (item))
-//     if (!LISTP (CAR (item)))
-//       return ERROR (ERR_INVALID_ARG, "mapcar: arg is not a list", lm);
+  for (Cell *item = CDR (args); !IS_NIL (item); item = CDR (item))
+    if (!LISTP (CAR (item)))
+      return ERROR (ERR_INVALID_ARG, "mapcar: arg is not a list", lm);
 
-//   return mapcar (fn, CDR (args), lm);
-// }
+  return mapcar (fn, CDR (args), lm);
+}
 
 Cell *
 eval_nth (Cell *args, LM *lm)

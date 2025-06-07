@@ -106,9 +106,12 @@ typedef struct lispm_secd
 static void
 lm_reset (LM *lm)
 {
-  fputs ("**Reset\n", stderr);
-  lm->stk.sp = lm->ctl.sp = 0;
-  env_reset (lm->env);
+  static const char *fmt = "Reset\nstk:0x%zX\nctl:0x%zX\ndmp:0x%zX\n";
+
+  fprintf (stderr, fmt, lm->stk.sp, lm->stk.sp, lm->dmp.sp);
+
+  lm->stk.sp = lm->ctl.sp = lm->dmp.sp = 0;
+  env_reset (&lm->env);
 }
 
 static bool
@@ -121,6 +124,7 @@ lm_dump (LM *lm)
     .stk_sp = lm->stk.sp,
     .ctl_sp = lm->ctl.sp,
   };
+
   env_enter_frame (&lm->env);
 
   return true;
@@ -136,6 +140,7 @@ lm_restore (LM *lm)
 
   lm->stk.sp = dump.stk_sp;
   lm->ctl.sp = dump.ctl_sp;
+
   env_leave_frame (&lm->env);
 
   return true;
@@ -144,9 +149,12 @@ lm_restore (LM *lm)
 static Cell *
 lm_eval (LM *lm)
 {
-  while (lm->ctl.sp)
+  size_t base_ctl = lm->ctl.sp;
+
+  do
     {
       State s = CTL_POP (lm);
+
       switch (s.state)
         {
 #define X(tag, ...)                                                           \
@@ -157,15 +165,16 @@ lm_eval (LM *lm)
         default:
           ERR_EXIT (ERR_INTERNAL, "No such state.");
         }
+
     state_env_enter_frame:
       {
         env_enter_frame (&lm->env);
-        continue;
+        goto next;
       }
     state_env_leave_frame:
       {
         env_leave_frame (&lm->env);
-        continue;
+        goto next;
       }
     state_eval:
       {
@@ -195,9 +204,9 @@ lm_eval (LM *lm)
               }
           }
         else
-          ERR_EXIT (ERR_INTERNAL, "EVAL");
+          ERR_EXIT (ERR_INTERNAL, "eval");
 
-        continue;
+        goto next;
       }
     state_eval_apply:
       {
@@ -221,7 +230,7 @@ lm_eval (LM *lm)
                 CTL_PUSH (lm, evlis, NIL, st->arglist);
               }
           }
-        continue;
+        goto next;
       }
     state_evlis:
       {
@@ -241,7 +250,7 @@ lm_eval (LM *lm)
             CTL_PUSH (lm, eval, car);
           }
 
-        continue;
+        goto next;
       }
     state_evlis_acc:
       {
@@ -252,7 +261,7 @@ lm_eval (LM *lm)
 
         CTL_PUSH (lm, evlis, acc, st->arglist);
 
-        continue;
+        goto next;
       }
     state_funcall:
       {
@@ -268,7 +277,7 @@ lm_eval (LM *lm)
         else
           ERR_EXIT (ERR_NOT_A_FUNCTION, "funcall");
 
-        continue;
+        goto next;
       }
     state_funcall_builtin:
       {
@@ -298,7 +307,8 @@ lm_eval (LM *lm)
           }
 
         STK_PUSH (lm, res);
-        continue;
+
+        goto next;
       }
     state_lambda:
       {
@@ -330,7 +340,7 @@ lm_eval (LM *lm)
         CTL_PUSH (lm, env_leave_frame);
         CTL_PUSH (lm, progn, NIL, lambda->body);
 
-        continue;
+        goto next;
       }
     state_apply:
       {
@@ -351,7 +361,8 @@ lm_eval (LM *lm)
         Cell *all = append_inplace (fixed, tail_list);
 
         CTL_PUSH (lm, funcall, fn, all);
-        continue;
+
+        goto next;
       }
     state_progn:
       {
@@ -365,7 +376,7 @@ lm_eval (LM *lm)
             CTL_PUSH (lm, eval, CAR (st->arglist));
           }
 
-        continue;
+        goto next;
       }
     state_progn_eval:
       {
@@ -374,7 +385,7 @@ lm_eval (LM *lm)
         Cell *eval_res = STK_POP (lm);
         CTL_PUSH (lm, progn, eval_res, st->arglist);
 
-        continue;
+        goto next;
       }
     state_lispm:
       {
@@ -410,7 +421,7 @@ lm_eval (LM *lm)
         else
           ERR_EXIT (ERR_INTERNAL, "lispm");
 
-        continue;
+        goto next;
       }
     state_if:
       {
@@ -419,7 +430,7 @@ lm_eval (LM *lm)
         CTL_PUSH (lm, if_cont, CDR (st->form));
         CTL_PUSH (lm, eval, CAR (st->form));
 
-        continue;
+        goto next;
       }
     state_if_cont:
       {
@@ -441,7 +452,7 @@ lm_eval (LM *lm)
               STK_PUSH (lm, NIL);
           }
 
-        continue;
+        goto next;
       }
     state_and:
       {
@@ -455,7 +466,7 @@ lm_eval (LM *lm)
             CTL_PUSH (lm, eval, CAR (st->arglist));
           }
 
-        continue;
+        goto next;
       }
     state_and_cont:
       {
@@ -477,7 +488,8 @@ lm_eval (LM *lm)
                 CTL_PUSH (lm, eval, CAR (cdr));
               }
           }
-        continue;
+
+        goto next;
       }
     state_or:
       {
@@ -491,7 +503,7 @@ lm_eval (LM *lm)
             CTL_PUSH (lm, eval, CAR (st->arglist));
           }
 
-        continue;
+        goto next;
       }
     state_or_cont:
       {
@@ -514,21 +526,27 @@ lm_eval (LM *lm)
               }
           }
 
-        continue;
+        goto next;
       }
+    next:;
     }
+  while (base_ctl <= lm->ctl.sp);
 
   return STK_POP (lm);
 
 error:;
-  lm_reset (lm);
-  return NIL;
+  fputs ("*** Error:", stderr);
+  goto reset;
 
 underflow:;
-  lm_reset (lm);
-  return NIL;
+  fputs ("*** Underflow:", stderr);
+  goto reset;
 
 overflow:;
+  fputs ("*** Overflow:", stderr);
+  goto reset;
+
+reset:
   lm_reset (lm);
   return NIL;
 }
@@ -542,7 +560,7 @@ lm_create (void)
 
   LM *lm = xmalloc (sizeof *(lm));
 
-  lm->stk.sp = lm->ctl.sp = 0;
+  lm->stk.sp = lm->ctl.sp = lm->dmp.sp = 0;
 
   lm->env = env_create ();
   lm->pool = pool_init (LM_OBJ_POOL_CAP, sizeof (Cell));
@@ -583,13 +601,25 @@ lm_env_set (LM *lm, const char *key, Cell *val)
 }
 
 Cell *
-lm_progn (LM *lm, Cell *progn)
+lm_funcall (LM *lm, Cell *fn, Cell *arglist)
 {
-  CTL_PUSH (lm, progn, NIL,
-            progn); // FIXME: one at a time & check for err after each
-  return lm_eval (lm);
+  CTL_PUSH (lm, funcall, fn, arglist);
+  return lm_eval (lm); // TODO: error detection
 
 overflow:
+  fputs ("*** Overflow:", stderr);
+  lm_reset (lm);
+  return NIL;
+}
+
+Cell *
+lm_progn (LM *lm, Cell *progn)
+{
+  CTL_PUSH (lm, progn, NIL, progn);
+  return lm_eval (lm); // TODO: error detection
+
+overflow:
+  fputs ("*** Overflow:", stderr);
   lm_reset (lm);
   return NIL;
 }
