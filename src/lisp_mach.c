@@ -3,6 +3,7 @@
 
 #include "env.h"
 #include "lisp_headers.h"
+#include "lisp_mach.h"
 #include "palloc.h"
 #include "xalloc.h"
 

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "lisp_headers.h"
+#include "lisp_types.h"
 
 static inline int
 type_eq (Cell *self, Cell *other)

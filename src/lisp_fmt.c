@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "lisp_fmt.h"
 #include "lisp_headers.h"
 #include "xalloc.h"
 

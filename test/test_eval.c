@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "lisp_fmt.h"
-#include "lisp_mach.h"
 #include "lisp_headers.h"
+#include "lisp_mach.h"
 #include "lisp_types.h"
 #include "parser.h"
 #include "repl.h"

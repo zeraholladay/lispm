@@ -1,6 +1,7 @@
 #include "stdlib.h"
 
 #include "lisp_headers.h"
+#include "lisp_utils.h"
 #include "xalloc.h"
 
 // sequence operations
