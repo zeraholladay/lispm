@@ -50,6 +50,7 @@ Cell *
 fn_cdr (LM *lm, Cell *args)
 {
   (void)lm;
+
   Cell *car = CAR (args);
 
   if (!LISTP (car))
@@ -115,6 +116,7 @@ Cell *
 fn_print (LM *lm, Cell *args)
 {
   (void)lm;
+
   if (!LISTP (args))
     return ERROR (ERR_INVALID_ARG, "print", lm);
 
@@ -153,6 +155,7 @@ Cell *
 fn_eq (LM *lm, Cell *args)
 {
   (void)lm;
+
   Cell *car = CAR (args);
   Cell *card = CAR (CDR (args));
 

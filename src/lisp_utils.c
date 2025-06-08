@@ -74,7 +74,7 @@ last (LM *lm, Cell *lst)
 size_t
 length (Cell *lst)
 {
-  if (!IS_INST (lst, CONS))
+  if (!CONSP (lst))
     return 0;
 
   size_t i = 1;
@@ -184,6 +184,7 @@ zip (LM *lm, Cell *lsts)
     }
 
   xfree_scratch (&s);
+
   return reverse_inplace (out_rev);
 }
 
@@ -218,5 +219,6 @@ set (LM *lm, Cell *car, Cell *cdr)
     return ERROR (ERR_INVALID_ARG, "set", lm);
 
   lm_env_set (lm, key, cdr);
+
   return cdr;
 }
