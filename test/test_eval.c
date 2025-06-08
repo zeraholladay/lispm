@@ -377,6 +377,18 @@ START_TEST (test_mapcar)
 }
 END_TEST
 
+START_TEST (test_let)
+{
+  Cell *eval_res = NULL;
+
+  eval_res = run_eval_progn (
+      "(set 'a 1)"
+      "(set 'b 2)"
+      "(apply + (let ((c (+ a 2)) (d (+ b 2))) (list a b c d)))");
+  ck_assert (eval_res->integer == 10);
+}
+END_TEST
+
 Suite *
 eval_suite (void)
 {
@@ -401,6 +413,7 @@ eval_suite (void)
   tcase_add_test (tc_core, test_last);
   tcase_add_test (tc_core, test_butlast);
   tcase_add_test (tc_core, test_mapcar);
+  tcase_add_test (tc_core, test_let);
 
   suite_add_tcase (s, tc_core);
   return s;

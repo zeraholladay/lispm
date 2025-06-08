@@ -160,12 +160,12 @@ lm_eval (LM *lm)
           ERR_EXIT (ERR_INTERNAL, "No such state.");
         }
 
-    state_env_enter_frame:
+    state_closure_leave:
       {
         env_enter_frame (&lm->env);
         goto next;
       }
-    state_env_leave_frame:
+    state_closure_enter:
       {
         env_leave_frame (&lm->env);
         goto next;
@@ -267,7 +267,11 @@ lm_eval (LM *lm)
         if (IS_INST (fn, BUILTIN_FN))
           CTL_PUSH (lm, funcall_builtin, fn, arglist);
         else if (IS_INST (fn, LAMBDA))
-          CTL_PUSH (lm, lambda, fn, arglist);
+          {
+            CTL_PUSH (lm, closure_leave);
+            CTL_PUSH (lm, lambda, fn, arglist);
+            CTL_PUSH (lm, closure_enter);
+          }
         else
           ERR_EXIT (ERR_NOT_A_FUNCTION, "funcall");
 
@@ -308,10 +312,13 @@ lm_eval (LM *lm)
       {
         typeof (s.uf_lambda) *st = &s.uf_lambda;
 
-        Lambda *lambda = &st->fn->lambda;
+        Cell *fn = st->fn ?: STK_POP (lm);
+        Cell *arglist = st->arglist ?: STK_POP (lm);
+
+        Lambda *lambda = &fn->lambda;
 
         size_t expected = length (lambda->params);
-        size_t received = length (st->arglist);
+        size_t received = length (arglist);
 
         if (expected != received)
           {
@@ -320,9 +327,7 @@ lm_eval (LM *lm)
             ERR_EXIT (err, "lambda");
           }
 
-        env_enter_frame (&lm->env);
-
-        Cell *pairs = zip (lm, LIST2 (lambda->params, st->arglist, lm));
+        Cell *pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
 
         while (!NILP (pairs))
           {
@@ -331,8 +336,42 @@ lm_eval (LM *lm)
             pairs = CDR (pairs);
           }
 
-        CTL_PUSH (lm, env_leave_frame);
         CTL_PUSH (lm, progn, NIL, lambda->body);
+
+        goto next;
+      }
+    state_let:
+      {
+        typeof (s.uf_let) *st = &s.uf_let;
+
+        Cell *progn = CDR (st->arglist);
+        Cell *pairs = CAR (st->arglist);
+
+        Cell *rev_vars = NIL;
+        Cell *rev_exprs = NIL;
+
+        while (!NILP (pairs))
+          {
+            Cell *pair = CAR (pairs);
+
+            if (!CONSP (pair))
+              ERR_EXIT (ERR_INVALID_ARG, "let: binding not a list");
+
+            rev_vars = CONS (CAR (pair), rev_vars, lm);
+            rev_exprs = CONS (CADR (pair), rev_exprs, lm);
+
+            pairs = CDR (pairs);
+          }
+
+        Cell *vars = reverse_inplace (rev_vars);
+        Cell *exprs = reverse_inplace (rev_exprs);
+
+        Cell *fn = LAMBDA (vars, progn, lm);
+
+        CTL_PUSH (lm, closure_leave);
+        CTL_PUSH (lm, lambda, fn, NULL);
+        CTL_PUSH (lm, closure_enter);
+        CTL_PUSH (lm, evlis, NIL, exprs);
 
         goto next;
       }
@@ -412,6 +451,8 @@ lm_eval (LM *lm)
           CTL_PUSH (lm, or, st->arglist);
         else if (st->fn == KEYWORD (IF))
           CTL_PUSH (lm, if, st->arglist);
+        else if (st->fn == KEYWORD (LET))
+          CTL_PUSH (lm, let, CAR (st->arglist));
         else
           ERR_EXIT (ERR_INTERNAL, "lispm");
 

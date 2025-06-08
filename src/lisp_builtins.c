@@ -39,6 +39,7 @@ Cell *
 fn_car (LM *lm, Cell *args)
 {
   (void)lm;
+
   if (!LISTP (CAR (args)))
     return ERROR (ERR_INVALID_ARG, "car", lm);
 
@@ -106,6 +107,7 @@ fn_nth (LM *lm, Cell *args)
 
   size_t idx = (size_t)CAR (args)->integer;
   Cell *list = CAR (CDR (args));
+
   return nth (idx, list);
 }
 
@@ -117,6 +119,7 @@ fn_print (LM *lm, Cell *args)
     return ERROR (ERR_INVALID_ARG, "print", lm);
 
   PRINT (CAR (args));
+
   return T;
 }
 
@@ -156,9 +159,7 @@ fn_eq (LM *lm, Cell *args)
   EqFn fn = type (car)->eq;
 
   if (fn (CAR (args), card))
-    {
-      return T;
-    }
+    return T;
 
   return NIL;
 }
@@ -190,14 +191,14 @@ fn_gt (LM *lm, Cell *args)
     return ERROR (ERR_INVALID_ARG_LENGTH, "gt: expected >= 1 arguments", lm);
 
   if (!IS_INST (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "gt: argument is not integer", lm);
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "gt: argument is not an integer", lm);
 
   Cell *prev = CAR (args);
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        return ERROR (ERR_ARG_TYPE_MISMATCH, "gt: argument is not integer",
+        return ERROR (ERR_ARG_TYPE_MISMATCH, "gt: argument is not an integer",
                       lm);
 
       if (!(prev->integer > CAR (rest)->integer))
@@ -222,14 +223,14 @@ fn_lt (LM *lm, Cell *args)
     return ERROR (ERR_INVALID_ARG_LENGTH, "lt: expected >= 1 arguments", lm);
 
   if (!IS_INST (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "lt: argument is not integer", lm);
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "lt: argument is not an integer", lm);
 
   Cell *prev = CAR (args);
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        return ERROR (ERR_ARG_TYPE_MISMATCH, "lt: argument is not integer",
+        return ERROR (ERR_ARG_TYPE_MISMATCH, "lt: argument is not an integer",
                       lm);
 
       if (!(prev->integer < CAR (rest)->integer))
@@ -253,14 +254,15 @@ fn_add (LM *lm, Cell *args)
     return ERROR (ERR_INVALID_ARG_LENGTH, "add: expected >= 1 arguments", lm);
 
   if (!IS_INST (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "add: argument is not integer", lm);
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "add: argument is not an integer",
+                  lm);
 
   Integer sum = CAR (args)->integer;
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        return ERROR (ERR_ARG_TYPE_MISMATCH, "add: argument is not integer",
+        return ERROR (ERR_ARG_TYPE_MISMATCH, "add: argument is not an integer",
                       lm);
 
       sum += CAR (rest)->integer;
@@ -279,14 +281,15 @@ fn_sub (LM *lm, Cell *args)
     return ERROR (ERR_INVALID_ARG_LENGTH, "sub: expected >= 1 arguments", lm);
 
   if (!IS_INST (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "sub: argument is not integer", lm);
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "sub: argument is not an integer",
+                  lm);
 
   Integer total = CAR (args)->integer;
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        return ERROR (ERR_ARG_TYPE_MISMATCH, "sub: argument is not integer",
+        return ERROR (ERR_ARG_TYPE_MISMATCH, "sub: argument is not an integer",
                       lm);
 
       total -= CAR (rest)->integer;
@@ -305,14 +308,15 @@ fn_mul (LM *lm, Cell *args)
     return ERROR (ERR_INVALID_ARG_LENGTH, "mul: expected >= 1 arguments", lm);
 
   if (!IS_INST (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "mul: argument is not integer", lm);
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "mul: argument is not an integer",
+                  lm);
 
   Integer result = CAR (args)->integer;
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        return ERROR (ERR_ARG_TYPE_MISMATCH, "mul: argument is not integer",
+        return ERROR (ERR_ARG_TYPE_MISMATCH, "mul: argument is not an integer",
                       lm);
 
       result *= CAR (rest)->integer;
@@ -331,14 +335,15 @@ fn_div (LM *lm, Cell *args)
     return ERROR (ERR_INVALID_ARG_LENGTH, "div: expected >= 1 arguments", lm);
 
   if (!IS_INST (CAR (args), INTEGER))
-    return ERROR (ERR_ARG_TYPE_MISMATCH, "div: argument is not integer", lm);
+    return ERROR (ERR_ARG_TYPE_MISMATCH, "div: argument is not an integer",
+                  lm);
 
   Integer result = CAR (args)->integer;
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        return ERROR (ERR_ARG_TYPE_MISMATCH, "div: argument is not integer",
+        return ERROR (ERR_ARG_TYPE_MISMATCH, "div: argument is not an integer",
                       lm);
 
       if (CAR (rest)->integer == 0)
