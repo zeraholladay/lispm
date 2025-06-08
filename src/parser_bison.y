@@ -36,13 +36,14 @@ void yyerror_handler (LM *lm, const char *s);
 
 %token ERROR LAMBDA QUOTE
 %token <integer> INTEGER
-%token <symbol>  IF SYMBOL
+%token <symbol>  IF LET SYMBOL
 
 %type <cell>
   program
   forms
   form
   if_
+  let
   symbol
   symbol_list
   param_list
@@ -84,6 +85,10 @@ form
     | '(' if_ form form form ')'
       {
         $$ = CONS ($2, CONS ( $3, LIST2 ($4, $5, lm), lm), lm);
+      }
+    | '(' let forms forms ')'
+      {
+        $$ = CONS ($2, CONS ($3, $4, lm), lm);
       }
     | symbol
       {
@@ -142,6 +147,13 @@ symbol
 
 if_
   : IF
+    {
+      $$ = SYMBOL ($1.str, $1.len, lm);
+    }
+  ;
+
+let
+  : LET
     {
       $$ = SYMBOL ($1.str, $1.len, lm);
     }

@@ -21,8 +21,9 @@ static BuiltinFn builtin_first    = { .name = "FIRST",   .is_lispm = 0, .arity =
 static BuiltinFn builtin_funcall  = { .name = "FUNCALL", .is_lispm = 1, .arity = -1, .fn = NULL          };
 static BuiltinFn builtin_gt       = { .name = "GT",      .is_lispm = 0, .arity = -1, .fn = fn_gt         };
 static BuiltinFn builtin_if       = { .name = "IF",      .is_lispm = 1, .arity = -1, .fn = NULL          };
-static BuiltinFn builtin_length   = { .name = "LENGTH",  .is_lispm = 0, .arity =  1, .fn = fn_length     };
 static BuiltinFn builtin_last     = { .name = "LAST",    .is_lispm = 0, .arity =  1, .fn = fn_last       };
+static BuiltinFn builtin_length   = { .name = "LENGTH",  .is_lispm = 0, .arity =  1, .fn = fn_length     };
+static BuiltinFn builtin_let      = { .name = "LET",     .is_lispm = 1, .arity = -1, .fn = NULL          };
 static BuiltinFn builtin_lt       = { .name = "LT",      .is_lispm = 0, .arity = -1, .fn = fn_lt         };
 static BuiltinFn builtin_mapcar   = { .name = "MAPCAR",  .is_lispm = 0, .arity = -1, .fn = fn_mapcar     };
 static BuiltinFn builtin_nth      = { .name = "NTH",     .is_lispm = 0, .arity =  2, .fn = fn_nth        };
@@ -72,6 +73,7 @@ GT,      { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_gt       },
 IF,      { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_if       },
 LAST,    { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_last     },
 LENGTH,  { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_length   },
+LET,     { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_let      },
 LT,      { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_lt       },
 <,       { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_lt       },
 MAPCAR,  { .type = TYPE_BUILTIN_FN, .builtin_fn = &builtin_mapcar   },

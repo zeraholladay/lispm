@@ -46,6 +46,8 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
 
                     if (!strncasecmp ("IF", yytext, yyleng + 1))
                       return IF;
+                    if (!strncasecmp ("LET", yytext, yyleng + 1))
+                      return LET;
 
                     return SYMBOL;
                   }
