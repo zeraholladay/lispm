@@ -1,13 +1,24 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lisp_builtins.h"
 #include "lisp_headers.h"
+#include "thunks.h"
 
-// builtins
+typedef struct Cell *(*ThunkFn) (LM *lm, struct Cell *);
+
+typedef struct
+{
+  const char *name;
+  bool is_lispm;
+  int arity;
+  ThunkFn fn;
+} Thunk;
+
+// thunks
 
 Cell *
-fn_append (LM *lm, Cell *lst)
+thunk_append (LM *lm, Cell *lst)
 {
   if (!LISTP (lst))
     return ERROR (ERR_INVALID_ARG, "append", lm);
@@ -21,7 +32,7 @@ fn_append (LM *lm, Cell *lst)
 }
 
 Cell *
-fn_butlast (LM *lm, Cell *lst)
+thunk_butlast (LM *lm, Cell *lst)
 {
   if (!LISTP (lst))
     return ERROR (ERR_INVALID_ARG, "butlast", lm);
@@ -30,13 +41,13 @@ fn_butlast (LM *lm, Cell *lst)
 }
 
 Cell *
-fn_cons (LM *lm, Cell *args)
+thunk_cons (LM *lm, Cell *args)
 {
   return CONS (CAR (args), CAR (CDR (args)), lm);
 }
 
 Cell *
-fn_car (LM *lm, Cell *args)
+thunk_car (LM *lm, Cell *args)
 {
   (void)lm;
 
@@ -47,7 +58,7 @@ fn_car (LM *lm, Cell *args)
 }
 
 Cell *
-fn_cdr (LM *lm, Cell *args)
+thunk_cdr (LM *lm, Cell *args)
 {
   (void)lm;
 
@@ -60,7 +71,7 @@ fn_cdr (LM *lm, Cell *args)
 }
 
 Cell *
-fn_last (LM *lm, Cell *lst)
+thunk_last (LM *lm, Cell *lst)
 {
   if (!LISTP (lst))
     return ERROR (ERR_INVALID_ARG, "last", lm);
@@ -69,7 +80,7 @@ fn_last (LM *lm, Cell *lst)
 }
 
 Cell *
-fn_length (LM *lm, Cell *lst)
+thunk_length (LM *lm, Cell *lst)
 {
   Cell *car = CAR (lst);
 
@@ -80,14 +91,14 @@ fn_length (LM *lm, Cell *lst)
 }
 
 Cell *
-fn_mapcar (LM *lm, Cell *args)
+thunk_mapcar (LM *lm, Cell *args)
 {
   if (!LISTP (args))
     return ERROR (ERR_INVALID_ARG, "mapcar fn l1 ...", lm);
 
   Cell *fn = CAR (args);
 
-  if (!IS_INST (fn, BUILTIN_FN) && !IS_INST (fn, LAMBDA))
+  if (!IS_INST (fn, THUNK) && !IS_INST (fn, LAMBDA))
     return ERROR (ERR_INVALID_ARG, "mapcar: not a function or lambda", lm);
 
   for (Cell *item = CDR (args); !NILP (item); item = CDR (item))
@@ -98,7 +109,7 @@ fn_mapcar (LM *lm, Cell *args)
 }
 
 Cell *
-fn_nth (LM *lm, Cell *args)
+thunk_nth (LM *lm, Cell *args)
 {
   (void)lm;
 
@@ -113,7 +124,7 @@ fn_nth (LM *lm, Cell *args)
 }
 
 Cell *
-fn_print (LM *lm, Cell *args)
+thunk_print (LM *lm, Cell *args)
 {
   (void)lm;
 
@@ -126,7 +137,7 @@ fn_print (LM *lm, Cell *args)
 }
 
 Cell *
-fn_reverse (LM *lm, Cell *lst)
+thunk_reverse (LM *lm, Cell *lst)
 {
   if (!LISTP (lst))
     return ERROR (ERR_INVALID_ARG, "cdr", lm);
@@ -135,7 +146,7 @@ fn_reverse (LM *lm, Cell *lst)
 }
 
 Cell *
-fn_set (LM *lm, Cell *args)
+thunk_set (LM *lm, Cell *args)
 {
   if (!IS_INST (CAR (args), SYMBOL))
     return ERROR (ERR_INVALID_ARG, "set", lm);
@@ -144,7 +155,7 @@ fn_set (LM *lm, Cell *args)
 }
 
 Cell *
-fn_string (LM *lm, Cell *args)
+thunk_string (LM *lm, Cell *args)
 {
   return STRING (format (CAR (args)), lm);
 }
@@ -152,7 +163,7 @@ fn_string (LM *lm, Cell *args)
 // bool fns
 
 Cell *
-fn_eq (LM *lm, Cell *args)
+thunk_eq (LM *lm, Cell *args)
 {
   (void)lm;
 
@@ -168,7 +179,7 @@ fn_eq (LM *lm, Cell *args)
 }
 
 Cell *
-fn_not (LM *lm, Cell *args)
+thunk_not (LM *lm, Cell *args)
 {
   (void)lm;
   EqFn nil_eq = type (NIL)->eq;
@@ -182,7 +193,7 @@ fn_not (LM *lm, Cell *args)
 // math fns
 
 Cell *
-fn_gt (LM *lm, Cell *args)
+thunk_gt (LM *lm, Cell *args)
 {
   (void)lm;
   Cell *result = T;
@@ -214,7 +225,7 @@ fn_gt (LM *lm, Cell *args)
 }
 
 Cell *
-fn_lt (LM *lm, Cell *args)
+thunk_lt (LM *lm, Cell *args)
 {
   (void)lm;
   Cell *result = T;
@@ -248,7 +259,7 @@ fn_lt (LM *lm, Cell *args)
 // TODO: BUG IN gt (1 OR more args) and add, and mul take  (0 or more)
 // TODO: check for over/underflow someday
 Cell *
-fn_add (LM *lm, Cell *args)
+thunk_add (LM *lm, Cell *args)
 {
   if (!IS_INST (args, CONS))
     return ERROR (ERR_ARG_NOT_ITERABLE, "add: argument is not a list", lm);
@@ -275,7 +286,7 @@ fn_add (LM *lm, Cell *args)
 }
 
 Cell *
-fn_sub (LM *lm, Cell *args)
+thunk_sub (LM *lm, Cell *args)
 {
   if (!IS_INST (args, CONS))
     return ERROR (ERR_ARG_NOT_ITERABLE, "sub: argument is not a list", lm);
@@ -302,7 +313,7 @@ fn_sub (LM *lm, Cell *args)
 }
 
 Cell *
-fn_mul (LM *lm, Cell *args)
+thunk_mul (LM *lm, Cell *args)
 {
   if (!IS_INST (args, CONS))
     return ERROR (ERR_ARG_NOT_ITERABLE, "mul: argument is not a list", lm);
@@ -329,7 +340,7 @@ fn_mul (LM *lm, Cell *args)
 }
 
 Cell *
-fn_div (LM *lm, Cell *args)
+thunk_div (LM *lm, Cell *args)
 {
   if (!IS_INST (args, CONS))
     return ERROR (ERR_ARG_NOT_ITERABLE, "div: argument is not a list", lm);
@@ -356,4 +367,42 @@ fn_div (LM *lm, Cell *args)
     }
 
   return INTEGER (result, lm);
+}
+
+static const Thunk thunk_table[_THUNK_END] = {
+#define X(sym, is_l, ar, fn) { #sym, is_l, ar, fn },
+#include "thunks.def"
+#undef X
+};
+
+const char *
+thunk_get_name (Cell *c)
+{
+  return (IS_INST (c, THUNK)) ? thunk_table[c->thunk].name : "bad thunk!";
+}
+
+bool
+thunk_is_lispm (Cell *c)
+{
+  return thunk_table[c->thunk].is_lispm ? true : false;
+}
+
+Cell *
+thunker (LM *lm, Cell *fn, Cell *arglist)
+{
+  Thunk thunk = thunk_table[fn->thunk];
+
+  int received = (int)length (arglist);
+
+  if (thunk.arity > 0 && thunk.arity != received)
+    {
+      ErrorCode err
+          = (received < thunk.arity) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
+      return NIL; // FIXME
+    }
+
+  // if (!thunk.fn)
+  //   ERR_EXIT (ERR_NOT_A_FUNCTION, thunk.name);
+
+  return thunk.fn (lm, arglist);
 }

@@ -3,8 +3,8 @@
 
 #include <stdio.h>
 
-#include "lisp_mach.h"
-#include "lisp_types.h"
+#include "lm.h"
+#include "types.h"
 
 bool parser_buf (const char *input, Cell **ast_head, LM *lm);
 bool parser_stream (FILE *instrm, Cell **ast_head, LM *lm);

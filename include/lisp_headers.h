@@ -1,13 +1,13 @@
 #ifndef LISP_HEADERS_H
 #define LISP_HEADERS_H
 
-#include "lisp_builtins.h"
-#include "lisp_err.h"
-#include "lisp_fmt.h"
-#include "lisp_keywords.h"
-#include "lisp_mach.h"
-#include "lisp_types.h"
-#include "lisp_utils.h"
+#include "err.h"
+#include "fmt.h"
+#include "keywords.h"
+#include "lm.h"
+#include "thunks.h"
+#include "types.h"
+#include "utils.h"
 
 #define NIL (KEYWORD (NIL))
 #define T (KEYWORD (T))

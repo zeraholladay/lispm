@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "parser_bison.h"
+#include "bison.h"
 #include "str_intern.h"
 %}
 

@@ -3,7 +3,7 @@
 
 #include "env.h"
 #include "lisp_headers.h"
-#include "lisp_mach.h"
+#include "lm.h"
 #include "palloc.h"
 #include "xalloc.h"
 
@@ -51,7 +51,7 @@
 typedef enum
 {
 #define X(tag, ...) s_##tag,
-#include "lisp_mach.x-macros"
+#include "lm.def"
 #undef X
   COUNT,
 } StateEnum;
@@ -63,14 +63,14 @@ typedef union lisp_mach
   {                                                                           \
     __VA_ARGS__;                                                              \
   } tag;
-#include "lisp_mach.x-macros"
+#include "lm.def"
 #undef X
-} StateUnion;
+} Union;
 
 typedef struct state
 {
   StateEnum state;
-  StateUnion u;
+  Union u;
 } State;
 
 typedef struct dump
@@ -131,7 +131,7 @@ lm_dump (LM *lm)
 }
 
 static bool
-lm_restore (LM *lm)
+lm_dump_restore (LM *lm)
 {
   if (lm->dmp.sp == 0)
     return false;
@@ -154,14 +154,14 @@ lm_eval (LM *lm)
   do
     {
       State s = CTL_POP (lm);
-      StateUnion u = s.u;
+      Union u = s.u;
 
       switch (s.state)
         {
 #define X(tag, ...)                                                           \
   case s_##tag:                                                               \
     goto ctl_##tag;
-#include "lisp_mach.x-macros"
+#include "lm.def"
 #undef STATE
         default:
           ERR_EXIT (ERR_INTERNAL, "No such state.");
@@ -219,7 +219,7 @@ lm_eval (LM *lm)
             Cell *fn = STK_POP (lm);
 
             // one of the fns this C code handles
-            if (IS_INST (fn, BUILTIN_FN) && fn->builtin_fn->is_lispm)
+            if (IS_INST (fn, THUNK) && thunk_is_lispm (fn))
               CTL_PUSH (lm, lispm, fn, u.eval_apply.arglist);
             else
               {
@@ -261,8 +261,11 @@ lm_eval (LM *lm)
         Cell *fn = u.funcall.fn ?: STK_POP (lm);
         Cell *arglist = u.funcall.arglist ?: STK_POP (lm);
 
-        if (IS_INST (fn, BUILTIN_FN))
-          CTL_PUSH (lm, funcall_builtin, fn, arglist);
+        if (IS_INST (fn, THUNK))
+          {
+            Cell *res = thunker (lm, fn, arglist);
+            STK_PUSH (lm, res);
+          }
         else if (IS_INST (fn, LAMBDA))
           {
             CTL_PUSH (lm, closure_leave);
@@ -271,38 +274,6 @@ lm_eval (LM *lm)
           }
         else
           ERR_EXIT (ERR_NOT_A_FUNCTION, "funcall");
-
-        goto next;
-      }
-    ctl_funcall_builtin:
-      {
-        Cell *fn = u.funcall_builtin.fn;
-        Cell *arglist = u.funcall_builtin.arglist;
-
-        const BuiltinFn *builtin_fn = fn->builtin_fn;
-
-        int received = (int)length (arglist);
-
-        if (builtin_fn->arity > 0 && builtin_fn->arity != received)
-          {
-            ErrorCode err = (received < builtin_fn->arity)
-                                ? ERR_MISSING_ARG
-                                : ERR_UNEXPECTED_ARG;
-            ERR_EXIT (err, builtin_fn->name);
-          }
-
-        if (!builtin_fn->fn)
-          ERR_EXIT (ERR_NOT_A_FUNCTION, builtin_fn->name)
-
-        Cell *res = builtin_fn->fn (lm, arglist);
-
-        if (IS_INST (res, ERROR))
-          {
-            PERROR (res); // fixme
-            goto error;
-          }
-
-        STK_PUSH (lm, res);
 
         goto next;
       }

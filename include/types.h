@@ -1,11 +1,11 @@
-#ifndef LISP_TYPES_H
-#define LISP_TYPES_H
+#ifndef TYPES_H
+#define TYPES_H
 
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "lisp_err.h"
-#include "lisp_mach.h"
+#include "err.h"
+#include "lm.h"
 
 #define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 
@@ -32,16 +32,16 @@ typedef struct Type
 // Cells
 typedef enum
 {
-  TYPE_NIL,        // special constant
-  TYPE_INTEGER,    // literal
-  TYPE_SYMBOL,     // identifiers
-  TYPE_STRING,     // literal
-  TYPE_CONS,       // cons cells
-  TYPE_BUILTIN_FN, // builtin fn
-  TYPE_LAMBDA,     // user-defined fn
-  TYPE_ERROR,      // error
-  TYPE_UNKNOWN,    // unknown ptr
-  _TYPE_END        // entinel for end
+  TYPE_NIL,     // special constant
+  TYPE_INTEGER, // literal
+  TYPE_SYMBOL,  // identifiers
+  TYPE_STRING,  // literal
+  TYPE_CONS,    // cons cells
+  TYPE_THUNK,   // thunk fn
+  TYPE_LAMBDA,  // user-defined fn
+  TYPE_ERROR,   // error
+  TYPE_UNKNOWN, // unknown ptr
+  _TYPE_END     // sentinel for end
 } TypeEnum;
 
 typedef long long Integer;
@@ -58,14 +58,13 @@ typedef struct
   Cell *cdr; // Contents of the Decrement Register
 } Cons;
 
-typedef struct Cell *(*Fn) (LM *lm, struct Cell *);
-
-typedef struct
+typedef enum
 {
-  const char *name;
-  int is_lispm, arity;
-  Fn fn;
-} BuiltinFn;
+#define X(sym, is_l, ar, fn) THUNK_##sym,
+#include "thunks.def"
+#undef X
+  _THUNK_END // sentinel for end
+} ThunkEnum;
 
 typedef struct
 {
@@ -91,7 +90,7 @@ struct Cell
     // Composite structures
     Cons cons;
     // Function-like values
-    const BuiltinFn *builtin_fn;
+    ThunkEnum thunk;
     Lambda lambda;
     // Error
     Error error;

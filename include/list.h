@@ -4,10 +4,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#ifndef HEAP_LIST_INIT_CAPACITY
-#define HEAP_LIST_INIT_CAPACITY 4
-#endif
-
 typedef struct
 {
   size_t count;

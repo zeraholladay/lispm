@@ -3,16 +3,10 @@
 
 #include <stddef.h>
 
-#include "lisp_types.h"
+#include "types.h"
 
 #define KEYWORD(name) keyword_lookup (#name, sizeof (#name) - 1)
 #define KEYWORD_LIT(str) keyword_lookup (str, sizeof (str) - 1)
-
-typedef struct Keyword
-{
-  const char *name;
-  Cell cell;
-} Keyword;
 
 // keywords.gperf
 struct Cell *keyword_lookup (const char *str, size_t len);

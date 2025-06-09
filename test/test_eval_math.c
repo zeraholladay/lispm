@@ -4,10 +4,10 @@
 #include <string.h>
 
 #include "lisp_headers.h"
-#include "lisp_mach.h"
-#include "lisp_types.h"
+#include "lm.h"
 #include "parser.h"
 #include "repl.h"
+#include "types.h"
 
 static Cell *progn = NULL;
 static LM *lm = NULL;

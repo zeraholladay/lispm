@@ -1,8 +1,8 @@
-#ifndef LISP_UTILS_H
-#define LISP_UTILS_H
+#ifndef UTILS_H
+#define UTILS_H
 
-#include "lisp_mach.h"
-#include "lisp_types.h"
+#include "lm.h"
+#include "types.h"
 
 #define RPLACA(nptr, val)                                                     \
   do                                                                          \

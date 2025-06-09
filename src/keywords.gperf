@@ -1,0 +1,105 @@
+// clang-format off
+%{
+#include <string.h>
+
+#include "thunks.h"
+#include "keywords.h"
+
+#define AS_SYM(name) { .str = name, .len = sizeof(name) - 1 }
+
+typedef struct Keyword
+{
+  const char *name;
+  Cell cell;
+} Keyword;
+
+%}
+
+%includes
+%global-table
+%struct-type
+%ignore-case
+%define word-array-name keyword_table
+%define slot-name name
+
+struct Keyword;
+%%
+NIL,     { .type = TYPE_NIL,        .cons       = { .car = NULL, .cdr = NULL }},
+T,       { .type = TYPE_SYMBOL,     .symbol     = AS_SYM("T")       },
+QUOTE,   { .type = TYPE_SYMBOL,     .symbol     = AS_SYM("QUOTE")   },
+',       { .type = TYPE_SYMBOL,     .symbol     = AS_SYM("'")       },
+AND,     { .type = TYPE_THUNK, .thunk = THUNK_AND     },
+APPEND,  { .type = TYPE_THUNK, .thunk = THUNK_APPEND  },
+APPLY,   { .type = TYPE_THUNK, .thunk = THUNK_APPLY   },
+BUTLAST, { .type = TYPE_THUNK, .thunk = THUNK_BUTLAST },
+CAR,     { .type = TYPE_THUNK, .thunk = THUNK_CAR     },
+CDR,     { .type = TYPE_THUNK, .thunk = THUNK_CDR     },
+CONS,    { .type = TYPE_THUNK, .thunk = THUNK_CONS    },
+EQ,      { .type = TYPE_THUNK, .thunk = THUNK_EQ      },
+EVAL,    { .type = TYPE_THUNK, .thunk = THUNK_EVAL    },
+FIRST,   { .type = TYPE_THUNK, .thunk = THUNK_FIRST   },
+FUNCALL, { .type = TYPE_THUNK, .thunk = THUNK_FUNCALL },
+GT,      { .type = TYPE_THUNK, .thunk = THUNK_GT      },
+>,       { .type = TYPE_THUNK, .thunk = THUNK_GT      },
+IF,      { .type = TYPE_THUNK, .thunk = THUNK_IF      },
+LAST,    { .type = TYPE_THUNK, .thunk = THUNK_LAST    },
+LENGTH,  { .type = TYPE_THUNK, .thunk = THUNK_LENGTH  },
+LET,     { .type = TYPE_THUNK, .thunk = THUNK_LET     },
+LT,      { .type = TYPE_THUNK, .thunk = THUNK_LT      },
+<,       { .type = TYPE_THUNK, .thunk = THUNK_LT      },
+MAPCAR,  { .type = TYPE_THUNK, .thunk = THUNK_MAPCAR  },
+NTH,     { .type = TYPE_THUNK, .thunk = THUNK_NTH     },
+NOT,     { .type = TYPE_THUNK, .thunk = THUNK_NOT     },
+LIST,    { .type = TYPE_THUNK, .thunk = THUNK_LIST    },
+OR,      { .type = TYPE_THUNK, .thunk = THUNK_OR      },
+PRINT,   { .type = TYPE_THUNK, .thunk = THUNK_PRINT   },
+PROGN,   { .type = TYPE_THUNK, .thunk = THUNK_PROGN   },
+REST,    { .type = TYPE_THUNK, .thunk = THUNK_REST    },
+REVERSE, { .type = TYPE_THUNK, .thunk = THUNK_REVERSE },
+SET,     { .type = TYPE_THUNK, .thunk = THUNK_SET     },
+STRING,  { .type = TYPE_THUNK, .thunk = THUNK_STRING  },
+ADD,     { .type = TYPE_THUNK, .thunk = THUNK_ADD     },
++,       { .type = TYPE_THUNK, .thunk = THUNK_ADD     },
+SUB,     { .type = TYPE_THUNK, .thunk = THUNK_SUB     },
+-,       { .type = TYPE_THUNK, .thunk = THUNK_SUB     },
+MUL,     { .type = TYPE_THUNK, .thunk = THUNK_MUL     },
+*,       { .type = TYPE_THUNK, .thunk = THUNK_MUL     },
+DIV,     { .type = TYPE_THUNK, .thunk = THUNK_DIV     },
+/,       { .type = TYPE_THUNK, .thunk = THUNK_DIV     },
+%% 
+
+#define PRIN_FN_TAB_NUM                                                       \
+  ((int)(sizeof (keyword_table) / sizeof (keyword_table[0])))
+
+struct Cell *
+keyword_lookup (const char *str, size_t len)
+{
+  Keyword *keyword = in_word_set(str, len);
+  if (keyword)
+    return &keyword->cell;
+  else
+    return NULL;
+}
+
+const char *
+is_keyword_strncmp (const char *text, int state)
+{
+  static int idx;
+  static size_t len;
+
+  if (state == 0)
+    {
+      idx = 0;
+      len = strlen (text);
+    }
+
+  while (idx < PRIN_FN_TAB_NUM)
+    {
+      const char *name = keyword_table[idx++].name;
+      if (!strncasecmp (name, text, len))
+        {
+          return name;
+        }
+    }
+  return NULL;
+}

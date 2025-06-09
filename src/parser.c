@@ -1,10 +1,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "lisp_mach.h"
-#include "lisp_types.h"
-#include "parser_bison.h"
-#include "parser_flex.h"
+#include "bison.h"
+#include "flex.h"
+#include "lm.h"
+#include "types.h"
 
 bool
 parser_buf (const char *input, Cell **ast_head, LM *lm)

@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "lisp_headers.h"
-#include "lisp_types.h"
+#include "types.h"
 
 static inline int
 type_eq (Cell *self, Cell *other)
@@ -30,16 +30,16 @@ symbol_eq (Cell *self, Cell *other)
 }
 
 static int
-list_eq (Cell *self, Cell *other)
+cons_eq (Cell *self, Cell *other)
 {
   return type_eq (self, other)
          && ((NILP (self) && NILP (other)) || &self->cons == &other->cons);
 }
 
 static int
-builtin_fn_eq (Cell *self, Cell *other)
+thunk_eq (Cell *self, Cell *other)
 {
-  return type_eq (self, other) && &self->builtin_fn == &other->builtin_fn;
+  return type_eq (self, other) && &self->thunk == &other->thunk;
 }
 
 static int
@@ -59,8 +59,8 @@ static Type type_tab[] = {
   [TYPE_INTEGER] = { .type_name = "INTEGER", .eq = integer_eq },
   [TYPE_STRING] = { .type_name = "STRING", .eq = string_eq },
   [TYPE_SYMBOL] = { .type_name = "SYMBOL", .eq = symbol_eq },
-  [TYPE_CONS] = { .type_name = "CONS", .eq = list_eq },
-  [TYPE_BUILTIN_FN] = { .type_name = "BUILTIN", .eq = builtin_fn_eq },
+  [TYPE_CONS] = { .type_name = "CONS", .eq = cons_eq },
+  [TYPE_THUNK] = { .type_name = "THUNK", .eq = thunk_eq },
   [TYPE_LAMBDA] = { .type_name = "LAMBDA", .eq = lambda_eq },
 };
 
