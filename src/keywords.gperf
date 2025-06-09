@@ -70,10 +70,11 @@ struct Cell *
 keyword_lookup (const char *str, size_t len)
 {
   Keyword *keyword = in_word_set(str, len);
-  if (keyword)
-    return keyword->cell;
-  else
+  
+  if (!keyword)
     return NULL;
+
+  return keyword->cell;
 }
 
 const char *
