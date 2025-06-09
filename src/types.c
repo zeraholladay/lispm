@@ -3,9 +3,8 @@
 #include <string.h>
 
 #include "err.h"
-#include "keywords.h"
+#include "prims.h"
 #include "types.h"
-#include "utils.h"
 
 static inline int
 type_eq (Cell *self, Cell *other)

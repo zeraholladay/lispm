@@ -4,12 +4,11 @@
 #include <string.h>
 
 #include "fmt.h"
-#include "keywords.h"
 #include "lm.h"
 #include "parser.h"
+#include "prims.h"
 #include "repl.h"
 #include "types.h"
-#include "utils.h"
 
 static Cell *progn = NULL;
 static LM *lm = NULL;

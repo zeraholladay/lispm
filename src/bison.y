@@ -4,8 +4,7 @@
 
 #include "bison.h"
 #include "flex.h"
-#include "keywords.h"
-#include "utils.h"
+#include "prims.h"
 
 #define yyerror(n, lm, s)                                                     \
   do                                                                          \
@@ -101,7 +100,7 @@ form
       }
     | '\'' form
       {
-        $$ = LIST2 (KEYWORD (QUOTE), $2, lm);
+        $$ = LIST2 (QUOTE, $2, lm);
       }
     | '(' forms ')'
       {
@@ -142,7 +141,7 @@ symbol
     }
   | QUOTE
     {
-      $$ = KEYWORD (QUOTE);
+      $$ = QUOTE;
     }
   ;
 

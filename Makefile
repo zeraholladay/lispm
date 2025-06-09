@@ -47,7 +47,7 @@ FLEX_C := $(GEN)/flex.c
 FLEX_H := $(GEN)/flex.h
 BISON_C := $(GEN)/bison.c
 BISON_H := $(GEN)/bison.h
-GPERF_C := $(GEN)/lisp_keywords.c
+GPERF_C := $(GEN)/keywords.c
 
 SRC_CFILES := $(wildcard $(SRC)/*.c) $(FLEX_C) $(BISON_C) $(GPERF_C)
 SRC_CFILES_ALL := $(sort $(SRC_CFILES))

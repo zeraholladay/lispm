@@ -3,12 +3,11 @@
 #include <stdio.h>
 
 #include "env.h"
-#include "keywords.h"
 #include "lm.h"
 #include "palloc.h"
+#include "prims.h"
 #include "thunks.h"
 #include "types.h"
-#include "utils.h"
 #include "xalloc.h"
 
 #define STK_POP(lm)                                                           \
@@ -198,7 +197,7 @@ lm_eval (LM *lm)
                 Cell *car = CAR (expr);
                 Cell *cdr = CDR (expr);
 
-                if (car == KEYWORD (QUOTE))
+                if (car == QUOTE)
                   STK_PUSH (lm, CAR (cdr));
                 else if (IS_INST (car, LAMBDA))
                   STK_PUSH (lm, car);
@@ -548,7 +547,7 @@ LM *
 lm_create (void)
 {
   // fixme
-  Cell *nil = KEYWORD (NIL);
+  Cell *nil = NIL;
   CAR (nil) = CDR (nil) = nil;
 
   LM *lm = xmalloc (sizeof *(lm));

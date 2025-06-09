@@ -4,9 +4,8 @@
 
 #include "err.h"
 #include "fmt.h"
-#include "keywords.h"
+#include "prims.h"
 #include "thunks.h"
-#include "utils.h"
 
 typedef struct Cell *(*ThunkFn) (LM *lm, struct Cell *);
 

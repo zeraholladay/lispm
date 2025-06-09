@@ -1,8 +1,18 @@
 #include "stdlib.h"
 
 #include "keywords.h"
-#include "utils.h"
+#include "prims.h"
 #include "xalloc.h"
+
+#define AS_SYM(name) { .str = name, .len = sizeof (name) - 1 }
+
+// NIL & T
+
+Cell _nil = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } };
+
+Cell _t = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("T") };
+
+Cell _quote = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("QUOTE") };
 
 // sequence operations
 

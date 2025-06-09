@@ -1,11 +1,16 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef PRIMS_H
+#define PRIMS_H
 
 #include "lm.h"
 #include "types.h"
 
-#define NIL (KEYWORD (NIL))
-#define T (KEYWORD (T))
+extern Cell _nil;
+extern Cell _t;
+extern Cell _quote;
+
+#define NIL (&_nil)
+#define T (&_t)
+#define QUOTE (&_quote)
 
 #define NILP(nptr) (nptr == NIL)
 #define LISTP(nptr) (NILP (nptr) || CONSP (nptr))

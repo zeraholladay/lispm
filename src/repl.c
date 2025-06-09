@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "fmt.h"
-#include "lisp_headers.h"
 #include "lm.h"
 #include "parser.h"
 #include "readline.h"
