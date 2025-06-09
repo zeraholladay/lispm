@@ -2,9 +2,10 @@
 %{
 #include <stdio.h>
 
-#include "lisp_headers.h"
 #include "bison.h"
 #include "flex.h"
+#include "keywords.h"
+#include "utils.h"
 
 #define yyerror(n, lm, s)                                                     \
   do                                                                          \

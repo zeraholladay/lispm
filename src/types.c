@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lisp_headers.h"
+#include "err.h"
+#include "keywords.h"
 #include "types.h"
+#include "utils.h"
 
 static inline int
 type_eq (Cell *self, Cell *other)

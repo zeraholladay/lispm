@@ -1,10 +1,14 @@
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "env.h"
-#include "lisp_headers.h"
+#include "keywords.h"
 #include "lm.h"
 #include "palloc.h"
+#include "thunks.h"
+#include "types.h"
+#include "utils.h"
 #include "xalloc.h"
 
 #define STK_POP(lm)                                                           \
@@ -382,37 +386,45 @@ lm_eval (LM *lm)
       }
     ctl_lispm:
       {
-        if (u.lispm.fn == KEYWORD (LIST))
-          CTL_PUSH (lm, evlis, NIL, u.lispm.arglist);
-        else if (u.lispm.fn == KEYWORD (FUNCALL))
+        Cell *fn = u.lispm.fn;
+
+        switch (fn->thunk)
           {
-            CTL_PUSH (lm, funcall, NULL, NULL);
-            CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
-            CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
-          }
-        else if (u.lispm.fn == KEYWORD (APPLY))
-          {
+          case THUNK_APPLY:
             CTL_PUSH (lm, apply, NULL, NULL);
             CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
             CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
-          }
-        else if (u.lispm.fn == KEYWORD (EVAL))
-          {
+            break;
+          case THUNK_FUNCALL:
+            CTL_PUSH (lm, funcall, NULL, NULL);
+            CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
+            CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
+            break;
+          case THUNK_EVAL:
             CTL_PUSH (lm, eval, NULL);
             CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
+            break;
+          case THUNK_LIST:
+            CTL_PUSH (lm, evlis, NIL, u.lispm.arglist);
+            break;
+          case THUNK_PROGN:
+            CTL_PUSH (lm, progn, NIL, u.lispm.arglist);
+            break;
+          case THUNK_IF:
+            CTL_PUSH (lm, if_, u.lispm.arglist);
+            break;
+          case THUNK_AND:
+            CTL_PUSH (lm, and, u.lispm.arglist);
+            break;
+          case THUNK_OR:
+            CTL_PUSH (lm, or, u.lispm.arglist);
+            break;
+          case THUNK_LET:
+            CTL_PUSH (lm, let, CAR (u.lispm.arglist));
+            break;
+          default:
+            ERR_EXIT (ERR_INTERNAL, "lispm");
           }
-        else if (u.lispm.fn == KEYWORD (PROGN))
-          CTL_PUSH (lm, progn, NIL, u.lispm.arglist);
-        else if (u.lispm.fn == KEYWORD (AND))
-          CTL_PUSH (lm, and, u.lispm.arglist);
-        else if (u.lispm.fn == KEYWORD (OR))
-          CTL_PUSH (lm, or, u.lispm.arglist);
-        else if (u.lispm.fn == KEYWORD (IF))
-          CTL_PUSH (lm, if_, u.lispm.arglist);
-        else if (u.lispm.fn == KEYWORD (LET))
-          CTL_PUSH (lm, let, CAR (u.lispm.arglist));
-        else
-          ERR_EXIT (ERR_INTERNAL, "lispm");
 
         goto next;
       }

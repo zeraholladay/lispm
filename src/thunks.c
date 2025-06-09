@@ -2,8 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lisp_headers.h"
+#include "err.h"
+#include "fmt.h"
+#include "keywords.h"
 #include "thunks.h"
+#include "utils.h"
 
 typedef struct Cell *(*ThunkFn) (LM *lm, struct Cell *);
 

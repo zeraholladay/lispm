@@ -6,7 +6,9 @@
 #include <stdlib.h>
 
 #include "fmt.h"
-#include "lisp_headers.h"
+#include "keywords.h"
+#include "thunks.h"
+#include "utils.h"
 #include "xalloc.h"
 
 typedef struct str_sb
