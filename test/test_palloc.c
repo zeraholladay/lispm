@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lisp_types.h"
 #include "palloc.h"
+#include "types.h"
 
 START_TEST (test_palloc)
 {

@@ -1,8 +1,27 @@
-#ifndef LISP_UTILS_H
-#define LISP_UTILS_H
+#ifndef PRIMS_H
+#define PRIMS_H
 
-#include "lisp_mach.h"
-#include "lisp_types.h"
+#include "lm.h"
+#include "types.h"
+
+extern Cell _nil;
+extern Cell _t;
+extern Cell _quote;
+
+#define NIL (&_nil)
+#define T (&_t)
+#define QUOTE (&_quote)
+
+#define NILP(nptr) (nptr == NIL)
+#define LISTP(nptr) (NILP (nptr) || CONSP (nptr))
+#define CONSP(nptr) (IS_INST (nptr, CONS))
+
+#define CAR(nptr) ((nptr)->cons.car)
+#define CDR(nptr) ((nptr)->cons.cdr)
+#define CADR(nptr) (CAR (CDR (nptr)))
+
+#define LIST1(car, lm) (CONS (car, NIL, lm))
+#define LIST2(car, cdr, lm) (CONS (car, LIST1 (cdr, lm), lm))
 
 #define RPLACA(nptr, val)                                                     \
   do                                                                          \

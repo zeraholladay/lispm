@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lisp_keywords.h"
+#include "keywords.h"
 
 #ifndef READLINE_HISTORY_MAX
 #define READLINE_HISTORY_MAX 100

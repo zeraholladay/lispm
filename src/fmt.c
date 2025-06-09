@@ -5,8 +5,9 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "lisp_fmt.h"
-#include "lisp_headers.h"
+#include "fmt.h"
+#include "prims.h"
+#include "thunks.h"
 #include "xalloc.h"
 
 typedef struct str_sb
@@ -22,7 +23,7 @@ static void fmt_symbol (StrBuf *, Cell *);
 static void fmt_integer (StrBuf *, Cell *);
 static void fmt_string (StrBuf *, Cell *);
 static void fmt_cons (StrBuf *, Cell *);
-static void fmt_builtin_fn (StrBuf *, Cell *);
+static void fmt_thunk (StrBuf *, Cell *);
 static void fmt_lambda (StrBuf *, Cell *);
 static void fmt_unknown (StrBuf *, Cell *);
 static void fmt_error (StrBuf *, Cell *);
@@ -30,7 +31,7 @@ static void fmt_error (StrBuf *, Cell *);
 static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
   [TYPE_NIL] = fmt_nil,         [TYPE_SYMBOL] = fmt_symbol,
   [TYPE_INTEGER] = fmt_integer, [TYPE_STRING] = fmt_string,
-  [TYPE_CONS] = fmt_cons,       [TYPE_BUILTIN_FN] = fmt_builtin_fn,
+  [TYPE_CONS] = fmt_cons,       [TYPE_THUNK] = fmt_thunk,
   [TYPE_LAMBDA] = fmt_lambda,   [TYPE_UNKNOWN] = fmt_unknown,
   [TYPE_ERROR] = fmt_error,
 };
@@ -143,9 +144,9 @@ fmt_cons (StrBuf *sb, Cell *n)
 }
 
 void
-fmt_builtin_fn (StrBuf *sb, Cell *n)
+fmt_thunk (StrBuf *sb, Cell *n)
 {
-  return appendf (sb, "#<BUILTIN-FUNCTION %s>", n->builtin_fn->name);
+  return appendf (sb, "#<THUNK %s>", thunk_get_name (n));
 }
 
 void
@@ -154,7 +155,7 @@ fmt_lambda (StrBuf *sb, Cell *n)
   char *params_str = format (n->lambda.params);
   char *body_str = format (n->lambda.body);
 
-  appendf (sb, "#<FUNCTION :LAMBDA %s %s>", params_str, body_str);
+  appendf (sb, "#<LAMBDA %s %s>", params_str, body_str);
 
   free (params_str);
   free (body_str);

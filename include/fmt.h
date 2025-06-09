@@ -1,11 +1,11 @@
-#ifndef LISP_FMT_H
-#define LISP_FMT_H
+#ifndef FMT_H
+#define FMT_H
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lisp_types.h"
+#include "types.h"
 
 #define PRINT(cell)                                                           \
   do                                                                          \

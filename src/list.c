@@ -4,6 +4,10 @@
 #include "safe_str.h"
 #include "xalloc.h"
 
+#ifndef LIST_INIT_CAPACITY
+#define LIST_INIT_CAPACITY 4
+#endif
+
 static bool list_xresize (List *lst, size_t min_capacity);
 
 // thanks python
@@ -30,8 +34,8 @@ list_create (void)
 {
   List *lst = xcalloc (1, sizeof (List));
 
-  lst->items = xcalloc (HEAP_LIST_INIT_CAPACITY, sizeof *(lst->items));
-  lst->capacity = HEAP_LIST_INIT_CAPACITY;
+  lst->items = xcalloc (LIST_INIT_CAPACITY, sizeof *(lst->items));
+  lst->capacity = LIST_INIT_CAPACITY;
   lst->count = 0;
 
   return lst;

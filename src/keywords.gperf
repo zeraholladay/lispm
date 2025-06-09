@@ -1,0 +1,99 @@
+// clang-format off
+%{
+#include "prims.h"
+#include "thunks.h"
+
+typedef struct Keyword
+{
+  const char *name;
+  Cell *cell;
+} Keyword;
+
+%}
+
+%enum
+%includes
+%global-table
+%struct-type
+%ignore-case
+%define word-array-name keyword_table
+%define constants-prefix GPERF_
+%define slot-name name
+
+struct Keyword;
+%%
+NIL,     NIL,
+T,       T,
+QUOTE,   QUOTE,
+',       QUOTE,
+AND,     &thunk_cells[THUNK_AND]
+APPEND,  &thunk_cells[THUNK_APPEND]
+APPLY,   &thunk_cells[THUNK_APPLY]
+BUTLAST, &thunk_cells[THUNK_BUTLAST]
+CAR,     &thunk_cells[THUNK_CAR]
+CDR,     &thunk_cells[THUNK_CDR]
+CONS,    &thunk_cells[THUNK_CONS]
+EQ,      &thunk_cells[THUNK_EQ]
+EVAL,    &thunk_cells[THUNK_EVAL]
+FIRST,   &thunk_cells[THUNK_FIRST]
+FUNCALL, &thunk_cells[THUNK_FUNCALL]
+GT,      &thunk_cells[THUNK_GT]
+>,       &thunk_cells[THUNK_GT]
+IF,      &thunk_cells[THUNK_IF]
+LAST,    &thunk_cells[THUNK_LAST]
+LENGTH,  &thunk_cells[THUNK_LENGTH]
+LET,     &thunk_cells[THUNK_LET]
+LT,      &thunk_cells[THUNK_LT]
+<,       &thunk_cells[THUNK_LT]
+MAPCAR,  &thunk_cells[THUNK_MAPCAR]
+NTH,     &thunk_cells[THUNK_NTH]
+NOT,     &thunk_cells[THUNK_NOT]
+LIST,    &thunk_cells[THUNK_LIST]
+OR,      &thunk_cells[THUNK_OR]
+PRINT,   &thunk_cells[THUNK_PRINT]
+PROGN,   &thunk_cells[THUNK_PROGN]
+REST,    &thunk_cells[THUNK_REST]
+REVERSE, &thunk_cells[THUNK_REVERSE]
+SET,     &thunk_cells[THUNK_SET]
+STRING,  &thunk_cells[THUNK_STRING]
+ADD,     &thunk_cells[THUNK_ADD]
++,       &thunk_cells[THUNK_ADD]
+SUB,     &thunk_cells[THUNK_SUB]
+-,       &thunk_cells[THUNK_SUB]
+MUL,     &thunk_cells[THUNK_MUL]
+*,       &thunk_cells[THUNK_MUL]
+DIV,     &thunk_cells[THUNK_DIV]
+/,       &thunk_cells[THUNK_DIV]
+%% 
+
+struct Cell *
+keyword_lookup (const char *str, size_t len)
+{
+  Keyword *keyword = in_word_set(str, len);
+  if (keyword)
+    return keyword->cell;
+  else
+    return NULL;
+}
+
+const char *
+is_keyword_strncmp (const char *text, int state)
+{
+  static int idx;
+  static size_t len;
+
+  if (state == 0)
+    {
+      idx = 0;
+      len = strlen (text);
+    }
+
+  while (idx < GPERF_TOTAL_KEYWORDS)
+    {
+      const char *name = keyword_table[idx++].name;
+      if (!strncasecmp (name, text, len))
+        return name;
+    }
+
+  return NULL;
+}

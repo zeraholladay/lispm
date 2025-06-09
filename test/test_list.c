@@ -36,7 +36,7 @@ END_TEST
 
 START_TEST (test_capacity_growth)
 {
-  for (int i = 0; i < HEAP_LIST_INIT_CAPACITY + 2; i++)
+  for (int i = 0; i < 100; i++)
     {
       int *v = xmalloc (sizeof *v);
       *v = i;

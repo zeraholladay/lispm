@@ -2,9 +2,9 @@
 %{
 #include <stdio.h>
 
-#include "lisp_headers.h"
-#include "parser_bison.h"
-#include "parser_flex.h"
+#include "bison.h"
+#include "flex.h"
+#include "prims.h"
 
 #define yyerror(n, lm, s)                                                     \
   do                                                                          \
@@ -19,7 +19,7 @@ void yyerror_handler (LM *lm, const char *s);
 
 %code requires
 {
-#include "lisp_types.h"
+#include "types.h"
 }
 
 %parse-param {Cell **progn} {LM *lm}
@@ -100,7 +100,7 @@ form
       }
     | '\'' form
       {
-        $$ = LIST2 (KEYWORD (QUOTE), $2, lm);
+        $$ = LIST2 (QUOTE, $2, lm);
       }
     | '(' forms ')'
       {
@@ -141,7 +141,7 @@ symbol
     }
   | QUOTE
     {
-      $$ = KEYWORD (QUOTE);
+      $$ = QUOTE;
     }
   ;
 

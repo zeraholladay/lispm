@@ -39,15 +39,15 @@ FLEX := flex
 BISON := bison
 GPERF := gperf
 
-FLEX_SRC := $(SRC)/parser_flex.l
-BISON_SRC := $(SRC)/parser_bison.y
-GPERF_SCR := $(SRC)/lisp_keywords.gperf
+FLEX_SRC := $(SRC)/flex.l
+BISON_SRC := $(SRC)/bison.y
+GPERF_SCR := $(SRC)/keywords.gperf
 
-FLEX_C := $(GEN)/parser_flex.c
-FLEX_H := $(GEN)/parser_flex.h
-BISON_C := $(GEN)/parser_bison.c
-BISON_H := $(GEN)/parser_bison.h
-GPERF_C := $(GEN)/lisp_keywords.c
+FLEX_C := $(GEN)/flex.c
+FLEX_H := $(GEN)/flex.h
+BISON_C := $(GEN)/bison.c
+BISON_H := $(GEN)/bison.h
+GPERF_C := $(GEN)/keywords.c
 
 SRC_CFILES := $(wildcard $(SRC)/*.c) $(FLEX_C) $(BISON_C) $(GPERF_C)
 SRC_CFILES_ALL := $(sort $(SRC_CFILES))

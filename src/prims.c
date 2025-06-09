@@ -1,8 +1,18 @@
 #include "stdlib.h"
 
-#include "lisp_headers.h"
-#include "lisp_utils.h"
+#include "keywords.h"
+#include "prims.h"
 #include "xalloc.h"
+
+#define AS_SYM(name) { .str = name, .len = sizeof (name) - 1 }
+
+// NIL & T
+
+Cell _nil = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } };
+
+Cell _t = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("T") };
+
+Cell _quote = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("QUOTE") };
 
 // sequence operations
 
@@ -74,7 +84,7 @@ last (LM *lm, Cell *lst)
 size_t
 length (Cell *lst)
 {
-  if (!IS_INST (lst, CONS))
+  if (!CONSP (lst))
     return 0;
 
   size_t i = 1;
@@ -184,6 +194,7 @@ zip (LM *lm, Cell *lsts)
     }
 
   xfree_scratch (&s);
+
   return reverse_inplace (out_rev);
 }
 
@@ -218,5 +229,6 @@ set (LM *lm, Cell *car, Cell *cdr)
     return ERROR (ERR_INVALID_ARG, "set", lm);
 
   lm_env_set (lm, key, cdr);
+
   return cdr;
 }

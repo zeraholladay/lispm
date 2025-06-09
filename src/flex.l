@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "parser_bison.h"
+#include "bison.h"
 #include "str_intern.h"
 %}
 
@@ -36,6 +36,7 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
                     return INTEGER;
                   }
   {ID}            {
+                    // special types: not symbols
                     if (!strncasecmp ("QUOTE", yytext, yyleng + 1))
                       return QUOTE;
                     if (!strncasecmp ("LAMBDA", yytext, yyleng + 1))
@@ -44,6 +45,7 @@ ID       [a-zA-Z_][a-zA-Z0-9_]*
                     yylval.symbol.len = yyleng;
                     yylval.symbol.str = str_intern (yytext, yyleng);
 
+                    // special forms but still a symbol
                     if (!strncasecmp ("IF", yytext, yyleng + 1))
                       return IF;
                     if (!strncasecmp ("LET", yytext, yyleng + 1))

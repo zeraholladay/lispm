@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lisp_fmt.h"
-#include "lisp_headers.h"
-#include "lisp_mach.h"
-#include "lisp_types.h"
+#include "fmt.h"
+#include "lm.h"
 #include "parser.h"
 #include "readline.h"
+#include "types.h"
 
 #ifndef RL_BUF_SIZ
 #define RL_BUF_SIZ 8192
