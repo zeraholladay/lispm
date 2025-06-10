@@ -156,6 +156,9 @@ lm_eval (LM *lm)
 
   do
     {
+      if (lm->err_bool)
+        goto error;
+
       State s = CTL_POP (lm);
       Union u = s.u;
 
