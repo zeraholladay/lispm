@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "err.h"
+#include "lm_err.h"
 #include "prims.h"
 #include "types.h"
 
@@ -101,10 +101,6 @@ new (LM *lm, TypeEnum type, ...)
     case TYPE_SYMBOL:
       c->symbol.str = va_arg (ap, const char *);
       c->symbol.len = va_arg (ap, size_t);
-      break;
-    case TYPE_ERROR:
-      c->error.err_code = va_arg (ap, ErrorCode);
-      c->error.cell = va_arg (ap, Cell *);
       break;
     default:
       return NIL;

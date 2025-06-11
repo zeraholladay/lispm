@@ -1,5 +1,5 @@
-#ifndef ERR_H
-#define ERR_H
+#ifndef LM_ERR_H
+#define LM_ERR_H
 
 typedef enum
 {
