@@ -10,9 +10,9 @@
 
 Cell _nil = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } };
 
-Cell _t = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("T") };
+Cell _t = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("t") };
 
-Cell _quote = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("QUOTE") };
+Cell _quote = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("quote") };
 
 // sequence operations
 
@@ -93,21 +93,6 @@ length (Cell *lst)
     ++i;
 
   return i;
-}
-
-Cell *
-mapcar (LM *lm, Cell *fn, Cell *arglst)
-{
-  Cell *zip_args = zip (lm, arglst);
-  Cell *rev = NIL;
-
-  for (Cell *l = zip_args; !NILP (l); l = CDR (l))
-    {
-      Cell *res = lm_funcall (lm, fn, CAR (l));
-      rev = CONS (res, rev, lm);
-    }
-
-  return reverse_inplace (rev);
 }
 
 Cell *

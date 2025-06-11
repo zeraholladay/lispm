@@ -1,258 +1,305 @@
-# lispm: A Lisp-dialect.
+# lispm
 
-## Build and Test
+A simple Lisp-dialect with parts from Scheme.
+
+---
+
+## Table of Contents
+
+- [Quickstart](#quickstart)
+- [REPL Usage](#repl-usage)
+- [Types](#types)
+- [Special Forms](#special-forms)
+- [Primitives](#primitives)
+  - [Literals](#literals)
+  - [`quote`](#quote)
+  - [`set`](#set)
+  - [`let`](#let)
+  - [`lambda`](#lambda)
+  - [`funcall` / `apply`](#funcall--apply)
+  - [`progn`](#progn)
+  - [Conditionals](#conditionals)
+  - [List Operations](#list-operations)
+  - [Equality](#equality)
+  - [Printing](#printing)
+  - [Math](#math)
+  - [`map`](#map)
+- [TODO](#todo)
+
+---
+
+## Quickstart
 
 Build:
 
 ```bash
 make clean all
-```
+````
 
-Test:
+Run tests:
 
 ```bash
 make clean test
 ```
 
+Run the interpreter:
+
 ```bash
 bin/lispm
 ```
 
-Debug:
+Enable debug logging:
 
+```bash
+DEBUG=1 make clean all
 ```
-env DEBUG=1 make clean test all
+
+---
+
+## REPL Usage
+
+Start the REPL:
+
+```bash
+bin/lispm
 ```
+
+Type expressions at the prompt and press **Enter**.
+Use `Ctrl+D` (EOF) to exit.
+
+---
 
 ## Types
 
-- NIL
-- Symbols (i.e. a variable name)
-- Integers
-- Lambda
-- Primitive functions (C functions)
-- List (i.e. a Cell)
+* **NIL** — the empty list / false
+* **Symbols** — identifiers, e.g. `foo`
+* **Integers** — signed numbers, e.g. `42`, `-7`
+* **Primitive functions** — built in C
+* **Lambda** — user-defined functions
+* **List** — linked cons cells (`Cell`)
 
-## Primitives (or Operators)
+---
 
-### `T, NIL, symbols, and integers`
+## Special Forms
 
-Examples:
+### `quote`
 
 ```lisp
-T    ; primitive symbol true
-NIL  ; primitive NIL false
-'foo ; symbol foo
-'bar ; symbol bar
-42   ; number 42
--42  ; number -42
+(quote expr)
+'expr
+```
+
+Returns `expr` without evaluating it.
+
+```lisp
+'foo          ; ⇒ foo
+(quote (1 2)) ; ⇒ (1 2)
+```
+
+### `set`
+
+```lisp
+(set symbol value)
+```
+
+Binds `symbol` to `value` in the global environment.
+
+```lisp
+(set 'x 10) ; ⇒ 10
+x           ; ⇒ 10
+```
+
+### `let`
+
+```lisp
+(let ((var1 expr1)
+      (var2 expr2)
+      …)
+  body1
+  body2
+  …)
+```
+
+1. Evaluate each `exprN` in the outer environment.
+2. Bind `varN` to those values in a new lexical scope.
+3. Evaluate the body forms in that scope.
+4. Return the value of the last body form.
+
+```lisp
+(let ((a 1)
+      (b 2)
+      (c (+ a b)))  ; uses outer a/b
+  (list a b c))    ; ⇒ (1 2 3)
+```
+
+Bindings must be two‐element lists `(name init-expr)`.
+
+### `lambda`
+
+```lisp
+(lambda (p1 p2 … pN)
+  body1
+  body2
+  …)
+```
+
+Creates an anonymous function closing over the current environment.
+
+```lisp
+(set 'add2 (lambda (x y) (+ x y)))
+(add2 3 4) ; ⇒ 7
+```
+
+### `progn`
+
+```lisp
+(progn expr1 expr2 …)
+```
+
+Evaluate each `exprN` in sequence and return the last value.
+
+```lisp
+(progn
+  (set 'x 5)
+  (* x 2)) ; ⇒ 10
 ```
 
 ---
 
-### `QUOTE x`
-Returns the unevaluated expressioin.
+## Primitives
 
-Examples:
-
-```lisp
-'foo            ; foo
-(quote foo)     ; foo
-'(foo)          ; (foo)
-(quote '(foo))  ; (QUOTE foo)
-```
-
----
-
-### `SET x y`
-Sets a symbol to a value in the global context.
-
-Examples:
+### Literals
 
 ```lisp
-(set 'foo 42) ; 42
-foo           ; 42
+NIL    ; ⇒ NIL (false)
+T      ; ⇒ T   (true)
+'foo   ; ⇒ foo (symbol)
+42     ; ⇒ 42  (integer)
 ```
 
----
+### `quote`
 
-### `CONS x y`
-Constructs a list from two arguments.
+See [Special Forms](#special-forms).
 
-Examples:
+### `set`
 
-```lisp
-(cons 'foo '(bar))  ; (foo bar)
-(cons 'foo 'bar)    ; (foo.bar)
-```
+See [Special Forms](#special-forms).
 
----
+### `let`
 
-### `LIST arg1 arg2 ... argN`
-Creates a proper list (one ending in NIL cell).
+See [Special Forms](#special-forms).
 
-Examples:
+### `lambda`
 
-```lisp
-(list 'foo '(bar) 42) ; (foo (bar) 42)
-```
+See [Special Forms](#special-forms).
 
----
+### `funcall` / `apply`
 
-### `FIRST x & REST x`
-Returns the first or the rest of a list.
+* **`funcall`** — call a function with individual args:
 
-Examples:
+  ```lisp
+  (funcall set 'x 100) ; ⇒ 100
+  ```
 
-```lisp
-(first '(foo bar))  ; foo
-(rest '(foo bar))   ; (bar)
-```
+* **`apply`** — call a function with a list of args:
 
----
+  ```lisp
+  (apply + '(1 2 3)) ; ⇒ 6
+  ```
 
-### `LAMBDA (p1 p2 ... pN) ...`
-Create and returns a lambda from a function `body` and its captured environment (lexical scope).
+### `progn`
 
-Examples:
+See [Special Forms](#special-forms).
 
-```lisp
-(lambda (a b) (cons a (cons b '()))) ; creates an anonymous lambda
+### Conditionals
 
-(set 'foofn
-      (lambda (a b c)
-              (cons a (cons b (cons c '())))
-      )
-)
-(foofn 1 2 '3)  ; call a lambda named foofn
+* **`if`**
 
-((lambda (a b c)
-  (cons a (cons b (cons c '()))))
-  1 2 3) ; call an anonymous lambda with args 1 2 3
-```
+  ```lisp
+  (if cond then-expr else-expr)
+  ```
 
----
+* **`and`**, **`or`**
 
-### `APPLY fn arglist`
-Applies arguments to a primitive function or lambda.
+  ```lisp
+  (and a b c)
+  (or  a b c)
+  ```
 
-Examples:
+### List Operations
 
-```lisp
-(apply set '(a 42))
-(apply first '((a 42))) ; a
-(apply rest '((a 42)))  ; (42)
-```
+* **`cons`**
 
----
+  ```lisp
+  (cons x y) ; pair (x . y) or list if y is a list
+  ```
 
-### `FUNCALL fn arg1 arg2 ... argN`
-Calls arguments to a function.
+* **`list`**
 
-Examples:
+  ```lisp
+  (list a b c) ; ⇒ (a b c)
+  ```
 
-```lisp
-(funcall set 'a 42)     ; a is 42
-(funcall first '(a 42)) ; a
-;
-```
+* **`first`**, **`rest`**
 
----
+  ```lisp
+  (first '(a b)) ; ⇒ a
+  (rest  '(a b)) ; ⇒ (b)
+  ```
 
-### `LEN x`
-Length of a list.
+* **`length`**
 
-Examples:
+  ```lisp
+  (length '(1 2 3)) ; ⇒ 3
+  ```
 
-```lisp
-(len '(1 2 3 4 5))
-; 5
-```
+* **`reverse`**, **`butlast`**, **`last`**, **`nth`**
 
----
+  ```lisp
+  (reverse '(1 2 3))   ; ⇒ (3 2 1)
+  (butlast '(1 2 3))   ; ⇒ (1 2)
+  (last '(1 2 3))      ; ⇒ (3)
+  (nth 1 '(a b c))     ; ⇒ b
+  (mapcar list '(A B) '(1 2)) ; ⇒ ((A 1) (B 2))
+  ```
 
-### `MAPCAR FN (l1 ... lN)`
-Applies function FN to elements of lists with same index:
+### Equality
 
-Examples:
+* **`eq`**
 
-```lisp
-(mapcar LIST '(A B C) '(1 2 3)) ; pair
-; ((A 1) (B 2) (C 3))
-(mapcar (lambda (x) (+ x 10)) '(1 2 3 4))
-; (11 12 13 14)
-(mapcar * '(3 4 5) '(4 5 6))
-; (12 20 30)
-```
+  ```lisp
+  (eq 'a 'a) ; ⇒ T
+  (eq '(a) '(a)) ; ⇒ NIL  ; pointer equality, not deep
+  ```
 
+### Printing
 
----
+* **`print`**
 
-### `EVAL x`
-Evaluates an expression:
+  ```lisp
+  (print 'hello) ; prints hello, returns T
+  ```
 
-Examples:
+### Math
 
-```lisp
-(set 'a 42)
-(eval ''a)                  ; 42
-(eval '(cons 'foo '(bar)))  ; (foo bar)
-```
+* **`add`, `sub`, `mul`, `div`** (or `+ - * /`)
 
----
-
-### `EQ`
-Returns `T` or `NIL` if arguments are equal:
-
-Examples:
-
-```lisp
-(eq T T)            ; T/true
-(eq T NIL)          ; NIL/false
-(eq '() '())        ; T
-(eq '(dog) '(dog))  ; NIL
-(eq (len '(a b c))
-    (len '(1 2 3))) ; T
-```
-
----
-
-### `PRINT x`
-Prints an argument:
-
-Examples:
-
-```lisp
-(print 'foo) ; foo and returns T
-```
-
----
-
-### `MATH arg1 arg2 ... argN`
-Basic math `ADD, SUB, MUL,` and `DIV`.
-
-Examples:
-
-```lisp
-(ADD 10 11 10 11) ; 42
-(+ 10 11 10 11)   ; 42
-(- 43 1)          ; 42
-(* 7 6)           ; 42
-(/ 84 / 2)        ; 42
-```
+  ```lisp
+  (add 1 2 3) ; ⇒ 6
+  (+ 1 2 3)   ; ⇒ 6
+  (sub 5 2)   ; ⇒ 3
+  (* 3 4)     ; ⇒ 12
+  (/ 8 2)     ; ⇒ 4
+  ```
 
 ---
 
 ## TODO
 
-In no particular order:
-
-1. Add and mul should return 1 when no args.
-1. Real exceptions
-1. Docs/README.md
-1. Define/def
-1. Strings (started kind of)
-1. Parse errors (exceptions first)
-1. GC
-1. Max symbol size
-1. `define`, `let`
+* [ ] `add` / `mul` with zero args should return `1`
+* [ ] `define` form for globals
+* [ ] Full support for strings
+* [ ] Parse‐error reporting (exceptions)
+* [ ] Garbage collection
+* [ ] Maximum symbol length
+* [ ] `let*`, `letrec`, `define`, `defun`

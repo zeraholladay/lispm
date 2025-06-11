@@ -22,55 +22,56 @@ typedef struct Keyword
 
 struct Keyword;
 %%
-NIL,     NIL,
-T,       T,
-QUOTE,   QUOTE,
-',       QUOTE,
-AND,     &thunk_cells[THUNK_AND]
-APPEND,  &thunk_cells[THUNK_APPEND]
-APPLY,   &thunk_cells[THUNK_APPLY]
-BUTLAST, &thunk_cells[THUNK_BUTLAST]
-CAR,     &thunk_cells[THUNK_CAR]
-CDR,     &thunk_cells[THUNK_CDR]
-CONS,    &thunk_cells[THUNK_CONS]
-EQ,      &thunk_cells[THUNK_EQ]
-EVAL,    &thunk_cells[THUNK_EVAL]
-FIRST,   &thunk_cells[THUNK_FIRST]
-FUNCALL, &thunk_cells[THUNK_FUNCALL]
-GT,      &thunk_cells[THUNK_GT]
->,       &thunk_cells[THUNK_GT]
-IF,      &thunk_cells[THUNK_IF]
-LAST,    &thunk_cells[THUNK_LAST]
-LENGTH,  &thunk_cells[THUNK_LENGTH]
-LET,     &thunk_cells[THUNK_LET]
-LT,      &thunk_cells[THUNK_LT]
-<,       &thunk_cells[THUNK_LT]
-MAPCAR,  &thunk_cells[THUNK_MAPCAR]
-NTH,     &thunk_cells[THUNK_NTH]
-NOT,     &thunk_cells[THUNK_NOT]
-LIST,    &thunk_cells[THUNK_LIST]
-OR,      &thunk_cells[THUNK_OR]
-PRINT,   &thunk_cells[THUNK_PRINT]
-PROGN,   &thunk_cells[THUNK_PROGN]
-REST,    &thunk_cells[THUNK_REST]
-REVERSE, &thunk_cells[THUNK_REVERSE]
-SET,     &thunk_cells[THUNK_SET]
-STRING,  &thunk_cells[THUNK_STRING]
-ADD,     &thunk_cells[THUNK_ADD]
-+,       &thunk_cells[THUNK_ADD]
-SUB,     &thunk_cells[THUNK_SUB]
--,       &thunk_cells[THUNK_SUB]
-MUL,     &thunk_cells[THUNK_MUL]
-*,       &thunk_cells[THUNK_MUL]
-DIV,     &thunk_cells[THUNK_DIV]
-/,       &thunk_cells[THUNK_DIV]
-%% 
+"nil",     NIL
+"t",       T
+"quote",   QUOTE
+"'",       QUOTE
+"and",     &thunk_cells[THUNK_AND]
+"append",  &thunk_cells[THUNK_APPEND]
+"apply",   &thunk_cells[THUNK_APPLY]
+"butlast", &thunk_cells[THUNK_BUTLAST]
+"car",     &thunk_cells[THUNK_CAR]
+"cdr",     &thunk_cells[THUNK_CDR]
+"cons",    &thunk_cells[THUNK_CONS]
+"eq",      &thunk_cells[THUNK_EQ]
+"eval",    &thunk_cells[THUNK_EVAL]
+"first",   &thunk_cells[THUNK_FIRST]
+"funcall", &thunk_cells[THUNK_FUNCALL]
+"gt",      &thunk_cells[THUNK_GT]
+">",       &thunk_cells[THUNK_GT]
+"if",      &thunk_cells[THUNK_IF]
+"last",    &thunk_cells[THUNK_LAST]
+"length",  &thunk_cells[THUNK_LENGTH]
+"let",     &thunk_cells[THUNK_LET]
+"lt",      &thunk_cells[THUNK_LT]
+"<",       &thunk_cells[THUNK_LT]
+"map",     &thunk_cells[THUNK_MAP]
+"nth",     &thunk_cells[THUNK_NTH]
+"not",     &thunk_cells[THUNK_NOT]
+"list",    &thunk_cells[THUNK_LIST]
+"or",      &thunk_cells[THUNK_OR]
+"print",   &thunk_cells[THUNK_PRINT]
+"progn",   &thunk_cells[THUNK_PROGN]
+"rest",    &thunk_cells[THUNK_REST]
+"reverse", &thunk_cells[THUNK_REVERSE]
+"set",     &thunk_cells[THUNK_SET]
+"string",  &thunk_cells[THUNK_STRING]
+"add",     &thunk_cells[THUNK_ADD]
+"+",       &thunk_cells[THUNK_ADD]
+"sub",     &thunk_cells[THUNK_SUB]
+"-",       &thunk_cells[THUNK_SUB]
+"mul",     &thunk_cells[THUNK_MUL]
+"*",       &thunk_cells[THUNK_MUL]
+"div",     &thunk_cells[THUNK_DIV]
+"/",       &thunk_cells[THUNK_DIV]
+%%
+
 
 struct Cell *
 keyword_lookup (const char *str, size_t len)
 {
   Keyword *keyword = in_word_set(str, len);
-  
+
   if (!keyword)
     return NULL;
 

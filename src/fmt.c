@@ -86,7 +86,7 @@ void
 fmt_nil (StrBuf *sb, Cell *n)
 {
   (void)n;
-  appendf (sb, "NIL");
+  appendf (sb, "nil");
 }
 
 void

@@ -360,19 +360,19 @@ START_TEST (test_butlast)
 }
 END_TEST
 
-// (mapcar (lambda (x) (+ x 10)) '(1 2 3 4)) => (11 12 13 14)
-// (mapcar #'round '(1.3 2.7 3.4 4.5)) => (1 3 3 4)
-// (mapcar #'list '(123 symbol "string" 345) '(1 2 3)) => ((123 1) (SYMBOL 2)
-// ("string" 3)) (mapcar #'* '(3 4 5) '(4 5 6)) => (12 20 30)
-START_TEST (test_mapcar)
+// (map (lambda (x) (+ x 10)) '(1 2 3 4)) => (11 12 13 14)
+// (map #'round '(1.3 2.7 3.4 4.5)) => (1 3 3 4)
+// (map #'list '(123 symbol "string" 345) '(1 2 3)) => ((123 1) (SYMBOL 2)
+// ("string" 3)) (map #'* '(3 4 5) '(4 5 6)) => (12 20 30)
+START_TEST (test_map)
 {
   Cell *eval_res = NULL;
 
   eval_res
-      = run_eval_progn ("(apply + (mapcar (lambda (x) (+ x 10)) '(1 2 3 4)))");
+      = run_eval_progn ("(apply + (map (lambda (x) (+ x 10)) '(1 2 3 4)))");
   ck_assert (eval_res->integer == 50);
 
-  eval_res = run_eval_progn ("(apply + (mapcar * '(3 4 5) '(4 5 6)))");
+  eval_res = run_eval_progn ("(apply + (map * '(3 4 5) '(4 5 6)))");
   ck_assert (eval_res->integer == 62);
 }
 END_TEST
@@ -412,7 +412,7 @@ eval_suite (void)
   tcase_add_test (tc_core, test_eval);
   tcase_add_test (tc_core, test_last);
   tcase_add_test (tc_core, test_butlast);
-  tcase_add_test (tc_core, test_mapcar);
+  tcase_add_test (tc_core, test_map);
   tcase_add_test (tc_core, test_let);
 
   suite_add_tcase (s, tc_core);

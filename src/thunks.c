@@ -93,24 +93,6 @@ thunk_length (LM *lm, Cell *fn, Cell *lst)
 }
 
 Cell *
-thunk_mapcar (LM *lm, Cell *fn, Cell *args)
-{
-  if (!LISTP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "mapcar fn l1 ...");
-
-  Cell *mapfn = CAR (args);
-
-  if (!IS_INST (mapfn, THUNK) && !IS_INST (mapfn, LAMBDA))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "mapcar: not a function or lambda");
-
-  for (Cell *item = CDR (args); !NILP (item); item = CDR (item))
-    if (!LISTP (CAR (item)))
-      LM_ERR_RET (lm, ERR_INVALID_ARG, "mapcar: arg is not a list");
-
-  return mapcar (lm, mapfn, CDR (args));
-}
-
-Cell *
 thunk_nth (LM *lm, Cell *fn, Cell *args)
 {
   (void)lm;

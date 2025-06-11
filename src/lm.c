@@ -436,6 +436,11 @@ lm_eval (LM *lm)
           case THUNK_LET:
             CTL_PUSH (lm, let, CAR (u.lispm.arglist));
             break;
+          case THUNK_MAP:
+            CTL_PUSH (lm, map, NULL, NULL);
+            CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
+            CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
+            break;
           default:
             BAIL_ON_ERR (lm, ERR_INTERNAL, "lispm");
           }
@@ -535,6 +540,42 @@ lm_eval (LM *lm)
 
         goto next;
       }
+    ctl_map:
+      {
+        Cell *fn = u.funcall.fn ?: STK_POP (lm);
+        Cell *arglist = u.funcall.arglist ?: STK_POP (lm);
+
+        CTL_PUSH (lm, map_cont, fn, NIL, zip (lm, arglist));
+
+        goto next;
+      }
+    ctl_map_cont:
+      {
+        if (NILP (u.map_cont.ziplist))
+          {
+            Cell *res = reverse_inplace (u.map_cont.acc);
+            STK_PUSH (lm, res);
+          }
+        else
+          {
+            Cell *car = CAR (u.map_cont.ziplist);
+            Cell *cdr = CDR (u.map_cont.ziplist);
+
+            CTL_PUSH (lm, map_acc, u.map_cont.fn, u.map_cont.acc, cdr);
+            CTL_PUSH (lm, funcall, u.map_cont.fn, car);
+          }
+
+        goto next;
+      }
+    ctl_map_acc:
+      {
+        Cell *res = STK_POP (lm);
+        Cell *acc = CONS (res, u.map_acc.acc, lm);
+
+        CTL_PUSH (lm, map_cont, u.map_cont.fn, acc, u.map_acc.ziplist);
+
+        goto next;
+      }
     next:;
     }
   while (base_ctl <= lm->ctl.sp);
@@ -606,15 +647,6 @@ lm_err (LM *lm, ErrorCode code, const char *fmt, ...)
   va_end (ap);
 
   fputc ('\n', stderr);
-}
-
-Cell *
-lm_funcall (LM *lm, Cell *fn, Cell *arglist)
-{
-  CTL_PUSH (lm, funcall, fn, arglist);
-  return lm_eval (lm); // TODO: error detection
-
-  LM_ERR_HANDLERS (lm)
 }
 
 Cell *
