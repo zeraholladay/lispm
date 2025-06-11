@@ -10,9 +10,9 @@
 
 Cell _nil = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } };
 
-Cell _t = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("T") };
+Cell _t = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("t") };
 
-Cell _quote = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("QUOTE") };
+Cell _quote = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("quote") };
 
 // sequence operations
 
