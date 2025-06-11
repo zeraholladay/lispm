@@ -76,6 +76,41 @@ foo           ; 42
 
 ---
 
+**`let` Special Form**
+
+```lisp
+(let ((<var1> <expr1>)
+      (<var2> <expr2>)
+      …
+      (<varN> <exprN>))
+  <body1>
+  <body2>
+  …)
+```
+
+* **What it does**
+
+  1. Evaluates each `<expri>` in the **enclosing** (external) environment.
+  2. Creates a new lexical scope binding each `<vari>` to the corresponding value.
+  3. Evaluates the `<body…>` forms in that extended environment.
+  4. Returns the value of the last body form.
+
+* **Example**
+
+  ```lisp
+  (let ((a 1)
+        (b 2)
+        (c 3)
+        (d (+ 1 2)))    ; (+ 1 2) runs in the outer scope
+    (list a b c d))     ; ⇒ (1 2 3 3)
+  ```
+
+* **Binding‐pair syntax**
+  Each binding must be a two-element list `(name init-expr)`.
+  Unlike some Lisp variants, you **cannot** omit the initializer or use a single symbol; every `name` must be paired with an expression.
+
+---
+
 ### `CONS x y`
 Constructs a list from two arguments.
 
@@ -171,20 +206,21 @@ Examples:
 
 ---
 
-### `MAPCAR FN (l1 ... lN)`
+### `MAP FN (l1 ... lN)`
 Applies function FN to elements of lists with same index:
 
 Examples:
 
 ```lisp
-(mapcar LIST '(A B C) '(1 2 3)) ; pair
+(map LIST '(A B C) '(1 2 3)) ; pair
 ; ((A 1) (B 2) (C 3))
-(mapcar (lambda (x) (+ x 10)) '(1 2 3 4))
+(map (lambda (x) (+ x 10)) '(1 2 3 4))
 ; (11 12 13 14)
-(mapcar * '(3 4 5) '(4 5 6))
+(map * '(3 4 5) '(4 5 6))
 ; (12 20 30)
 ```
 
+Thought the Scheme `map` made more sense than the Lisp `mapcar`.
 
 ---
 

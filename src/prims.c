@@ -96,21 +96,6 @@ length (Cell *lst)
 }
 
 Cell *
-mapcar (LM *lm, Cell *fn, Cell *arglst)
-{
-  Cell *zip_args = zip (lm, arglst);
-  Cell *rev = NIL;
-
-  for (Cell *l = zip_args; !NILP (l); l = CDR (l))
-    {
-      Cell *res = lm_funcall (lm, fn, CAR (l));
-      rev = CONS (res, rev, lm);
-    }
-
-  return reverse_inplace (rev);
-}
-
-Cell *
 nth (size_t idx, Cell *lst)
 {
   for (size_t i = 0; i < idx; ++i)

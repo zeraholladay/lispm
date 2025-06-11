@@ -650,15 +650,6 @@ lm_err (LM *lm, ErrorCode code, const char *fmt, ...)
 }
 
 Cell *
-lm_funcall (LM *lm, Cell *fn, Cell *arglist)
-{
-  CTL_PUSH (lm, funcall, fn, arglist);
-  return lm_eval (lm); // TODO: error detection
-
-  LM_ERR_HANDLERS (lm)
-}
-
-Cell *
 lm_progn (LM *lm, Cell *progn)
 {
   CTL_PUSH (lm, progn, NIL, progn);
