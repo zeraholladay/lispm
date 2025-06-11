@@ -247,10 +247,10 @@ See [Special Forms](#special-forms).
   (rest  '(a b)) ; ⇒ (b)
   ```
 
-* **`len`** (or `length`)
+* **`length`**
 
   ```lisp
-  (len '(1 2 3)) ; ⇒ 3
+  (length '(1 2 3)) ; ⇒ 3
   ```
 
 * **`reverse`**, **`butlast`**, **`last`**, **`nth`**, **`zip`**
