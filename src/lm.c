@@ -594,10 +594,18 @@ lm_env_set (LM *lm, const char *key, Cell *val)
 }
 
 void
-lm_err (LM *lm, ErrorCode code, const char *msg)
+lm_err (LM *lm, ErrorCode code, const char *fmt, ...)
 {
+  va_list ap;
   lm->err_bool = true;
-  fprintf (stderr, "%s: %s\n", error_messages[code], msg);
+
+  fprintf (stderr, "%s: ", error_messages[code]);
+
+  va_start (ap, fmt);
+  vfprintf (stderr, fmt, ap);
+  va_end (ap);
+
+  fputc ('\n', stderr);
 }
 
 Cell *

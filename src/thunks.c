@@ -87,7 +87,7 @@ thunk_length (LM *lm, Cell *fn, Cell *lst)
   Cell *car = CAR (lst);
 
   if (!LISTP (lst))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "len");
+    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return INTEGER (length (car), lm);
 }
@@ -117,7 +117,7 @@ thunk_nth (LM *lm, Cell *fn, Cell *args)
 
   if (!IS_INST (args, CONS) || !IS_INST (CAR (args), INTEGER)
       || !LISTP (CAR (CDR (args))))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "nth: i list");
+    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "%s i lst", thunk_get_name (fn));
 
   size_t idx = (size_t)CAR (args)->integer;
   Cell *list = CAR (CDR (args));
@@ -131,7 +131,7 @@ thunk_print (LM *lm, Cell *fn, Cell *args)
   (void)lm;
 
   if (!LISTP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "print");
+    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   PRINT (CAR (args));
 
@@ -142,7 +142,7 @@ Cell *
 thunk_reverse (LM *lm, Cell *fn, Cell *lst)
 {
   if (!LISTP (lst))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "cdr");
+    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return reverse (lm, CAR (lst));
 }
@@ -151,7 +151,7 @@ Cell *
 thunk_set (LM *lm, Cell *fn, Cell *args)
 {
   if (!IS_INST (CAR (args), SYMBOL))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "set");
+    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return set (lm, CAR (args), CAR (CDR (args)));
 }
@@ -187,7 +187,7 @@ thunk_not (LM *lm, Cell *fn, Cell *args)
   EqFn nil_eq = type (NIL)->eq;
 
   if (!LISTP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "not");
+    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return nil_eq (NIL, CAR (args)) ? T : NIL;
 }

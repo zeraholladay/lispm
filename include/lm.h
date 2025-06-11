@@ -1,6 +1,7 @@
 #ifndef LM_H
 #define LM_H
 
+#include <stdarg.h>
 #include <stdbool.h>
 
 #include "lm_err.h"
@@ -21,10 +22,10 @@
 #define LM_OBJ_POOL_CAP 1024
 #endif
 
-#define LM_ERR_RET(lm, err_code, msg)                                         \
+#define LM_ERR_RET(lm, err_code, fmt, ...)                                    \
   do                                                                          \
     {                                                                         \
-      lm_err (lm, err_code, msg);                                             \
+      lm_err ((lm), (err_code), (fmt), ##__VA_ARGS__);                        \
       return NIL;                                                             \
     }                                                                         \
   while (0)
@@ -46,7 +47,7 @@ bool lm_env_let (LM *lm, const char *key, Cell *val);
 bool lm_env_set (LM *lm, const char *key, Cell *val);
 
 // error access
-void lm_err (LM *lm, ErrorCode code, const char *msg);
+void lm_err (LM *lm, ErrorCode code, const char *fmt, ...);
 
 // external entrypoints
 Cell *lm_funcall (LM *lm, Cell *fn, Cell *arglist);
