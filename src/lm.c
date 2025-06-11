@@ -43,6 +43,20 @@
     }                                                                         \
   while (0)
 
+#define LM_ERR_HANDLERS(lm)                                                   \
+  error:                                                                      \
+  fputs ("*** Error:", stderr);                                               \
+  goto reset;                                                                 \
+  underflow:                                                                  \
+  fputs ("*** Underflow:", stderr);                                           \
+  goto reset;                                                                 \
+  overflow:                                                                   \
+  fputs ("*** Overflow:", stderr);                                            \
+  goto reset;                                                                 \
+  reset:                                                                      \
+  lm_reset (lm);                                                              \
+  return NIL;
+
 #define BAIL_ON_ERR(lm, err_code, msg)                                        \
   do                                                                          \
     {                                                                         \
@@ -527,21 +541,7 @@ lm_eval (LM *lm)
 
   return STK_POP (lm);
 
-error:;
-  fputs ("*** Error:", stderr);
-  goto reset;
-
-underflow:;
-  fputs ("*** Underflow:", stderr);
-  goto reset;
-
-overflow:;
-  fputs ("*** Overflow:", stderr);
-  goto reset;
-
-reset:
-  lm_reset (lm);
-  return NIL;
+  LM_ERR_HANDLERS (lm)
 }
 
 LM *
@@ -614,10 +614,7 @@ lm_funcall (LM *lm, Cell *fn, Cell *arglist)
   CTL_PUSH (lm, funcall, fn, arglist);
   return lm_eval (lm); // TODO: error detection
 
-overflow:
-  fputs ("*** Overflow:", stderr);
-  lm_reset (lm);
-  return NIL;
+  LM_ERR_HANDLERS (lm)
 }
 
 Cell *
@@ -626,8 +623,5 @@ lm_progn (LM *lm, Cell *progn)
   CTL_PUSH (lm, progn, NIL, progn);
   return lm_eval (lm); // TODO: error detection
 
-overflow:
-  fputs ("*** Overflow:", stderr);
-  lm_reset (lm);
-  return NIL;
+  LM_ERR_HANDLERS (lm)
 }
