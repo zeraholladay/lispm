@@ -253,7 +253,7 @@ See [Special Forms](#special-forms).
   (length '(1 2 3)) ; ⇒ 3
   ```
 
-* **`reverse`**, **`butlast`**, **`last`**, **`nth`**, **`zip`**
+* **`reverse`**, **`butlast`**, **`last`**, **`nth`**
 
   ```lisp
   (reverse '(1 2 3))   ; ⇒ (3 2 1)
@@ -297,12 +297,9 @@ See [Special Forms](#special-forms).
 ## TODO
 
 * [ ] `add` / `mul` with zero args should return `1`
-* [ ] Proper exception objects
-* [ ] Detailed README & documentation
 * [ ] `define` form for globals
 * [ ] Full support for strings
 * [ ] Parse‐error reporting (exceptions)
 * [ ] Garbage collection
 * [ ] Maximum symbol length
 * [ ] `let*`, `letrec`, `define`, `defun`
-* [ ] Improved REPL (history, line editing)
