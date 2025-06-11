@@ -4,8 +4,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "err.h"
 #include "lm.h"
+#include "lm_err.h"
 
 #define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 
@@ -14,8 +14,6 @@
 #define STRING(str, lm) (new (lm, TYPE_STRING, str))
 #define CONS(car, cdr, lm) (new (lm, TYPE_CONS, car, cdr))
 #define LAMBDA(params, body, lm) (new (lm, TYPE_LAMBDA, params, body))
-#define ERROR(err_code, msg, lm)                                              \
-  (new (lm, TYPE_ERROR, err_code, STRING (msg, lm)))
 
 // forward decls
 struct Cell;
@@ -39,7 +37,6 @@ typedef enum
   TYPE_CONS,    // cons cells
   TYPE_THUNK,   // thunk fn
   TYPE_LAMBDA,  // user-defined fn
-  TYPE_ERROR,   // error
   TYPE_UNKNOWN, // unknown ptr
   _TYPE_END     // sentinel for end
 } TypeEnum;
@@ -92,8 +89,6 @@ struct Cell
     // Function-like values
     ThunkEnum thunk;
     Lambda lambda;
-    // Error
-    Error error;
   };
 };
 

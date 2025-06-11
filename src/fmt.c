@@ -33,7 +33,6 @@ static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
   [TYPE_INTEGER] = fmt_integer, [TYPE_STRING] = fmt_string,
   [TYPE_CONS] = fmt_cons,       [TYPE_THUNK] = fmt_thunk,
   [TYPE_LAMBDA] = fmt_lambda,   [TYPE_UNKNOWN] = fmt_unknown,
-  [TYPE_ERROR] = fmt_error,
 };
 
 static void
@@ -159,15 +158,6 @@ fmt_lambda (StrBuf *sb, Cell *n)
 
   free (params_str);
   free (body_str);
-}
-
-void
-fmt_error (StrBuf *sb, Cell *c)
-{
-  char *cell_str = format (c->error.cell);
-  appendf (sb, "*** error: %s: %s", error_messages[c->error.err_code],
-           cell_str);
-  free (cell_str);
 }
 
 void

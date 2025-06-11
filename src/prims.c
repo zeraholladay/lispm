@@ -211,7 +211,7 @@ lookup (LM *lm, Cell *cell)
 
   Cell *res = lm_env_lkup (lm, key);
   if (!res)
-    return ERROR (ERR_SYMBOL_NOT_FOUND, key, lm);
+    LM_ERR_RET (lm, ERR_SYMBOL_NOT_FOUND, key);
 
   return res;
 }
@@ -220,13 +220,13 @@ Cell *
 set (LM *lm, Cell *car, Cell *cdr)
 {
   if (!IS_INST (car, SYMBOL))
-    return ERROR (ERR_INVALID_ARG, "set", lm);
+    LM_ERR_RET (lm, ERR_INVALID_ARG, "set");
 
   const char *key = car->symbol.str;
   size_t len = car->symbol.len;
 
   if (keyword_lookup (key, len))
-    return ERROR (ERR_INVALID_ARG, "set", lm);
+    LM_ERR_RET (lm, ERR_INVALID_ARG, "set");
 
   lm_env_set (lm, key, cdr);
 

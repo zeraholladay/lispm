@@ -43,10 +43,10 @@
     }                                                                         \
   while (0)
 
-#define ERR_EXIT(code, msg)                                                   \
+#define BAIL_ON_ERR(lm, err_code, msg)                                        \
   do                                                                          \
     {                                                                         \
-      fprintf (stderr, "%s:%s %s\n", #code, error_messages[code], msg);       \
+      lm_err (lm, err_code, msg);                                             \
       goto error;                                                             \
     }                                                                         \
   while (0);
@@ -111,9 +111,7 @@ lm_reset (LM *lm)
   fprintf (stderr, fmt, lm->stk.sp, lm->stk.sp, lm->dmp.sp);
 
   lm->stk.sp = lm->ctl.sp = lm->dmp.sp = 0;
-
   lm->err_bool = false;
-
   env_reset (&lm->env);
 }
 
@@ -170,7 +168,7 @@ lm_eval (LM *lm)
 #include "lm.def"
 #undef STATE
         default:
-          ERR_EXIT (ERR_INTERNAL, "No such state.");
+          BAIL_ON_ERR (lm, ERR_INTERNAL, "No such state.");
         }
 
     ctl_closure_leave:
@@ -209,7 +207,7 @@ lm_eval (LM *lm)
               }
           }
         else
-          ERR_EXIT (ERR_INTERNAL, "eval");
+          BAIL_ON_ERR (lm, ERR_INTERNAL, "eval");
 
         goto next;
       }
@@ -269,8 +267,8 @@ lm_eval (LM *lm)
 
         if (IS_INST (fn, THUNK))
           {
-            Cell *res = thunker (lm, fn, arglist);
-            STK_PUSH (lm, res);
+            Cell *ret = thunker (lm, fn, arglist);
+            STK_PUSH (lm, ret);
           }
         else if (IS_INST (fn, LAMBDA))
           {
@@ -279,7 +277,7 @@ lm_eval (LM *lm)
             CTL_PUSH (lm, closure_enter);
           }
         else
-          ERR_EXIT (ERR_NOT_A_FUNCTION, "funcall");
+          BAIL_ON_ERR (lm, ERR_NOT_A_FUNCTION, "funcall");
 
         goto next;
       }
@@ -297,7 +295,7 @@ lm_eval (LM *lm)
           {
             ErrorCode err
                 = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
-            ERR_EXIT (err, "lambda");
+            BAIL_ON_ERR (lm, err, "lambda");
           }
 
         Cell *pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
@@ -326,7 +324,7 @@ lm_eval (LM *lm)
             Cell *pair = CAR (pairs);
 
             if (!CONSP (pair))
-              ERR_EXIT (ERR_INVALID_ARG, "let: binding not a list");
+              BAIL_ON_ERR (lm, ERR_INVALID_ARG, "let: binding not a list");
 
             rev_vars = CONS (CAR (pair), rev_vars, lm);
             rev_exprs = CONS (CADR (pair), rev_exprs, lm);
@@ -352,13 +350,13 @@ lm_eval (LM *lm)
         Cell *arglist = u.apply.arglist ?: STK_POP (lm);
 
         if (!LISTP (arglist))
-          ERR_EXIT (ERR_MISSING_ARG, "apply: not a list.");
+          BAIL_ON_ERR (lm, ERR_MISSING_ARG, "apply: not a list.");
 
         Cell *fixed = butlast (lm, arglist);
         Cell *tail_list = CAR (last (lm, arglist));
 
         if (!LISTP (tail_list))
-          ERR_EXIT (ERR_MISSING_ARG, "apply: last not a list.");
+          BAIL_ON_ERR (lm, ERR_MISSING_ARG, "apply: last not a list.");
 
         Cell *all = append_inplace (fixed, tail_list);
 
@@ -425,7 +423,7 @@ lm_eval (LM *lm)
             CTL_PUSH (lm, let, CAR (u.lispm.arglist));
             break;
           default:
-            ERR_EXIT (ERR_INTERNAL, "lispm");
+            BAIL_ON_ERR (lm, ERR_INTERNAL, "lispm");
           }
 
         goto next;
@@ -593,6 +591,13 @@ bool
 lm_env_set (LM *lm, const char *key, Cell *val)
 {
   return env_set (lm->env, key, val);
+}
+
+void
+lm_err (LM *lm, ErrorCode code, const char *msg)
+{
+  lm->err_bool = true;
+  fprintf (stderr, "%s: %s\n", error_messages[code], msg);
 }
 
 Cell *

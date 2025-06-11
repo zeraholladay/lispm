@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#include "lm_err.h"
+
 #ifndef LISPM_STK_MAX
 #define LISPM_STK_MAX 1024
 #endif
@@ -19,6 +21,14 @@
 #define LM_OBJ_POOL_CAP 1024
 #endif
 
+#define LM_ERR_RET(lm, err_code, msg)                                         \
+  do                                                                          \
+    {                                                                         \
+      lm_err (lm, err_code, msg);                                             \
+      return NIL;                                                             \
+    }                                                                         \
+  while (0)
+
 // forward decls
 typedef struct Cell Cell;
 typedef struct lispm_secd LM;
@@ -34,6 +44,9 @@ Cell *lm_alloc_cell (LM *lm);
 Cell *lm_env_lkup (LM *lm, const char *key);
 bool lm_env_let (LM *lm, const char *key, Cell *val);
 bool lm_env_set (LM *lm, const char *key, Cell *val);
+
+// error access
+void lm_err (LM *lm, ErrorCode code, const char *msg);
 
 // external entrypoints
 Cell *lm_funcall (LM *lm, Cell *fn, Cell *arglist);
