@@ -187,12 +187,12 @@ lm_eval (LM *lm)
 
     ctl_closure_leave:
       {
-        env_enter_frame (&lm->env);
+        env_leave_frame (&lm->env);
         goto next;
       }
     ctl_closure_enter:
       {
-        env_leave_frame (&lm->env);
+        env_enter_frame (&lm->env);
         goto next;
       }
     ctl_eval:

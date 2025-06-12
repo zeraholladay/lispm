@@ -46,8 +46,8 @@ START_TEST (test_literal_expressions)
   eval_res = run_eval_progn ("-42");
   ck_assert (eval_res->integer == -42);
 
-  eval_res = run_eval_progn ("T");
-  ck_assert_str_eq (eval_res->symbol.str, "T");
+  eval_res = run_eval_progn ("t");
+  ck_assert_ptr_eq (eval_res, T);
 
   eval_res = run_eval_progn ("NIL");
   ck_assert (NILP (eval_res));
@@ -389,32 +389,155 @@ START_TEST (test_let)
 }
 END_TEST
 
+// ChatGPT tests
+
+START_TEST (test_and_or)
+{
+  Cell *r;
+
+  // and with zero args → T
+  r = run_eval_progn ("(and)");
+  ck_assert_ptr_eq (r, T);
+
+  // and stops on NIL
+  r = run_eval_progn ("(and T NIL (error))");
+  ck_assert_ptr_eq (r, NIL);
+
+  // and returns last truthy
+  r = run_eval_progn ("(and T 1 2 3)");
+  ck_assert_int_eq (r->integer, 3);
+
+  // or with zero args → NIL
+  r = run_eval_progn ("(or)");
+  ck_assert_ptr_eq (r, NIL);
+
+  // or stops on T
+  r = run_eval_progn ("(or NIL T (error))");
+  ck_assert_ptr_eq (r, T);
+
+  // or returns first truthy
+  r = run_eval_progn ("(or NIL 0 42)");
+  ck_assert_int_eq (r->integer, 0);
+}
+END_TEST
+
+START_TEST (test_progn)
+{
+  Cell *r;
+
+  r = run_eval_progn ("(progn)");
+  ck_assert_ptr_eq (r, NIL);
+
+  r = run_eval_progn ("(progn 1 2 3)");
+  ck_assert_int_eq (r->integer, 3);
+
+  // side-effect ordering: define x then use
+  r = run_eval_progn ("(progn (set 'x 10) (set 'x (+ x 5)) x)");
+  ck_assert_int_eq (r->integer, 15);
+}
+END_TEST
+
+START_TEST (test_map_edge_cases)
+{
+  Cell *r;
+
+  // map over empty list
+  r = run_eval_progn ("(map (lambda (x) x) '())");
+  ck_assert_ptr_eq (r, NIL);
+
+  // map over multiple lists of differing lengths → should truncate
+  r = run_eval_progn ("(map (lambda (a b) (+ a b)) '(1 2 3) '(10 20))");
+  // expects (11 22)
+  ck_assert_int_eq (CADR (r)->integer, 22);
+  ck_assert_ptr_eq (CDDR (r), NIL);
+
+  // apply map via apply
+  r = run_eval_progn ("(apply map '( + (1 2 3) (4 5 6)))");
+  ck_assert_int_eq (CADR (r)->integer, 7);
+}
+
+END_TEST
+
+START_TEST (test_error_arity)
+{
+  // first with no args → error
+  Cell *r = run_eval_progn ("(first)");
+  ck_assert (IS_INST (r, NIL));
+
+  // length without args → error
+  r = run_eval_progn ("(length)");
+  ck_assert (IS_INST (r, NIL));
+
+  // cons with one arg → error
+  r = run_eval_progn ("(cons 'a)");
+  ck_assert (IS_INST (r, NIL));
+}
+END_TEST
+
+START_TEST (test_nested_let_lexical_scope)
+{
+  // inner let shouldn't override outer
+  const char *prog = "(set 'x 100) "
+                     "(let ((x 1) (x 2)) x) "
+                     "x";
+  Cell *r = run_eval_progn (prog);
+  ck_assert_int_eq (r->integer, 100);
+}
+END_TEST
+
+START_TEST (test_quote_edge)
+{
+  Cell *r;
+  // nested quoting
+  r = run_eval_progn ("'('foo)");
+  // equivalent to (quote (quote foo))
+  // so r should be the list (quote foo)
+  ck_assert (!NILP (r));
+  ck_assert_str_eq (CAAR (r)->symbol.str, "quote");
+}
+END_TEST
+
+// START_TEST (test_string_literals)
+// {
+//   // if you support strings
+//   Cell *r = run_eval_progn ("(print \"hello world\")");
+//   ck_assert_ptr_eq (r, T);
+// }
+END_TEST
+
 Suite *
 eval_suite (void)
 {
   Suite *s = suite_create ("Eval");
 
-  TCase *tc_core = tcase_create ("Core");
-  tcase_add_checked_fixture (tc_core, setup, teardown);
+  TCase *tc = tcase_create ("Core");
+  tcase_add_checked_fixture (tc, setup, teardown);
 
-  tcase_add_test (tc_core, test_literal_expressions);
-  tcase_add_test (tc_core, test_quote);
-  tcase_add_test (tc_core, test_cons);
-  tcase_add_test (tc_core, test_set_and_lookup);
-  tcase_add_test (tc_core, test_first);
-  tcase_add_test (tc_core, test_rest);
-  tcase_add_test (tc_core, test_len);
-  tcase_add_test (tc_core, test_if);
-  tcase_add_test (tc_core, test_list);
-  tcase_add_test (tc_core, test_lambda);
-  tcase_add_test (tc_core, test_apply);
-  tcase_add_test (tc_core, test_funcall);
-  tcase_add_test (tc_core, test_eval);
-  tcase_add_test (tc_core, test_last);
-  tcase_add_test (tc_core, test_butlast);
-  tcase_add_test (tc_core, test_map);
-  tcase_add_test (tc_core, test_let);
+  tcase_add_test (tc, test_literal_expressions);
+  tcase_add_test (tc, test_quote);
+  tcase_add_test (tc, test_cons);
+  tcase_add_test (tc, test_set_and_lookup);
+  tcase_add_test (tc, test_first);
+  tcase_add_test (tc, test_rest);
+  tcase_add_test (tc, test_len);
+  tcase_add_test (tc, test_if);
+  tcase_add_test (tc, test_list);
+  tcase_add_test (tc, test_lambda);
+  tcase_add_test (tc, test_apply);
+  tcase_add_test (tc, test_funcall);
+  tcase_add_test (tc, test_eval);
+  tcase_add_test (tc, test_last);
+  tcase_add_test (tc, test_butlast);
+  tcase_add_test (tc, test_map);
+  tcase_add_test (tc, test_let);
+  tcase_add_test (tc, test_and_or);
+  tcase_add_test (tc, test_progn);
+  tcase_add_test (tc, test_map_edge_cases);
+  tcase_add_test (tc, test_error_arity);
+  tcase_add_test (tc, test_nested_let_lexical_scope);
+  tcase_add_test (tc, test_quote_edge);
+  // tcase_add_test (tc, test_string_literals);
 
-  suite_add_tcase (s, tc_core);
+  suite_add_tcase (s, tc);
   return s;
 }
