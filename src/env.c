@@ -57,7 +57,7 @@ env_set (Env *frame, const char *key, void *val)
   while (frame)
     {
       if (dict_has_key (frame->dict, key))
-        return dict_insert (frame, key, val);
+        return dict_insert (frame->dict, key, val);
 
       frame = frame->parent;
     }

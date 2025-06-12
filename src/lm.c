@@ -44,19 +44,20 @@
     }                                                                         \
   while (0)
 
-#define LM_ERR_HANDLERS(lm)                                                   \
-  error:                                                                      \
-  fputs ("*** Error:", stderr);                                               \
-  goto reset;                                                                 \
-  underflow:                                                                  \
-  fputs ("*** Underflow:", stderr);                                           \
-  goto reset;                                                                 \
-  overflow:                                                                   \
-  fputs ("*** Overflow:", stderr);                                            \
-  goto reset;                                                                 \
-  reset:                                                                      \
-  lm_reset (lm);                                                              \
-  return NIL;
+#define LM_ERR_STATE(_label)                                                  \
+  _label:                                                                     \
+  fputs ("*** " #_label ":", stderr);                                         \
+  goto reset;
+
+#define LM_ERR_HANDLERS(lm, ...)                                              \
+  do                                                                          \
+    {                                                                         \
+      __VA_ARGS__                                                             \
+    reset:                                                                    \
+      lm_reset (lm);                                                          \
+      return NIL;                                                             \
+    }                                                                         \
+  while (0)
 
 #define BAIL_ON_ERR(lm, err_code, fmt, ...)                                   \
   do                                                                          \
@@ -202,8 +203,7 @@ lm_eval (LM *lm)
 
         if (IS_INST (expr, SYMBOL))
           {
-            Cell *res
-                = keyword_lookup (expr->symbol.str, expr->symbol.len);
+            Cell *res = keyword_lookup (expr->symbol.str, expr->symbol.len);
 
             if (res)
               STK_PUSH (lm, res);
@@ -373,7 +373,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
-      ctl_define:
+    ctl_define:
       {
         Cell *car = STK_POP (lm);
         Cell *cdr = STK_POP (lm);
@@ -385,7 +385,8 @@ lm_eval (LM *lm)
         size_t len = car->symbol.len;
 
         if (keyword_lookup (key, len))
-          BAIL_ON_ERR (lm, ERR_INVALID_ARG, "cannot define a keyword: %s", key);
+          BAIL_ON_ERR (lm, ERR_INVALID_ARG, "cannot define a keyword: %s",
+                       key);
 
         if (!env_define (lm->env, car, cdr))
           BAIL_ON_ERR (lm, ERR_INTERNAL, key);
@@ -394,7 +395,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
-      ctl_set:
+    ctl_set:
       {
         Cell *car = STK_POP (lm);
         Cell *cdr = STK_POP (lm);
@@ -650,7 +651,8 @@ lm_eval (LM *lm)
 
   return STK_POP (lm);
 
-  LM_ERR_HANDLERS (lm)
+  LM_ERR_HANDLERS (lm, LM_ERR_STATE (error) LM_ERR_STATE (overflow)
+                           LM_ERR_STATE (underflow));
 }
 
 LM *
@@ -705,5 +707,5 @@ lm_progn (LM *lm, Cell *progn)
   CTL_PUSH (lm, progn, NIL, progn);
   return lm_eval (lm); // TODO: error detection
 
-  LM_ERR_HANDLERS (lm)
+  LM_ERR_HANDLERS (lm, LM_ERR_STATE (overflow));
 }
