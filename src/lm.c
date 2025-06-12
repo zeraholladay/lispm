@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "env.h"
+#include "keywords.h"
 #include "lm.h"
 #include "palloc.h"
 #include "prims.h"
@@ -57,13 +58,13 @@
   lm_reset (lm);                                                              \
   return NIL;
 
-#define BAIL_ON_ERR(lm, err_code, msg)                                        \
+#define BAIL_ON_ERR(lm, err_code, fmt, ...)                                   \
   do                                                                          \
     {                                                                         \
-      lm_err (lm, err_code, msg);                                             \
+      lm_err ((lm), (err_code), (fmt), ##__VA_ARGS__);                        \
       goto error;                                                             \
     }                                                                         \
-  while (0);
+  while (0)
 
 typedef enum
 {
@@ -200,7 +201,21 @@ lm_eval (LM *lm)
         Cell *expr = u.eval.expr ?: STK_POP (lm);
 
         if (IS_INST (expr, SYMBOL))
-          STK_PUSH (lm, lookup (lm, expr));
+          {
+            Cell *res
+                = keyword_lookup (expr->symbol.str, expr->symbol.len);
+
+            if (res)
+              STK_PUSH (lm, res);
+            else
+              {
+                res = env_lookup (lm->env, expr->symbol.str);
+                if (res)
+                  STK_PUSH (lm, res);
+                else
+                  BAIL_ON_ERR (lm, ERR_SYMBOL_NOT_FOUND, expr->symbol.str);
+              }
+          }
         else if (!LISTP (expr))
           STK_PUSH (lm, expr);
         else if (LISTP (expr))
@@ -317,7 +332,7 @@ lm_eval (LM *lm)
         while (!NILP (pairs))
           {
             Cell *pair = CAR (pairs);
-            lm_env_let (lm, (CAR (pair))->symbol.str, CADR (pair));
+            lm_env_define (lm, (CAR (pair))->symbol.str, CADR (pair));
             pairs = CDR (pairs);
           }
 
@@ -355,6 +370,49 @@ lm_eval (LM *lm)
         CTL_PUSH (lm, lambda, fn, NULL);
         CTL_PUSH (lm, closure_enter);
         CTL_PUSH (lm, evlis, NIL, exprs);
+
+        goto next;
+      }
+      ctl_define:
+      {
+        Cell *car = STK_POP (lm);
+        Cell *cdr = STK_POP (lm);
+
+        if (!IS_INST (car, SYMBOL))
+          BAIL_ON_ERR (lm, ERR_INVALID_ARG, "define: not a symbol");
+
+        const char *key = car->symbol.str;
+        size_t len = car->symbol.len;
+
+        if (keyword_lookup (key, len))
+          BAIL_ON_ERR (lm, ERR_INVALID_ARG, "cannot define a keyword: %s", key);
+
+        if (!env_define (lm->env, car, cdr))
+          BAIL_ON_ERR (lm, ERR_INTERNAL, key);
+
+        STK_PUSH (lm, cdr);
+
+        goto next;
+      }
+      ctl_set:
+      {
+        Cell *car = STK_POP (lm);
+        Cell *cdr = STK_POP (lm);
+
+        if (!IS_INST (car, SYMBOL))
+          BAIL_ON_ERR (lm, ERR_INVALID_ARG, "set: not a symbol");
+
+        const char *key = car->symbol.str;
+        size_t len = car->symbol.len;
+
+        if (keyword_lookup (key, len))
+          BAIL_ON_ERR (lm, ERR_INVALID_ARG, "cannot set a keyword: %s", key);
+
+        bool valid = env_set (lm->env, key, cdr);
+        if (!valid)
+          BAIL_ON_ERR (lm, ERR_SYMBOL_NOT_FOUND, key);
+
+        STK_PUSH (lm, cdr);
 
         goto next;
       }
@@ -432,6 +490,16 @@ lm_eval (LM *lm)
             break;
           case THUNK_OR:
             CTL_PUSH (lm, or, u.lispm.arglist);
+            break;
+          case THUNK_DEFINE:
+            CTL_PUSH (lm, define);
+            CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
+            CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
+            break;
+          case THUNK_SET:
+            CTL_PUSH (lm, set);
+            CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
+            CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
             break;
           case THUNK_LET:
             CTL_PUSH (lm, let, CAR (u.lispm.arglist));
@@ -614,24 +682,6 @@ Cell *
 lm_alloc_cell (LM *lm)
 {
   return pool_xalloc_hier (&lm->pool);
-}
-
-Cell *
-lm_env_lkup (LM *lm, const char *key)
-{
-  return env_lookup (lm->env, key);
-}
-
-bool
-lm_env_let (LM *lm, const char *key, Cell *val)
-{
-  return env_let (lm->env, key, val);
-}
-
-bool
-lm_env_set (LM *lm, const char *key, Cell *val)
-{
-  return env_set (lm->env, key, val);
 }
 
 void

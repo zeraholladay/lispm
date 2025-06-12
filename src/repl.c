@@ -8,7 +8,7 @@
 #include "types.h"
 
 #ifndef RL_BUF_SIZ
-#define RL_BUF_SIZ 8192
+#define RL_BUF_SIZ 4096
 #endif
 
 int
@@ -32,8 +32,9 @@ repl (LM *lm)
           continue;
         }
 
-      Cell *eval_result = lm_progn (lm, progn);
-      PRINT (eval_result);
+      Cell *res = lm_progn (lm, progn);
+
+      PRINT (res);
     }
 
   return 0;

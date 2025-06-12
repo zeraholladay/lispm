@@ -1,6 +1,5 @@
 #include "stdlib.h"
 
-#include "keywords.h"
 #include "prims.h"
 #include "xalloc.h"
 
@@ -181,39 +180,4 @@ zip (LM *lm, Cell *lsts)
   xfree_scratch (&s);
 
   return reverse_inplace (out_rev);
-}
-
-// context operations
-Cell *
-lookup (LM *lm, Cell *cell)
-{
-  const char *key = cell->symbol.str;
-  size_t len = cell->symbol.len;
-
-  Cell *kywrd_cell = keyword_lookup (key, len);
-  if (kywrd_cell)
-    return kywrd_cell;
-
-  Cell *res = lm_env_lkup (lm, key);
-  if (!res)
-    LM_ERR_RET (lm, ERR_SYMBOL_NOT_FOUND, key);
-
-  return res;
-}
-
-Cell *
-set (LM *lm, Cell *car, Cell *cdr)
-{
-  if (!IS_INST (car, SYMBOL))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "set");
-
-  const char *key = car->symbol.str;
-  size_t len = car->symbol.len;
-
-  if (keyword_lookup (key, len))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, "set");
-
-  lm_env_set (lm, key, cdr);
-
-  return cdr;
 }

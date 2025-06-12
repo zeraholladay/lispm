@@ -4,10 +4,6 @@
 #include "env.h"
 #include "xalloc.h"
 
-#ifndef ENV_STR_MAX
-#define ENV_STR_MAX 256
-#endif
-
 struct env
 {
   Dict *dict;
@@ -50,7 +46,7 @@ env_lookup (Env *frame, const char *key)
 }
 
 bool
-env_let (Env *frame, const char *key, void *val)
+env_define (Env *frame, const char *key, void *val)
 {
   return dict_insert (frame->dict, key, val);
 }
@@ -58,12 +54,15 @@ env_let (Env *frame, const char *key, void *val)
 bool
 env_set (Env *frame, const char *key, void *val)
 {
-  Env *cur = frame;
+  while (frame)
+    {
+      if (dict_has_key (frame->dict, key))
+        return dict_insert (frame, key, val);
 
-  while (cur->parent)
-    cur = cur->parent;
+      frame = frame->parent;
+    }
 
-  return dict_insert (cur->dict, key, val);
+  return false;
 }
 
 void

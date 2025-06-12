@@ -7,14 +7,6 @@
 #include "parser.h"
 #include "repl.h"
 
-extern char *optarg;
-extern int optind;
-extern int optopt;
-extern int opterr;
-extern int optreset;
-
-#include "repl.h"
-
 static int
 run (int argc, char **argv)
 {
@@ -56,18 +48,11 @@ run (int argc, char **argv)
 
       if (!parse_res)
         {
-          perror ("Parse failed");
+          fputs ("Parse failed", stderr);
           break; // TODO: syntax error
         }
 
-      // Cell *eval_res = lm_progn (lm, progn);
       lm_progn (lm, progn);
-
-      // if ()
-      //   {
-      //     perror ("Eval failed.");
-      //     break;
-      //   }
     }
 
   if (run_repl)

@@ -129,14 +129,14 @@ thunk_reverse (LM *lm, Cell *fn, Cell *lst)
   return reverse (lm, CAR (lst));
 }
 
-Cell *
-thunk_set (LM *lm, Cell *fn, Cell *args)
-{
-  if (!IS_INST (CAR (args), SYMBOL))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+// Cell *
+// thunk_set (LM *lm, Cell *fn, Cell *args)
+// {
+//   if (!IS_INST (CAR (args), SYMBOL))
+//     LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
-  return set (lm, CAR (args), CAR (CDR (args)));
-}
+//   return set (lm, CAR (args), CAR (CDR (args)));
+// }
 
 Cell *
 thunk_string (LM *lm, Cell *fn, Cell *args)

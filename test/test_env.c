@@ -69,7 +69,7 @@ START_TEST (test_child_override)
   const char *key = test_strings[0];
   void *val = (void *)0xDEADBEEF;
 
-  bool res = env_let (frame, key, val);
+  bool res = env_define (frame, key, val);
   ck_assert (res);
 
   bool has_key = env_has_key (frame, key);

@@ -41,11 +41,6 @@ void lm_destroy (LM *lm);
 // create a new cell/type
 Cell *lm_alloc_cell (LM *lm);
 
-// external access to env
-Cell *lm_env_lkup (LM *lm, const char *key);
-bool lm_env_let (LM *lm, const char *key, Cell *val);
-bool lm_env_set (LM *lm, const char *key, Cell *val);
-
 // error access
 void lm_err (LM *lm, ErrorCode code, const char *fmt, ...);
 
