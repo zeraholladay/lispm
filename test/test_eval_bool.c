@@ -38,40 +38,40 @@ START_TEST (test_eq)
 
   // True statements
   eval_result = run_eval_progn ("(eq T T)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(eq NIL NIL)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(eq 0 0)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(eq 42 42)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(eq '() '())");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(eq 'foo 'foo)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   test_program = "(set 'foo (lambda () ()))"
                  "(set 'bar foo)"
                  "(eq foo bar)";
   eval_result = run_eval_progn (test_program);
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   test_program = "(set 'foo '(1 2 3 4))"
                  "(set 'bar foo)"
                  "(eq foo bar)";
   eval_result = run_eval_progn (test_program);
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(eq (string 'foo) (string 'foo))");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(eq rest rest)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   // False statements
   eval_result = run_eval_progn ("(eq T NIL)");
@@ -117,7 +117,7 @@ START_TEST (test_not)
   Cell *eval_result = NULL;
 
   eval_result = run_eval_progn ("(not nil)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(not T)");
   ck_assert (NILP (eval_result));
@@ -135,10 +135,10 @@ START_TEST (test_and)
   ck_assert (NILP (eval_result));
 
   eval_result = run_eval_progn ("(and T T)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(and)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(and T T 'foobar)");
   ck_assert_str_eq (eval_result->symbol.str, "foobar");
@@ -153,10 +153,10 @@ START_TEST (test_or)
   ck_assert (NILP (eval_result));
 
   eval_result = run_eval_progn ("(or T nil)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(or nil T)");
-  ck_assert_str_eq (eval_result->symbol.str, "T");
+  ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(or)");
   ck_assert (NILP (eval_result));
@@ -171,14 +171,14 @@ eval_bool_suite (void)
 {
   Suite *s = suite_create ("Eval Boolean");
 
-  TCase *tc_core = tcase_create ("Core");
-  tcase_add_checked_fixture (tc_core, setup, teardown);
+  TCase *tc = tcase_create ("Core");
+  tcase_add_checked_fixture (tc, setup, teardown);
 
-  tcase_add_test (tc_core, test_eq);
-  tcase_add_test (tc_core, test_not);
-  tcase_add_test (tc_core, test_and);
-  tcase_add_test (tc_core, test_or);
+  tcase_add_test (tc, test_eq);
+  tcase_add_test (tc, test_not);
+  tcase_add_test (tc, test_and);
+  tcase_add_test (tc, test_or);
 
-  suite_add_tcase (s, tc_core);
+  suite_add_tcase (s, tc);
   return s;
 }

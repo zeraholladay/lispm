@@ -12,30 +12,35 @@ extern Cell _quote;
 #define T (&_t)
 #define QUOTE (&_quote)
 
-#define NILP(nptr) (nptr == NIL)
-#define LISTP(nptr) (NILP (nptr) || CONSP (nptr))
-#define CONSP(nptr) (IS_INST (nptr, CONS))
+#define NILP(x) (x == NIL)
+#define LISTP(x) (NILP (x) || CONSP (x))
+#define CONSP(x) (IS_INST (x, CONS))
 
-#define CAR(nptr) ((nptr)->cons.car)
-#define CDR(nptr) ((nptr)->cons.cdr)
-#define CADR(nptr) (CAR (CDR (nptr)))
+#define CAR(x) ((x)->cons.car)
+#define CDR(x) ((x)->cons.cdr)
+#define CAAR(x) (CAR (CAR (x)))
+#define CADR(x) (CAR (CDR (x)))
+#define CDDR(x) (CDR (CDR (x)))
+#define CAADR(x) (CAR (CADR (x)))
+#define CADDR(x) (CAR (CDDR (x)))
+#define CDDDR(x) (CDR (CDDR (x)))
 
 #define LIST1(car, lm) (CONS (car, NIL, lm))
 #define LIST2(car, cdr, lm) (CONS (car, LIST1 (cdr, lm), lm))
 
-#define RPLACA(nptr, val)                                                     \
+#define RPLACA(x, val)                                                        \
   do                                                                          \
     {                                                                         \
-      if (CONSP (nptr))                                                       \
-        CAR (nptr) = val;                                                     \
+      if (CONSP (x))                                                          \
+        CAR (x) = val;                                                        \
     }                                                                         \
   while (0)
 
-#define RPLACD(nptr, val)                                                     \
+#define RPLACD(x, val)                                                        \
   do                                                                          \
     {                                                                         \
-      if (CONSP (nptr))                                                       \
-        CDR (nptr) = val;                                                     \
+      if (CONSP (x))                                                          \
+        CDR (x) = val;                                                        \
     }                                                                         \
   while (0)
 

@@ -26,7 +26,6 @@ static void fmt_cons (StrBuf *, Cell *);
 static void fmt_thunk (StrBuf *, Cell *);
 static void fmt_lambda (StrBuf *, Cell *);
 static void fmt_unknown (StrBuf *, Cell *);
-static void fmt_error (StrBuf *, Cell *);
 
 static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
   [TYPE_NIL] = fmt_nil,         [TYPE_SYMBOL] = fmt_symbol,

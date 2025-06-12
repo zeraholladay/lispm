@@ -36,10 +36,10 @@ START_TEST (test_gt)
   Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(gt 10 5 2)");
-  ck_assert_str_eq (eval_res->symbol.str, "T");
+  ck_assert_ptr_eq (eval_res, T);
 
   eval_res = run_eval_progn ("(gt 5)");
-  ck_assert_str_eq (eval_res->symbol.str, "T");
+  ck_assert_ptr_eq (eval_res, T);
 
   eval_res = run_eval_progn ("(gt 2 3)");
   ck_assert (NILP (eval_res));
@@ -54,10 +54,10 @@ START_TEST (test_lt)
   Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(lt 1 2 3)");
-  ck_assert_str_eq (eval_res->symbol.str, "T");
+  ck_assert_ptr_eq (eval_res, T);
 
   eval_res = run_eval_progn ("(lt 5)");
-  ck_assert_str_eq (eval_res->symbol.str, "T");
+  ck_assert_ptr_eq (eval_res, T);
 
   eval_res = run_eval_progn ("(lt 3 2)");
   ck_assert (NILP (eval_res));
@@ -132,16 +132,16 @@ eval_math_suite (void)
 {
   Suite *s = suite_create ("Eval Math");
 
-  TCase *tc_core = tcase_create ("Core");
-  tcase_add_checked_fixture (tc_core, setup, teardown);
+  TCase *tc = tcase_create ("Core");
+  tcase_add_checked_fixture (tc, setup, teardown);
 
-  tcase_add_test (tc_core, test_gt);
-  tcase_add_test (tc_core, test_lt);
-  tcase_add_test (tc_core, test_add);
-  tcase_add_test (tc_core, test_sub);
-  tcase_add_test (tc_core, test_mul);
-  tcase_add_test (tc_core, test_div);
+  tcase_add_test (tc, test_gt);
+  tcase_add_test (tc, test_lt);
+  tcase_add_test (tc, test_add);
+  tcase_add_test (tc, test_sub);
+  tcase_add_test (tc, test_mul);
+  tcase_add_test (tc, test_div);
 
-  suite_add_tcase (s, tc_core);
+  suite_add_tcase (s, tc);
   return s;
 }
