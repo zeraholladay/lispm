@@ -14,7 +14,7 @@ A simple Lisp-dialect with parts from Scheme.
   - [Literals](#literals)
   - [`quote`](#quote)
   - [`define`](#define)
-  - [`set!`](#set!)
+  - [`set!`](#set)
   - [`let`](#let)
   - [`lambda`](#lambda)
   - [`funcall` / `apply`](#funcall--apply)
@@ -312,10 +312,10 @@ See [Special Forms](#special-forms).
 
 ## TODO
 
-* [ ] `add` / `mul` with zero args should return `1`
-* [ ] `define` form for globals
+* [ ] Fix `add` / `mul` with zero args should return `1`
+* [ ] Fix `define` form for globals
 * [ ] Full support for strings
 * [ ] Parse‐error reporting (exceptions)
 * [ ] Garbage collection
 * [ ] Maximum symbol length
-* [ ] `let*`, `letrec`, `define`, `defun`
+* [ ] `let*`, `letrec`, `define`
