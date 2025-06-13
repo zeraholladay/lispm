@@ -55,14 +55,14 @@ START_TEST (test_eq)
   eval_result = run_eval_progn ("(eq 'foo 'foo)");
   ck_assert_ptr_eq (eval_result, T);
 
-  test_program = "(set 'foo (lambda () ()))"
-                 "(set 'bar foo)"
+  test_program = "(define 'foo (lambda () ()))"
+                 "(define 'bar foo)"
                  "(eq foo bar)";
   eval_result = run_eval_progn (test_program);
   ck_assert_ptr_eq (eval_result, T);
 
-  test_program = "(set 'foo '(1 2 3 4))"
-                 "(set 'bar foo)"
+  test_program = "(define 'foo '(1 2 3 4))"
+                 "(define 'bar foo)"
                  "(eq foo bar)";
   eval_result = run_eval_progn (test_program);
   ck_assert_ptr_eq (eval_result, T);
@@ -92,14 +92,14 @@ START_TEST (test_eq)
   eval_result = run_eval_progn ("(eq 'foo 'bar)");
   ck_assert (NILP (eval_result));
 
-  test_program = "(set 'foo (lambda () ()))"
-                 "(set 'bar (lambda () ()))"
+  test_program = "(define 'foo (lambda () ()))"
+                 "(define 'bar (lambda () ()))"
                  "(eq foo bar)";
   eval_result = run_eval_progn (test_program);
   ck_assert (NILP (eval_result));
 
-  test_program = "(set 'foo '(1 2 3 4))"
-                 "(set 'bar '(1 2 3 4))"
+  test_program = "(define 'foo '(1 2 3 4))"
+                 "(define 'bar '(1 2 3 4))"
                  "(eq foo bar)";
   eval_result = run_eval_progn (test_program);
   ck_assert (NILP (eval_result));

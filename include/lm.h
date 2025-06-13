@@ -25,7 +25,7 @@
 #define LM_ERR_RET(lm, err_code, fmt, ...)                                    \
   do                                                                          \
     {                                                                         \
-      lm_err ((lm), (err_code), (fmt), ##__VA_ARGS__);                        \
+      lm_err_set ((lm), (err_code), (fmt), ##__VA_ARGS__);                    \
       return NIL;                                                             \
     }                                                                         \
   while (0)
@@ -42,7 +42,7 @@ void lm_destroy (LM *lm);
 Cell *lm_alloc_cell (LM *lm);
 
 // error access
-void lm_err (LM *lm, ErrorCode code, const char *fmt, ...);
+void lm_err_set (LM *lm, ErrorCode code, const char *fmt, ...);
 
 // external entrypoints
 Cell *lm_funcall (LM *lm, Cell *fn, Cell *arglist);

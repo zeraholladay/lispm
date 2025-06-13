@@ -31,7 +31,7 @@ setup (void)
       const char *key = test_strings[i];
       void *val = (void *)djb2 (key);
 
-      bool res = env_set (frame, key, val);
+      bool res = env_define (frame, key, val);
       ck_assert (res);
     }
 }
