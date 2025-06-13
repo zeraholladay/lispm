@@ -110,19 +110,19 @@ START_TEST (test_set_and_lookup)
 {
   Cell *eval_res = NULL;
 
-  eval_res = run_eval_progn ("(set 'foo 42)");
+  eval_res = run_eval_progn ("(define 'foo 42)");
   ck_assert (eval_res->integer == 42);
 
   eval_res = run_eval_progn ("foo");
   ck_assert (eval_res->integer == 42);
 
-  eval_res = run_eval_progn ("(set 'bar 'foo)");
+  eval_res = run_eval_progn ("(define 'bar 'foo)");
   ck_assert (IS_INST (eval_res, SYMBOL));
 
-  eval_res = run_eval_progn ("(set 'bar '(1 2 3))");
+  eval_res = run_eval_progn ("(set! 'bar '(1 2 3))");
   ck_assert (IS_INST (eval_res, CONS));
 
-  eval_res = run_eval_progn ("(set 'bar (lambda () ()))");
+  eval_res = run_eval_progn ("(set! 'bar (lambda () ()))");
   ck_assert (IS_INST (eval_res, LAMBDA));
 }
 END_TEST
@@ -242,18 +242,18 @@ START_TEST (test_lambda)
   ck_assert (IS_INST (eval_res, INTEGER) && eval_res->integer == 42);
 
   // define 'foo and run
-  eval_res = run_eval_progn ("(set 'foo (lambda () (cons 'a 'b)))"
+  eval_res = run_eval_progn ("(define 'foo (lambda () (cons 'a 'b)))"
                              "(foo)");
   ck_assert (IS_INST (eval_res, CONS));
 
   // with parameters
-  eval_res = run_eval_progn ("(set 'foo (lambda (a b) (cons a b)))"
+  eval_res = run_eval_progn ("(define 'foo (lambda (a b) (cons a b)))"
                              "(foo 'bar 'biz)");
   ck_assert (IS_INST (eval_res, CONS));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
 
   // test lexical scope
-  eval_res = run_eval_progn ("(set 'foo 'bar)"
+  eval_res = run_eval_progn ("(define 'foo 'bar)"
                              "((lambda () foo))");
   ck_assert_str_eq (eval_res->symbol.str, "bar");
 }
@@ -277,8 +277,8 @@ START_TEST (test_apply)
   ck_assert_str_eq (car->symbol.str, "foo");
   ck_assert_str_eq (cdr->symbol.str, "bar");
 
-  eval_res = run_eval_progn ("(apply set '(a 42))");
-  ck_assert (eval_res->integer == 42);
+  eval_res = run_eval_progn ("(apply cons '(42 a))");
+  ck_assert (CAR (eval_res)->integer == 42);
 
   eval_res = run_eval_progn ("(apply first '((a 42)))");
   ck_assert_str_eq (eval_res->symbol.str, "a");
@@ -289,8 +289,8 @@ START_TEST (test_apply)
   eval_res = run_eval_progn ("(first (apply cons '(a 42)))");
   ck_assert_str_eq (eval_res->symbol.str, "a");
 
-  // eval_res = run_eval_progn ("(apply funcall '(first (42 2)))");
-  // ck_assert (eval_res->integer == 42);
+  eval_res = run_eval_progn ("(apply funcall '(first (42 2)))");
+  ck_assert (eval_res->integer == 42);
 }
 END_TEST
 
@@ -310,8 +310,8 @@ START_TEST (test_funcall)
   ck_assert_str_eq (car->symbol.str, "foo");
   ck_assert_str_eq (cdr->symbol.str, "bar");
 
-  eval_res = run_eval_progn ("(funcall set 'a 42)");
-  ck_assert (eval_res->integer == 42);
+  eval_res = run_eval_progn ("(funcall cons 42 'a)");
+  ck_assert (CAR (eval_res)->integer == 42);
 
   eval_res = run_eval_progn ("(funcall first '(a 42))");
   ck_assert_str_eq (eval_res->symbol.str, "a");
@@ -322,8 +322,8 @@ START_TEST (test_funcall)
   eval_res = run_eval_progn ("(first (funcall cons 'a 42))");
   ck_assert_str_eq (eval_res->symbol.str, "a");
 
-  // eval_res = run_eval_progn ("(funcall apply 'first '((42 2)))");
-  // ck_assert (eval_res->integer == 42);
+  eval_res = run_eval_progn ("(funcall apply 'first '((42 2)))");
+  ck_assert (eval_res->integer == 42);
 }
 END_TEST
 
@@ -382,8 +382,8 @@ START_TEST (test_let)
   Cell *eval_res = NULL;
 
   eval_res = run_eval_progn (
-      "(set 'a 1)"
-      "(set 'b 2)"
+      "(define 'a 1)"
+      "(define 'b 2)"
       "(apply + (let ((c (+ a 2)) (d (+ b 2))) (list a b c d)))");
   ck_assert (eval_res->integer == 10);
 }
@@ -432,7 +432,7 @@ START_TEST (test_progn)
   ck_assert_int_eq (r->integer, 3);
 
   // side-effect ordering: define x then use
-  r = run_eval_progn ("(progn (set 'x 10) (set 'x (+ x 5)) x)");
+  r = run_eval_progn ("(progn (define 'x 10) (set! 'x (+ x 5)) x)");
   ck_assert_int_eq (r->integer, 15);
 }
 END_TEST
@@ -477,7 +477,7 @@ END_TEST
 START_TEST (test_nested_let_lexical_scope)
 {
   // inner let shouldn't override outer
-  const char *prog = "(set 'x 100) "
+  const char *prog = "(define 'x 100) "
                      "(let ((x 1) (x 2)) x) "
                      "x";
   Cell *r = run_eval_progn (prog);

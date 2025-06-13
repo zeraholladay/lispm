@@ -13,7 +13,8 @@ A simple Lisp-dialect with parts from Scheme.
 - [Primitives](#primitives)
   - [Literals](#literals)
   - [`quote`](#quote)
-  - [`set`](#set)
+  - [`define`](#define)
+  - [`set!`](#set)
   - [`let`](#let)
   - [`lambda`](#lambda)
   - [`funcall` / `apply`](#funcall--apply)
@@ -96,17 +97,32 @@ Returns `expr` without evaluating it.
 (quote (1 2)) ; ⇒ (1 2)
 ```
 
-### `set`
+### `define`
 
 ```lisp
-(set symbol value)
+(define symbol value)
 ```
 
-Binds `symbol` to `value` in the global environment.
+Currently evaluates `symbol`, but this isn't right.
+Binds `symbol` to `value` in the current lexical scope.
 
 ```lisp
-(set 'x 10) ; ⇒ 10
-x           ; ⇒ 10
+(define 'x 10) ; ⇒ 10
+x              ; ⇒ 10
+```
+
+### `set!`
+
+```lisp
+(set! symbol value)
+```
+
+Evaluate `symbol`, then update the *existing* binding of `symbol` in the *innermost* (lexical) environment that defines it.  
+Signal an error if `symbol` has not been previously bound.
+
+```lisp
+(set! 'x 10) ; ⇒ 10
+x            ; ⇒ 10
 ```
 
 ### `let`
@@ -296,10 +312,10 @@ See [Special Forms](#special-forms).
 
 ## TODO
 
-* [ ] `add` / `mul` with zero args should return `1`
-* [ ] `define` form for globals
+* [ ] Fix `add` / `mul` with zero args should return `1`
+* [ ] Fix `define` form for globals
 * [ ] Full support for strings
 * [ ] Parse‐error reporting (exceptions)
 * [ ] Garbage collection
 * [ ] Maximum symbol length
-* [ ] `let*`, `letrec`, `define`, `defun`
+* [ ] `let*`, `letrec`, `define`
