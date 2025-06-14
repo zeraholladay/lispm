@@ -25,18 +25,15 @@ get_bins_idx (Dict *dict, size_t hash_key, const char *key, size_t len)
       bin_val = bins[bin_idx];
 
       if (bin_val == EMPTY)
-        {
-          return (first_tombstone >= 0) ? (size_t)first_tombstone : bin_idx;
-        }
+        return (first_tombstone >= 0) ? (size_t)first_tombstone : bin_idx;
       else if (bin_val == TOMBSTONE)
         {
           if (first_tombstone == -1)
             first_tombstone = bin_idx;
         }
       else if (STR_EQ (key, LIST_IDX (dict, bin_val)->key, len))
-        {
-          return bin_idx;
-        }
+        return bin_idx;
+
       bin_idx = (bin_idx + 1) & (dict->capacity - 1);
     }
   while (bin_idx != start_bin_idx);
@@ -77,9 +74,7 @@ xgrow_bins (Dict *dict)
       old_bin_val = old_bins[i];
 
       if (old_bin_val == EMPTY || old_bin_val == TOMBSTONE)
-        {
-          continue;
-        }
+        continue;
 
       DictEntity *entity = LIST_IDX (dict, old_bin_val);
 
@@ -104,9 +99,7 @@ dict_create_va_list (const char *key, ...)
 
   va_start (ap, key);
   for (const char *k = key; k; k = va_arg (ap, const char *))
-    {
-      dict_insert (dict, k, va_arg (ap, void *));
-    }
+    dict_insert (dict, k, va_arg (ap, void *));
   va_end (ap);
 
   return dict;
@@ -128,10 +121,7 @@ dict_create (const DictEntity *entities, size_t n)
       bool res = dict_insert (dict, entities[i].key, entities[i].val);
 
       if (!res)
-        {
-
-          return NULL;
-        }
+        return NULL;
     }
 
   return dict;

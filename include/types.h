@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "lm.h"
@@ -90,6 +91,7 @@ struct Cell
     ThunkEnum thunk;
     Lambda lambda;
   };
+  bool gc_mark;
 };
 
 const Type *type (Cell *self);

@@ -2,133 +2,34 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "env.h"
+#include "dict.h"
 #include "keywords.h"
 #include "lm.h"
+#include "lm_env.h"
+#include "lm_secd.h"
 #include "palloc.h"
 #include "prims.h"
 #include "thunks.h"
 #include "types.h"
 #include "xalloc.h"
 
-#define STK_POP(lm)                                                           \
-  ({                                                                          \
-    if ((lm)->stk.sp == 0)                                                    \
-      goto underflow;                                                         \
-    (lm)->stk.cells[--(lm)->stk.sp];                                          \
-  })
-
-#define STK_PUSH(lm, val)                                                     \
-  do                                                                          \
-    {                                                                         \
-      if ((lm)->stk.sp >= LISPM_STK_MAX)                                      \
-        goto overflow;                                                        \
-      (lm)->stk.cells[(lm)->stk.sp++] = val;                                  \
-    }                                                                         \
-  while (0)
-
-#define CTL_POP(lm)                                                           \
-  ({                                                                          \
-    if ((lm)->ctl.sp == 0)                                                    \
-      goto underflow;                                                         \
-    (lm)->ctl.states[--(lm)->ctl.sp];                                         \
-  })
-
-#define CTL_PUSH(lm, tag, ...)                                                \
-  do                                                                          \
-    {                                                                         \
-      if ((lm)->ctl.sp >= LISPM_CTL_MAX)                                      \
-        goto overflow;                                                        \
-      (lm)->ctl.states[(lm)->ctl.sp++]                                        \
-          = (State){ .state = s_##tag, .u.tag = { __VA_ARGS__ } };            \
-    }                                                                         \
-  while (0)
-
-#define LM_ERR_STATE(_label)                                                  \
-  _label:                                                                     \
-  fputs ("*** " #_label ":", stderr);                                         \
-  goto reset;
-
-#define LM_ERR_HANDLERS(lm, ...)                                              \
-  do                                                                          \
-    {                                                                         \
-      __VA_ARGS__                                                             \
-    reset:                                                                    \
-      lm_reset (lm);                                                          \
-      return NIL;                                                             \
-    }                                                                         \
-  while (0)
-
-#define BAIL(lm, err_code, fmt, ...)                                          \
-  do                                                                          \
-    {                                                                         \
-      lm_err_set ((lm), (err_code), (fmt), ##__VA_ARGS__);                    \
-      goto error;                                                             \
-    }                                                                         \
-  while (0)
-
-typedef enum
-{
-#define X(tag, ...) s_##tag,
-#include "lm.def"
-#undef X
-  COUNT,
-} StateEnum;
-
-typedef union lisp_mach
-{
-#define X(tag, ...)                                                           \
-  struct                                                                      \
-  {                                                                           \
-    __VA_ARGS__;                                                              \
-  } tag;
-#include "lm.def"
-#undef X
-} Union;
-
-typedef struct state
-{
-  StateEnum state;
-  Union u;
-} State;
-
-typedef struct dump
-{
-  size_t stk_sp, ctl_sp;
-} Dump;
-
-typedef struct lispm_secd
-{
-  struct
-  {
-    size_t sp;
-    Cell *cells[LISPM_STK_MAX];
-  } stk;
-  Env *env;
-  struct
-  {
-    size_t sp;
-    State states[LISPM_CTL_MAX];
-  } ctl;
-  struct
-  {
-    size_t sp;
-    Dump dumps[LISPM_DUMP_MAX];
-  } dmp;
-  Pool *pool;
-  bool err_bool;
-} LM;
-
 static void
 lm_reset (LM *lm)
 {
-  static const char *fmt = "Reset\nstk:0x%zX\nctl:0x%zX\ndmp:0x%zX\n";
+  static const char *fmt
+      = "Reset\nstk:0x%zX\nenv:0x%zX\nctl:0x%zX\ndmp:0x%zX\n";
 
-  fprintf (stderr, fmt, lm->stk.sp, lm->stk.sp, lm->dmp.sp);
+  fprintf (stderr, fmt, lm->stk.sp, lm->env.sp, lm->ctl.sp, lm->dmp.sp);
 
   lm->stk.sp = lm->ctl.sp = lm->dmp.sp = 0;
+
+  // Destroy every frame except the reserved global at index 0
+  for (size_t i = 1; i < lm->env.sp; ++i)
+    dict_destroy (lm->env.dict[i]);
+
+  lm->env.sp = 1;
+
   lm->err_bool = false;
-  env_reset (&lm->env);
 }
 
 static bool
@@ -137,14 +38,14 @@ lm_dump (LM *lm)
   if ((lm)->dmp.sp >= LISPM_DUMP_MAX)
     return false;
 
-  lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){
-    .stk_sp = lm->stk.sp,
-    .ctl_sp = lm->ctl.sp,
-  };
-
-  env_enter_frame (&lm->env);
+  lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
+                                          .env_sp = lm->env.sp,
+                                          .ctl_sp = lm->ctl.sp };
+  LM_ENTER_FRAME (lm);
 
   return true;
+  overflow:
+  return false; // TODO: set err here
 }
 
 static bool
@@ -156,79 +57,14 @@ lm_dump_restore (LM *lm)
   Dump dump = lm->dmp.dumps[--lm->dmp.sp];
 
   lm->stk.sp = dump.stk_sp;
+  lm->env.sp = dump.env_sp;
   lm->ctl.sp = dump.ctl_sp;
 
-  env_leave_frame (&lm->env);
+  LM_LEAVE_FRAME (lm);
 
   return true;
-}
-
-static Cell *
-lm_env_lookup (LM *lm, Cell *sym)
-{
-  Cell *res = keyword_lookup (sym->symbol.str, sym->symbol.len);
-  if (res)
-    return res;
-
-  res = env_lookup (lm->env, sym->symbol.str);
-  if (res)
-    return res;
-
-  lm_err_set (lm, ERR_SYMBOL_NOT_FOUND, sym->symbol.str);
-  return NIL;
-}
-
-static int
-lm_env_update_guard (Cell *x)
-{
-  if (!IS_INST (x, SYMBOL))
-    return 1;
-
-  if (keyword_lookup (x->symbol.str, x->symbol.len))
-    return -1;
-
-  return 0;
-}
-
-static bool
-lm_env_define (LM *lm, Cell *car, Cell *cdr)
-{
-  int check = lm_env_update_guard (car);
-  if (check)
-    {
-      ErrorCode code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
-      lm_err_set (lm, code, "define");
-      return false;
-    }
-
-  if (!env_define (lm->env, car->symbol.str, cdr))
-    {
-      lm_err_set (lm, ERR_INTERNAL, car->symbol.str);
-      return false;
-    }
-
-  return true;
-}
-
-static bool
-lm_env_set (LM *lm, Cell *car, Cell *cdr)
-{
-  int check = lm_env_update_guard (car);
-  if (check)
-    {
-      ErrorCode code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
-      lm_err_set (lm, code, "set!");
-      return false;
-    }
-
-  bool valid = env_set (lm->env, car->symbol.str, cdr);
-  if (!valid)
-    {
-      lm_err_set (lm, ERR_SYMBOL_NOT_FOUND, car->symbol.str);
-      return true;
-    }
-
-  return true;
+  underflow:
+  return false; // TODO: set err here
 }
 
 static Cell *
@@ -255,14 +91,14 @@ lm_eval (LM *lm)
           BAIL (lm, ERR_INTERNAL, "No such state.");
         }
 
-    ctl_closure_leave:
-      {
-        env_leave_frame (&lm->env);
-        goto next;
-      }
     ctl_closure_enter:
       {
-        env_enter_frame (&lm->env);
+        LM_ENTER_FRAME (lm);
+        goto next;
+      }
+    ctl_closure_leave:
+      {
+        LM_LEAVE_FRAME (lm);
         goto next;
       }
     ctl_eval:
@@ -681,15 +517,17 @@ lm_eval (LM *lm)
 LM *
 lm_create (void)
 {
-  // fixme
-  Cell *nil = NIL;
-  CAR (nil) = CDR (nil) = nil;
+  CAR (NIL) = CDR (NIL) = NIL;
 
   LM *lm = xmalloc (sizeof *(lm));
 
-  lm->stk.sp = lm->ctl.sp = lm->dmp.sp = 0;
+  lm->stk.sp = 0;
+  lm->env.sp = 0;
+  lm->ctl.sp = 0;
+  lm->dmp.sp = 0;
 
-  lm->env = env_create ();
+  lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
+
   lm->pool = pool_init (LM_OBJ_POOL_CAP, sizeof (Cell));
 
   return lm;
@@ -698,8 +536,11 @@ lm_create (void)
 void
 lm_destroy (LM *lm)
 {
-  env_destroy (lm->env);
   pool_destroy (&lm->pool);
+  // Destory the whole environment
+  for (size_t i = 0; i < lm->env.sp; ++i)
+    dict_destroy (lm->env.dict[i]);
+
   free (lm);
 }
 
