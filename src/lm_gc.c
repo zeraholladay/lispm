@@ -49,7 +49,7 @@ gc_mark_reachable (Stack *stack, Cell *root)
 }
 
 static void
-gc_mark_state (LM *lm, Stack *stack, State s)
+gc_mark_state (Stack *stack, State s)
 {
   switch (s.state)
     {
@@ -226,14 +226,15 @@ gc_mark (LM *lm)
 
   for (size_t i = 0; i < lm->env.sp; ++i)
     {
-      List *list = lm->env.dict[i]->list;
+      DictIter iter = dict_iter (lm->env.dict[i]);
+      DictEntity *entity;
 
-      for (size_t i = 0; i < list->count; ++i)
-        gc_mark_reachable (stack, list->items[i]);
+      while ((entity = dict_items (&iter)))
+        gc_mark_reachable (stack, entity->val);
     }
 
   for (size_t i = 0; i < lm->ctl.sp; ++i)
-    gc_mark_state (lm, stack, lm->ctl.states[i]);
+    gc_mark_state (stack, lm->ctl.states[i]);
 
   stack_destroy (stack);
 }
@@ -243,7 +244,7 @@ gc_sweep (Pool *p, void *ptr)
 {
   Cell *c = ptr;
 
-  if (pool_gc_is_marked (c))
+  if (!pool_gc_is_free (c) && !pool_gc_is_marked (c))
     pool_free (p, c);
 }
 

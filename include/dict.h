@@ -33,6 +33,18 @@ typedef struct
   int *bins;
 } Dict;
 
+typedef struct
+{
+  Dict *dict;
+  size_t i;
+} DictIter;
+
+static inline DictIter
+dict_iter (Dict *d)
+{
+  return (DictIter){ .dict = d, .i = 0 };
+}
+
 Dict *dict_create_va_list (const char *key, ...);
 Dict *dict_create (const DictEntity *entity, size_t n);
 void dict_destroy (Dict *dict);
@@ -40,5 +52,6 @@ void dict_del (Dict *dict, const char *key);
 bool dict_has_key (Dict *dict, const char *key);
 bool dict_insert (Dict *dict, const char *key, void *val);
 DictEntity *dict_lookup (Dict *dict, const char *key);
+DictEntity *dict_items (DictIter *iter);
 
 #endif

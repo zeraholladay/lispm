@@ -206,5 +206,24 @@ dict_lookup (Dict *dict, const char *key)
 
   if (bin_val >= 0)
     return LIST_IDX (dict, bin_val);
+
+  return NULL;
+}
+
+DictEntity *
+dict_items (DictIter *iter)
+{
+  Dict *dict = iter->dict;
+
+  while (iter->i < dict->capacity)
+    {
+      int bin_val = dict->bins[iter->i++];
+
+      if (bin_val == EMPTY || bin_val == TOMBSTONE)
+        continue;
+
+      return LIST_IDX (dict, bin_val);
+    }
+
   return NULL;
 }

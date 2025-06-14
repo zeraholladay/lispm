@@ -58,9 +58,7 @@ pool_xalloc (Pool *p)
 
   PallocWrapper *wrapper = p->free_list;
   p->free_list = wrapper->next_free;
-
   wrapper->free = 0;
-  wrapper->gc_mark = 0;
 
   return &wrapper->ptr;
 }
@@ -89,13 +87,9 @@ pool_free (Pool *p, void *ptr)
   PallocWrapper *wrapper
       = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
 
-  if (wrapper->free)
-    return;
-
-  wrapper->gc_mark = 0;
-  wrapper->free = 1;
   wrapper->next_free = p->free_list;
   p->free_list = wrapper;
+  wrapper->free = 1;
 }
 
 void
@@ -108,10 +102,20 @@ pool_reset_all (Pool *p)
     {
       PallocWrapper *cur = INDEX (p->pool, i, stride);
       cur->next_free = INDEX (p->pool, i + 1, stride);
+      cur->free = 1;
+      cur->gc_mark = 0;
     }
 
   INDEX (p->pool, count - 1, stride)->next_free = NULL;
   p->free_list = INDEX (p->pool, 0, stride);
+}
+
+bool
+pool_gc_is_free (void *ptr)
+{
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
+  return wrapper->free;
 }
 
 bool
@@ -122,12 +126,22 @@ pool_gc_is_marked (void *ptr)
   return wrapper->gc_mark;
 }
 
+#include "fmt.h"
+
 void
 pool_gc_mark (void *ptr)
 {
   PallocWrapper *wrapper
       = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
   wrapper->gc_mark = 1;
+}
+
+void
+pool_gc_unmark (void *ptr)
+{
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
+  wrapper->gc_mark = 0;
 }
 
 void
