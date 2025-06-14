@@ -59,6 +59,9 @@ pool_xalloc (Pool *p)
   Wrapper *wrapper = p->free_list;
   p->free_list = wrapper->next_free;
 
+  wrapper->free = 0;
+  wrapper->gc_mark = 0;
+
   return &wrapper->ptr;
 }
 
@@ -84,6 +87,12 @@ void
 pool_free (Pool *p, void *ptr)
 {
   Wrapper *wrapper = (Wrapper *)((void *)ptr - offsetof (Wrapper, ptr));
+
+  if (wrapper->free)
+    return;
+
+  wrapper->gc_mark = 0;
+  wrapper->free = 1;
   wrapper->next_free = p->free_list;
   p->free_list = wrapper;
 }
@@ -104,24 +113,38 @@ pool_reset_all (Pool *p)
   p->free_list = INDEX (p->pool, 0, stride);
 }
 
+bool
+pool_gc_is_marked (Pool *p, void *ptr)
+{
+  Wrapper *wrapper = (Wrapper *)((void *)ptr - offsetof (Wrapper, ptr));
+  return wrapper->gc_mark;
+}
+
+void
+pool_gc_mark (Pool *p, void *ptr)
+{
+  Wrapper *wrapper = (Wrapper *)((void *)ptr - offsetof (Wrapper, ptr));
+  wrapper->gc_mark = 1;
+}
+
 void
 pool_map (Pool *p, void (*cb) (Pool *p, void *))
 {
   for (size_t i = 0; i < p->count - 1; ++i)
     {
       Wrapper *wrapper = INDEX (p->pool, i, p->stride);
-      cb (p, wrapper->ptr);
+      cb (p, &wrapper->ptr);
     }
 }
 
 void
-pool_map_hier (Pool *p, void (*cb) (Pool *p, void *))
+pool_map_hier (Pool *head, void (*cb) (Pool *p, void *))
 {
-  Pool *cur = p;
+  Pool *cur_p = head;
 
-  while (cur)
+  while (cur_p)
     {
-      pool_map (cur, cb);
-      cur = cur->next;
+      pool_map (cur_p, cb);
+      cur_p = cur_p->next;
     }
 }

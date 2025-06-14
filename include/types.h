@@ -91,7 +91,6 @@ struct Cell
     ThunkEnum thunk;
     Lambda lambda;
   };
-  bool gc_mark;
 };
 
 const Type *type (Cell *self);

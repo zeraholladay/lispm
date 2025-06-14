@@ -2,11 +2,12 @@
 
 #include "lm_gc.h"
 #include "lm_secd.h"
+#include "palloc.h"
 #include "prims.h"
 #include "stack.h"
 
 static void
-gc_mark_reachable (Stack *stack, Cell *root)
+gc_mark_reachable (LM *lm, Stack *stack, Cell *root)
 {
   stack_push (stack, root);
 
@@ -16,19 +17,22 @@ gc_mark_reachable (Stack *stack, Cell *root)
       if (!c)
         break;
 
-      if (c->gc_mark)
-        return;
-
-      c->gc_mark = true;
-
       switch (c->type)
         {
         case TYPE_CONS:
+          if (pool_gc_is_marked (lm->pool, c))
+            return;
+          pool_gc_mark(lm->pool, c);
+
           stack_push (stack, CAR (c));
           stack_push (stack, CDR (c));
           break;
 
         case TYPE_LAMBDA:
+          if (pool_gc_is_marked (lm->pool, c))
+            return;
+          pool_gc_mark(lm->pool, c);
+
           stack_push (stack, c->lambda.params);
           stack_push (stack, c->lambda.body);
           break;
@@ -36,6 +40,11 @@ gc_mark_reachable (Stack *stack, Cell *root)
         case TYPE_INTEGER:
         case TYPE_STRING:
         case TYPE_SYMBOL:
+          if (pool_gc_is_marked (lm->pool, c))
+            return;
+          pool_gc_mark(lm->pool, c);
+          break;
+          
         case TYPE_NIL:
         case TYPE_THUNK:
           break;
@@ -48,7 +57,7 @@ gc_mark_reachable (Stack *stack, Cell *root)
 }
 
 static void
-gc_mark_state (Stack *stack, State s)
+gc_mark_state (LM *lm, Stack *stack, State s)
 {
   switch (s.state)
     {
@@ -63,20 +72,20 @@ gc_mark_state (Stack *stack, State s)
 
 gc_state_and_cont:
   {
-    gc_mark_reachable (stack, s.u.and_cont.arglist);
+    gc_mark_reachable (lm, stack, s.u.and_cont.arglist);
     return;
   }
 
 gc_state_and:
   {
-    gc_mark_reachable (stack, s.u.and.arglist);
+    gc_mark_reachable (lm, stack, s.u.and.arglist);
     return;
   }
 
 gc_state_apply:
   {
-    gc_mark_reachable (stack, s.u.apply.fn);
-    gc_mark_reachable (stack, s.u.apply.arglist);
+    gc_mark_reachable (lm, stack, s.u.apply.fn);
+    gc_mark_reachable (lm, stack, s.u.apply.arglist);
     return;
   }
 
@@ -97,115 +106,115 @@ gc_state_define:
 
 gc_state_eval_apply:
   {
-    gc_mark_reachable (stack, s.u.eval_apply.fn);
-    gc_mark_reachable (stack, s.u.eval_apply.arglist);
+    gc_mark_reachable (lm, stack, s.u.eval_apply.fn);
+    gc_mark_reachable (lm, stack, s.u.eval_apply.arglist);
     return;
   }
 
 gc_state_eval:
   {
-    gc_mark_reachable (stack, s.u.eval.expr);
+    gc_mark_reachable (lm, stack, s.u.eval.expr);
     return;
   }
 
 gc_state_evlis_acc:
   {
-    gc_mark_reachable (stack, s.u.evlis_acc.acc);
-    gc_mark_reachable (stack, s.u.evlis_acc.arglist);
+    gc_mark_reachable (lm, stack, s.u.evlis_acc.acc);
+    gc_mark_reachable (lm, stack, s.u.evlis_acc.arglist);
     return;
   }
 
 gc_state_evlis:
   {
-    gc_mark_reachable (stack, s.u.evlis.acc);
-    gc_mark_reachable (stack, s.u.evlis.arglist);
+    gc_mark_reachable (lm, stack, s.u.evlis.acc);
+    gc_mark_reachable (lm, stack, s.u.evlis.arglist);
     return;
   }
 
 gc_state_funcall:
   {
-    gc_mark_reachable (stack, s.u.funcall.fn);
-    gc_mark_reachable (stack, s.u.funcall.arglist);
+    gc_mark_reachable (lm, stack, s.u.funcall.fn);
+    gc_mark_reachable (lm, stack, s.u.funcall.arglist);
     return;
   }
 
 gc_state_if_:
   {
-    gc_mark_reachable (stack, s.u.if_.form);
+    gc_mark_reachable (lm, stack, s.u.if_.form);
     return;
   }
 
 gc_state_if_cont:
   {
-    gc_mark_reachable (stack, s.u.if_cont.form);
+    gc_mark_reachable (lm, stack, s.u.if_cont.form);
     return;
   }
 
 gc_state_lambda:
   {
-    gc_mark_reachable (stack, s.u.lambda.fn);
-    gc_mark_reachable (stack, s.u.lambda.arglist);
+    gc_mark_reachable (lm, stack, s.u.lambda.fn);
+    gc_mark_reachable (lm, stack, s.u.lambda.arglist);
     return;
   }
 
 gc_state_let:
   {
-    gc_mark_reachable (stack, s.u.let.arglist);
+    gc_mark_reachable (lm, stack, s.u.let.arglist);
     return;
   }
 
 gc_state_lispm:
   {
-    gc_mark_reachable (stack, s.u.lispm.fn);
-    gc_mark_reachable (stack, s.u.lispm.arglist);
+    gc_mark_reachable (lm, stack, s.u.lispm.fn);
+    gc_mark_reachable (lm, stack, s.u.lispm.arglist);
     return;
   }
 
 gc_state_map_acc:
   {
-    gc_mark_reachable (stack, s.u.map_acc.fn);
-    gc_mark_reachable (stack, s.u.map_acc.acc);
-    gc_mark_reachable (stack, s.u.map_acc.ziplist);
+    gc_mark_reachable (lm, stack, s.u.map_acc.fn);
+    gc_mark_reachable (lm, stack, s.u.map_acc.acc);
+    gc_mark_reachable (lm, stack, s.u.map_acc.ziplist);
     return;
   }
 
 gc_state_map_cont:
   {
-    gc_mark_reachable (stack, s.u.map_cont.fn);
-    gc_mark_reachable (stack, s.u.map_cont.acc);
-    gc_mark_reachable (stack, s.u.map_cont.ziplist);
+    gc_mark_reachable (lm, stack, s.u.map_cont.fn);
+    gc_mark_reachable (lm, stack, s.u.map_cont.acc);
+    gc_mark_reachable (lm, stack, s.u.map_cont.ziplist);
     return;
   }
 
 gc_state_map:
   {
-    gc_mark_reachable (stack, s.u.map.fn);
-    gc_mark_reachable (stack, s.u.map.arglist);
+    gc_mark_reachable (lm, stack, s.u.map.fn);
+    gc_mark_reachable (lm, stack, s.u.map.arglist);
     return;
   }
 
 gc_state_or_cont:
   {
-    gc_mark_reachable (stack, s.u.or_cont.arglist);
+    gc_mark_reachable (lm, stack, s.u.or_cont.arglist);
     return;
   }
 
 gc_state_or:
   {
-    gc_mark_reachable (stack, s.u.or.arglist);
+    gc_mark_reachable (lm, stack, s.u.or.arglist);
     return;
   }
 
 gc_state_progn_eval:
   {
-    gc_mark_reachable (stack, s.u.progn_eval.arglist);
+    gc_mark_reachable (lm, stack, s.u.progn_eval.arglist);
     return;
   }
 
 gc_state_progn:
   {
-    gc_mark_reachable (stack, s.u.progn.res);
-    gc_mark_reachable (stack, s.u.progn.arglist);
+    gc_mark_reachable (lm, stack, s.u.progn.res);
+    gc_mark_reachable (lm, stack, s.u.progn.arglist);
     return;
   }
 
@@ -221,18 +230,18 @@ gc_mark (LM *lm)
   Stack *stack = stack_create ();
 
   for (size_t i = 0; i < lm->stk.sp; ++i)
-    gc_mark_reachable (stack, lm->stk.cells[i]);
+    gc_mark_reachable (lm, stack, lm->stk.cells[i]);
 
   for (size_t i = 0; i < lm->env.sp; ++i)
     {
       List *list = lm->env.dict[i]->list;
 
       for (size_t i = 0; i < list->count; ++i)
-        gc_mark_reachable (stack, list->items[i]);
+        gc_mark_reachable (lm, stack, list->items[i]);
     }
 
   for (size_t i = 0; i < lm->ctl.sp; ++i)
-    gc_mark_state (stack, lm->ctl.states[i]);
+    gc_mark_state (lm, stack, lm->ctl.states[i]);
 
   stack_destroy (stack);
 }
@@ -242,10 +251,8 @@ gc_sweep (Pool *p, void *ptr)
 {
   Cell *c = ptr;
 
-  if (!c->gc_mark)
+  if (pool_gc_is_marked (p, c))
     pool_free (p, c);
-
-  c->gc_mark = false;
 }
 
 void

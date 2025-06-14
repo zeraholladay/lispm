@@ -37,6 +37,7 @@ struct Keyword;
 "eval",    &thunk_cells[THUNK_EVAL]
 "first",   &thunk_cells[THUNK_FIRST]
 "funcall", &thunk_cells[THUNK_FUNCALL]
+"gc",      &thunk_cells[THUNK_GC]
 "gt",      &thunk_cells[THUNK_GT]
 ">",       &thunk_cells[THUNK_GT]
 "if",      &thunk_cells[THUNK_IF]

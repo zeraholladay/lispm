@@ -6,6 +6,7 @@
 #include "keywords.h"
 #include "lm.h"
 #include "lm_env.h"
+#include "lm_gc.h"
 #include "lm_secd.h"
 #include "palloc.h"
 #include "prims.h"
@@ -389,6 +390,10 @@ lm_eval (LM *lm)
             CTL_PUSH (lm, map, NULL, NULL);
             CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
             CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
+            break;
+          case THUNK_GC:
+            lm_gc (lm); // for now
+            STK_PUSH (lm, T);
             break;
           default:
             BAIL (lm, ERR_INTERNAL, "lispm");
