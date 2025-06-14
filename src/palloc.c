@@ -94,14 +94,34 @@ pool_reset_all (Pool *p)
   size_t count = p->count;
   size_t stride = p->stride;
 
-  Wrapper *cur;
-
   for (size_t i = 0; i < count - 1; ++i)
     {
-      cur = INDEX (p->pool, i, stride);
+      Wrapper *cur = INDEX (p->pool, i, stride);
       cur->next_free = INDEX (p->pool, i + 1, stride);
     }
 
   INDEX (p->pool, count - 1, stride)->next_free = NULL;
   p->free_list = INDEX (p->pool, 0, stride);
+}
+
+void
+pool_map (Pool *p, void (*cb) (Pool *p, void *))
+{
+  for (size_t i = 0; i < p->count - 1; ++i)
+    {
+      Wrapper *wrapper = INDEX (p->pool, i, p->stride);
+      cb (p, wrapper->ptr);
+    }
+}
+
+void
+pool_map_hier (Pool *p, void (*cb) (Pool *p, void *))
+{
+  Pool *cur = p;
+
+  while (cur)
+    {
+      pool_map (cur, cb);
+      cur = cur->next;
+    }
 }

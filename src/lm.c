@@ -44,7 +44,7 @@ lm_dump (LM *lm)
   LM_ENTER_FRAME (lm);
 
   return true;
-  overflow:
+overflow:
   return false; // TODO: set err here
 }
 
@@ -63,7 +63,7 @@ lm_dump_restore (LM *lm)
   LM_LEAVE_FRAME (lm);
 
   return true;
-  underflow:
+underflow:
   return false; // TODO: set err here
 }
 
@@ -86,9 +86,9 @@ lm_eval (LM *lm)
   case s_##tag:                                                               \
     goto ctl_##tag;
 #include "lm.def"
-#undef STATE
+#undef X
         default:
-          BAIL (lm, ERR_INTERNAL, "No such state.");
+          BAIL (lm, ERR_INTERNAL, "no such state");
         }
 
     ctl_closure_enter:
@@ -96,11 +96,13 @@ lm_eval (LM *lm)
         LM_ENTER_FRAME (lm);
         goto next;
       }
+
     ctl_closure_leave:
       {
         LM_LEAVE_FRAME (lm);
         goto next;
       }
+
     ctl_eval:
       {
         Cell *expr = u.eval.expr ?: STK_POP (lm);
@@ -131,6 +133,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_eval_apply:
       {
         if (u.eval_apply.fn)
@@ -153,6 +156,7 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_evlis:
       {
         if (NILP (u.evlis.arglist))
@@ -170,6 +174,7 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_evlis_acc:
       {
         Cell *eval_res = STK_POP (lm);
@@ -177,6 +182,7 @@ lm_eval (LM *lm)
         CTL_PUSH (lm, evlis, acc, u.evlis_acc.arglist);
         goto next;
       }
+
     ctl_funcall:
       {
         Cell *fn = u.funcall.fn ?: STK_POP (lm);
@@ -198,6 +204,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_lambda:
       {
         Cell *fn = u.lambda.fn ?: STK_POP (lm);
@@ -229,6 +236,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_let:
       {
         Cell *progn = CDR (u.let.arglist);
@@ -260,6 +268,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_define:
       {
         Cell *car = STK_POP (lm);
@@ -272,6 +281,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_set:
       {
         Cell *car = STK_POP (lm);
@@ -284,6 +294,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_apply:
       {
         Cell *fn = u.apply.fn ?: STK_POP (lm);
@@ -304,6 +315,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_progn:
       {
         if (NILP (u.progn.arglist))
@@ -315,6 +327,7 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_progn_eval:
       {
         Cell *eval_res = STK_POP (lm);
@@ -323,6 +336,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_lispm:
       {
         Cell *fn = u.lispm.fn;
@@ -381,12 +395,14 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_if_:
       {
         CTL_PUSH (lm, if_cont, CDR (u.if_.form));
         CTL_PUSH (lm, eval, CAR (u.if_.form));
         goto next;
       }
+
     ctl_if_cont:
       {
         Cell *pred_val = STK_POP (lm);
@@ -406,6 +422,7 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_and:
       {
         if (NILP (u.and.arglist))
@@ -417,6 +434,7 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_and_cont:
       {
         Cell *eval_res = STK_POP (lm);
@@ -437,6 +455,7 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_or:
       {
         if (NILP (u.or.arglist))
@@ -448,6 +467,7 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_or_cont:
       {
         Cell *eval_res = STK_POP (lm);
@@ -468,6 +488,7 @@ lm_eval (LM *lm)
           }
         goto next;
       }
+
     ctl_map:
       {
         Cell *fn = u.funcall.fn ?: STK_POP (lm);
@@ -477,6 +498,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_map_cont:
       {
         if (NILP (u.map_cont.ziplist))
@@ -495,6 +517,7 @@ lm_eval (LM *lm)
 
         goto next;
       }
+
     ctl_map_acc:
       {
         Cell *res = STK_POP (lm);
@@ -506,6 +529,7 @@ lm_eval (LM *lm)
       }
     next:;
     }
+
   while (base_ctl <= lm->ctl.sp);
 
   return STK_POP (lm);
@@ -537,6 +561,7 @@ void
 lm_destroy (LM *lm)
 {
   pool_destroy (&lm->pool);
+
   // Destory the whole environment
   for (size_t i = 0; i < lm->env.sp; ++i)
     dict_destroy (lm->env.dict[i]);

@@ -50,8 +50,6 @@ lm_env_set (LM *lm, Cell *car, Cell *cdr)
   return false;
 }
 
-#include <stdio.h>
-
 Cell *
 lm_env_lookup (LM *lm, Cell *sym)
 {
