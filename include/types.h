@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "lm.h"

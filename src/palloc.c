@@ -8,14 +8,14 @@
   (((size) + alignof (max_align_t) - 1) & ~(alignof (max_align_t) - 1))
 
 #define INDEX(base, index, stride)                                            \
-  ((Wrapper *)((char *)(base) + ((index) * (stride))))
+  ((PallocWrapper *)((char *)(base) + ((index) * (stride))))
 
 Pool *
 pool_init (size_t count, size_t size)
 {
   Pool *p = xcalloc (1, sizeof *(p));
-  size_t stride
-      = STRIDE (sizeof (Wrapper) + size); // array-aligned Wrapper and size
+  size_t stride = STRIDE (sizeof (PallocWrapper)
+                          + size); // array-aligned PallocWrapper and size
 
   p->pool = xcalloc (count, stride);
 
@@ -56,8 +56,9 @@ pool_xalloc (Pool *p)
   if (!p->free_list)
     return oom_handler_die (p, OOM_LOCATION "free_list empty");
 
-  Wrapper *wrapper = p->free_list;
+  PallocWrapper *wrapper = p->free_list;
   p->free_list = wrapper->next_free;
+  wrapper->free = 0;
 
   return &wrapper->ptr;
 }
@@ -83,9 +84,12 @@ pool_xalloc_hier (Pool **head)
 void
 pool_free (Pool *p, void *ptr)
 {
-  Wrapper *wrapper = (Wrapper *)((void *)ptr - offsetof (Wrapper, ptr));
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
+
   wrapper->next_free = p->free_list;
   p->free_list = wrapper;
+  wrapper->free = 1;
 }
 
 void
@@ -94,14 +98,70 @@ pool_reset_all (Pool *p)
   size_t count = p->count;
   size_t stride = p->stride;
 
-  Wrapper *cur;
-
   for (size_t i = 0; i < count - 1; ++i)
     {
-      cur = INDEX (p->pool, i, stride);
+      PallocWrapper *cur = INDEX (p->pool, i, stride);
       cur->next_free = INDEX (p->pool, i + 1, stride);
+      cur->free = 1;
+      cur->gc_mark = 0;
     }
 
   INDEX (p->pool, count - 1, stride)->next_free = NULL;
   p->free_list = INDEX (p->pool, 0, stride);
+}
+
+bool
+pool_gc_is_free (void *ptr)
+{
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
+  return wrapper->free;
+}
+
+bool
+pool_gc_is_marked (void *ptr)
+{
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
+  return wrapper->gc_mark;
+}
+
+#include "fmt.h"
+
+void
+pool_gc_mark (void *ptr)
+{
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
+  wrapper->gc_mark = 1;
+}
+
+void
+pool_gc_unmark (void *ptr)
+{
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
+  wrapper->gc_mark = 0;
+}
+
+void
+pool_map (Pool *p, void (*cb) (Pool *p, void *))
+{
+  for (size_t i = 0; i < p->count - 1; ++i)
+    {
+      PallocWrapper *wrapper = INDEX (p->pool, i, p->stride);
+      cb (p, &wrapper->ptr);
+    }
+}
+
+void
+pool_map_hier (Pool *head, void (*cb) (Pool *p, void *))
+{
+  Pool *cur_p = head;
+
+  while (cur_p)
+    {
+      pool_map (cur_p, cb);
+      cur_p = cur_p->next;
+    }
 }

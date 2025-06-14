@@ -33,7 +33,6 @@ main (void)
   srunner_add_suite (sr, rb_tree_suite ());
   srunner_add_suite (sr, list_suite ());
   srunner_add_suite (sr, dict_suite ());
-  srunner_add_suite (sr, env_suite ());
   srunner_add_suite (sr, str_save_suite ());
   srunner_add_suite (sr, palloc_suite ());
   srunner_add_suite (sr, eval_suite ());

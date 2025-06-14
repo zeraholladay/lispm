@@ -3,11 +3,23 @@
 
 #include <stdbool.h>
 
+#include "palloc.h"
 #include "types.h"
 
-static Cell thunk_cells[_THUNK_END] = {
+typedef struct thunk_wrapper ThunkWrapper;
+
+struct thunk_wrapper
+{
+  PALLOC_WRAPPER_FIELDS (ThunkWrapper)
+  Cell ptr;
+};
+
+static ThunkWrapper wrapped_thunks[_THUNK_END] = {
 #define X(sym, is_l, ar, fn)                                                  \
-  [THUNK_##sym] = { .type = TYPE_THUNK, .thunk = THUNK_##sym },
+  [THUNK_##sym] = { .free = 0,                                                \
+                    .gc_mark = 1,                                             \
+                    .next_free = NULL,                                        \
+                    .ptr = { .type = TYPE_THUNK, .thunk = THUNK_##sym } },
 #include "thunks.def"
 #undef X
 };

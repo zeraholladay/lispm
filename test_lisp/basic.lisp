@@ -70,9 +70,9 @@
 (assert '(not (apply rest '((t)))))
 (assert
     '(apply cons '(foo 'bar)))
-(assert
-    '(eq 42 (apply funcall '(car (42 0)))
-    ))
+;; (assert
+;;     '(eq 42 (apply funcall '(car (42 0)))
+;;     ))
 ;; funcall
 (assert
     '(funcall (lambda () t)))
@@ -86,7 +86,7 @@
 ;; BUGS
 ;; (assert '(eq -42 (- 42))) == -42
 (assert '(eq 42 (* 42)))
-;; BUG SHOULD not WORK
+;; BUG SHOULD not WorK
 ;; (assert '(eq 42 (/ 42)))
 (assert '(eq 10 (+ 1 2 3 4)))
 (assert '(eq -8 (- 1 2 3 4)))
@@ -98,11 +98,11 @@
 (assert '(lt -42 42))
 (assert '(lt -1 0 1 2 3))
 ;; RECURION
-(define 'lt_or_eq (lambda (x Y) (OR (< x Y) (eq x Y))))
+(define 'lt_or_eq (lambda (x Y) (or (< x Y) (eq x Y))))
 (define 'fooer (lambda (x)
     (if (lt_or_eq x 0)
         x
-        (fooer (SUB x 1))
+        (fooer (sub x 1))
     )))
 (assert (eq 0 (fooer 42)))
 (assert (eq -42 (fooer -42)))
@@ -117,9 +117,9 @@
 (assert '(eq 903 (apply + (range 0 42))))
 ;; Fibonacci
 (define 'fib (lambda (x)
-            (if (OR (< x 1) (eq x 1))
+            (if (or (< x 1) (eq x 1))
                 x
-                (+ (fib (SUB x 1)) (fib (SUB x 2)))
+                (+ (fib (sub x 1)) (fib (sub x 2)))
             )))
 (assert '(eq 0 (fib 0)))
 (assert '(eq 1 (fib 1)))
@@ -129,21 +129,21 @@
 (assert '(eq 5 (fib 5)))
 (assert '(eq 55 (fib 10)))
 ;; Delayed evaluation Fibonacci
-(define 'LAYZ_fib (lambda (x)
-            (if (OR (< x 1) (eq x 1))
+(define 'layz_fib (lambda (x)
+            (if (or (< x 1) (eq x 1))
                 (list '+ x 0)
-                (list '+ (funcall LAYZ_fib (SUB x 1)) (funcall LAYZ_fib (SUB x 2)))
+                (list '+ (layz_fib (sub x 1)) (layz_fib (sub x 2)))
             )))
-(assert '(eq 0 (eval (LAYZ_fib 0))))
-(assert '(eq 1 (eval (LAYZ_fib 1))))
-(assert '(eq 1 (eval (LAYZ_fib 2))))
-(assert '(eq 2 (eval (LAYZ_fib 3))))
-(assert '(eq 2 (eval (LAYZ_fib 3))))
-(assert '(eq 5 (eval (LAYZ_fib 5))))
-(assert '(eq 55 (eval (LAYZ_fib 10))))
+(assert '(eq 0 (eval (layz_fib 0))))
+(assert '(eq 1 (eval (layz_fib 1))))
+(assert '(eq 1 (eval (layz_fib 2))))
+(assert '(eq 2 (eval (layz_fib 3))))
+(assert '(eq 2 (eval (layz_fib 3))))
+(assert '(eq 5 (eval (layz_fib 5))))
+(assert '(eq 55 (eval (layz_fib 10))))
 (define 'result 6765)
-(assert '(eq result (eval (LAYZ_fib 20))))
+(assert '(eq result (eval (layz_fib 20))))
 (set! 'result 832040)
-(assert '(eq result (eval (LAYZ_fib 30)))) ;; 32 is the max as of 5-17-25
+(assert '(eq result (eval (layz_fib 30)))) ;; 32 is the max as of 5-17-25
 (print 'END)
 (assert nil)

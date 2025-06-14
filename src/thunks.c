@@ -7,7 +7,7 @@
 #include "prims.h"
 #include "thunks.h"
 
-typedef struct Cell *(*ThunkFn) (LM *lm, Cell *, Cell *);
+typedef Cell *(*ThunkFn) (LM *lm, Cell *, Cell *);
 
 typedef struct
 {
@@ -376,7 +376,7 @@ thunker (LM *lm, Cell *fn, Cell *arglist)
   Thunk thunk = thunk_table[fn->thunk];
 
   if (!thunk.fn)
-    LM_ERR_RET (lm, ERR_NOT_A_FUNCTION, thunk.name ?: "no name thunk");
+    LM_ERR_RET (lm, ERR_NOT_A_FUNCTION, thunk.name ?: "not a true thunk");
 
   int received = (int)length (arglist);
 

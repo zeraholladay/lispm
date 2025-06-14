@@ -6,22 +6,6 @@
 
 #include "lm_err.h"
 
-#ifndef LISPM_STK_MAX
-#define LISPM_STK_MAX 1024
-#endif
-
-#ifndef LISPM_CTL_MAX
-#define LISPM_CTL_MAX 512
-#endif
-
-#ifndef LISPM_DUMP_MAX
-#define LISPM_DUMP_MAX 512
-#endif
-
-#ifndef LM_OBJ_POOL_CAP
-#define LM_OBJ_POOL_CAP 1024
-#endif
-
 #define LM_ERR_RET(lm, err_code, fmt, ...)                                    \
   do                                                                          \
     {                                                                         \

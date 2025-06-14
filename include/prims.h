@@ -2,15 +2,18 @@
 #define PRIMS_H
 
 #include "lm.h"
+#include "palloc.h"
 #include "types.h"
 
-extern Cell _nil;
-extern Cell _t;
-extern Cell _quote;
+typedef struct prim_wrapper PrimWrapper;
 
-#define NIL (&_nil)
-#define T (&_t)
-#define QUOTE (&_quote)
+extern PrimWrapper wrapper_nil;
+extern PrimWrapper wrapped_t;
+extern PrimWrapper wrapper_quote;
+
+#define NIL (&wrapper_nil.ptr)
+#define T (&wrapped_t.ptr)
+#define QUOTE (&wrapper_quote.ptr)
 
 #define NILP(x) (x == NIL)
 #define LISTP(x) (NILP (x) || CONSP (x))
@@ -43,6 +46,12 @@ extern Cell _quote;
         CDR (x) = val;                                                        \
     }                                                                         \
   while (0)
+
+struct prim_wrapper
+{
+  PALLOC_WRAPPER_FIELDS (PrimWrapper)
+  Cell ptr;
+};
 
 Cell *append_inplace (Cell *lst1, Cell *lst2);
 Cell *append_list (LM *lm, Cell *lst1, Cell *lst2);
