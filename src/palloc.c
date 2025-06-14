@@ -8,14 +8,14 @@
   (((size) + alignof (max_align_t) - 1) & ~(alignof (max_align_t) - 1))
 
 #define INDEX(base, index, stride)                                            \
-  ((Wrapper *)((char *)(base) + ((index) * (stride))))
+  ((PallocWrapper *)((char *)(base) + ((index) * (stride))))
 
 Pool *
 pool_init (size_t count, size_t size)
 {
   Pool *p = xcalloc (1, sizeof *(p));
-  size_t stride
-      = STRIDE (sizeof (Wrapper) + size); // array-aligned Wrapper and size
+  size_t stride = STRIDE (sizeof (PallocWrapper)
+                          + size); // array-aligned PallocWrapper and size
 
   p->pool = xcalloc (count, stride);
 
@@ -56,7 +56,7 @@ pool_xalloc (Pool *p)
   if (!p->free_list)
     return oom_handler_die (p, OOM_LOCATION "free_list empty");
 
-  Wrapper *wrapper = p->free_list;
+  PallocWrapper *wrapper = p->free_list;
   p->free_list = wrapper->next_free;
 
   wrapper->free = 0;
@@ -86,7 +86,8 @@ pool_xalloc_hier (Pool **head)
 void
 pool_free (Pool *p, void *ptr)
 {
-  Wrapper *wrapper = (Wrapper *)((void *)ptr - offsetof (Wrapper, ptr));
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
 
   if (wrapper->free)
     return;
@@ -105,7 +106,7 @@ pool_reset_all (Pool *p)
 
   for (size_t i = 0; i < count - 1; ++i)
     {
-      Wrapper *cur = INDEX (p->pool, i, stride);
+      PallocWrapper *cur = INDEX (p->pool, i, stride);
       cur->next_free = INDEX (p->pool, i + 1, stride);
     }
 
@@ -114,16 +115,18 @@ pool_reset_all (Pool *p)
 }
 
 bool
-pool_gc_is_marked (Pool *p, void *ptr)
+pool_gc_is_marked (void *ptr)
 {
-  Wrapper *wrapper = (Wrapper *)((void *)ptr - offsetof (Wrapper, ptr));
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
   return wrapper->gc_mark;
 }
 
 void
-pool_gc_mark (Pool *p, void *ptr)
+pool_gc_mark (void *ptr)
 {
-  Wrapper *wrapper = (Wrapper *)((void *)ptr - offsetof (Wrapper, ptr));
+  PallocWrapper *wrapper
+      = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
   wrapper->gc_mark = 1;
 }
 
@@ -132,7 +135,7 @@ pool_map (Pool *p, void (*cb) (Pool *p, void *))
 {
   for (size_t i = 0; i < p->count - 1; ++i)
     {
-      Wrapper *wrapper = INDEX (p->pool, i, p->stride);
+      PallocWrapper *wrapper = INDEX (p->pool, i, p->stride);
       cb (p, &wrapper->ptr);
     }
 }

@@ -1,5 +1,6 @@
 #include "stdlib.h"
 
+#include "palloc.h"
 #include "prims.h"
 #include "xalloc.h"
 
@@ -7,11 +8,26 @@
 
 // NIL & T
 
-Cell _nil = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } };
+PrimWrapper wrapped_t = {
+  .free = 0,
+  .gc_mark = 1,
+  .next_free = NULL,
+  .ptr = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("t") },
+};
 
-Cell _t = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("t") };
+PrimWrapper wrapper_nil = {
+  .free = 0,
+  .gc_mark = 1,
+  .next_free = NULL,
+  .ptr = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } },
+};
 
-Cell _quote = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("quote") };
+PrimWrapper wrapper_quote = {
+  .free = 0,
+  .gc_mark = 1,
+  .next_free = NULL,
+  .ptr = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("quote") },
+};
 
 // sequence operations
 
