@@ -14,15 +14,20 @@
 #include "types.h"
 #include "xalloc.h"
 
-#include <stdbool.h>
-#include <stddef.h> // for offsetof, if you need it
+#define S(tag, ...)                                                           \
+  (State)                                                                     \
+  {                                                                           \
+    .s = s_##tag, .u.tag = { __VA_ARGS__ }                                    \
+  }
 
 static inline Cell *
 stk_pop (LM *lm)
 {
   if (lm->stk.sp == 0)
-    return NULL;
-
+    {
+      lm_err_set (lm, ERR_UNDERFLOW, "stk_pop");
+      return NULL;
+    }
   return lm->stk.cells[--lm->stk.sp];
 }
 
@@ -30,27 +35,27 @@ static inline bool
 stk_push (LM *lm, Cell *val)
 {
   if (lm->stk.sp >= LISPM_STK_MAX)
-    return false;
+    return lm_err_set (lm, ERR_OVERFLOW, "stk_push");
 
   lm->stk.cells[lm->stk.sp++] = val;
   return true;
 }
 
 static inline bool
-lm_enter_frame (LM *lm)
+enter_frame (LM *lm)
 {
   if (lm->env.sp >= LISPM_ENV_MAX)
-    return false;
+    return lm_err_set (lm, ERR_OVERFLOW, "enter_frame");
 
   lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
   return true;
 }
 
 static inline bool
-lm_leave_frame (LM *lm)
+leave_frame (LM *lm)
 {
   if (lm->env.sp == 0)
-    return false;
+    return lm_err_set (lm, ERR_UNDERFLOW, "leave_frame");
 
   lm->env.sp--;
   dict_destroy (lm->env.dict[lm->env.sp]);
@@ -61,7 +66,7 @@ static inline bool
 ctl_pop (LM *lm, State *out)
 {
   if (lm->ctl.sp == 0)
-    return false;
+    return lm_err_set (lm, ERR_UNDERFLOW, "ctl_pop");
 
   *out = lm->ctl.states[--lm->ctl.sp];
   return true;
@@ -71,11 +76,57 @@ static inline bool
 ctl_push_state (LM *lm, State st)
 {
   if (lm->ctl.sp >= LISPM_CTL_MAX)
-    return false;
+    return lm_err_set (lm, ERR_OVERFLOW, "ctl_push_state");
 
   lm->ctl.states[lm->ctl.sp++] = st;
   return true;
 }
+
+static inline bool
+ctl_push_states (LM *lm, const State sts[], size_t n)
+{
+  while (n-- > 0)
+    {
+      if (!ctl_push_state (lm, sts[n]))
+        return false;
+    }
+  return true;
+}
+
+// static bool
+// dump (LM *lm)
+// {
+//   if ((lm)->dmp.sp >= LISPM_DUMP_MAX)
+//     return false;
+
+//   lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
+//                                           .env_sp = lm->env.sp,
+//                                           .ctl_sp = lm->ctl.sp };
+//   LM_ENTER_FRAME (lm);
+
+//   return true;
+// overflow:
+//   return false; // TODO: set err here
+// }
+
+// static bool
+// dump_restore (LM *lm)
+// {
+//   if (lm->dmp.sp == 0)
+//     return false;
+
+//   Dump dump = lm->dmp.dumps[--lm->dmp.sp];
+
+//   lm->stk.sp = dump.stk_sp;
+//   lm->env.sp = dump.env_sp;
+//   lm->ctl.sp = dump.ctl_sp;
+
+//   LM_LEAVE_FRAME (lm);
+
+//   return true;
+// underflow:
+//   return false; // TODO: set err here
+// }
 
 static void
 lm_reset (LM *lm)
@@ -94,42 +145,7 @@ lm_reset (LM *lm)
   lm->err_bool = false;
 }
 
-// static bool
-// lm_dump (LM *lm)
-// {
-//   if ((lm)->dmp.sp >= LISPM_DUMP_MAX)
-//     return false;
-
-//   lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
-//                                           .env_sp = lm->env.sp,
-//                                           .ctl_sp = lm->ctl.sp };
-//   LM_ENTER_FRAME (lm);
-
-//   return true;
-// overflow:
-//   return false; // TODO: set err here
-// }
-
-// static bool
-// lm_dump_restore (LM *lm)
-// {
-//   if (lm->dmp.sp == 0)
-//     return false;
-
-//   Dump dump = lm->dmp.dumps[--lm->dmp.sp];
-
-//   lm->stk.sp = dump.stk_sp;
-//   lm->env.sp = dump.env_sp;
-//   lm->ctl.sp = dump.ctl_sp;
-
-//   LM_LEAVE_FRAME (lm);
-
-//   return true;
-// underflow:
-//   return false; // TODO: set err here
-// }
-
-static Cell *
+static bool
 lm_eval_switch (LM *lm, StateEnum s, Union u)
 {
   switch (s)
@@ -140,127 +156,152 @@ lm_eval_switch (LM *lm, StateEnum s, Union u)
 #include "lm.def"
 #undef X
     default:
-      BAIL (lm, ERR_INTERNAL, "no such state");
+      return lm_err_set (lm, ERR_INTERNAL, "no such state");
     }
 
 ctl_closure_enter:
   {
-    LM_ENTER_FRAME (lm);
-    goto next;
+    return enter_frame (lm);
   }
 
 ctl_closure_leave:
   {
-    LM_LEAVE_FRAME (lm);
-    goto next;
+    return leave_frame (lm);
   }
 
 ctl_eval:
   {
-    Cell *expr = u.eval.expr ?: STK_POP (lm);
+    Cell *expr = u.eval.expr;
+
+    if (!expr && !(expr = stk_pop (lm)))
+      return false;
 
     if (IS_INST (expr, SYMBOL))
-      STK_PUSH (lm, lm_env_lookup (lm, expr));
-    else if (!LISTP (expr)) // literal
-      STK_PUSH (lm, expr);
-    else if (LISTP (expr))
+      return stk_push (lm, lm_env_lookup (lm, expr));
+
+    if (!LISTP (expr)) // literal
+      return stk_push (lm, expr);
+
+    if (LISTP (expr))
       {
         if (NILP (expr))
-          STK_PUSH (lm, NIL);
-        else
-          {
-            Cell *car = CAR (expr);
-            Cell *cdr = CDR (expr);
+          return stk_push (lm, NIL);
 
-            if (car == QUOTE)
-              STK_PUSH (lm, CAR (cdr));
-            else if (IS_INST (car, LAMBDA))
-              STK_PUSH (lm, car);
-            else
-              CTL_PUSH (lm, eval_apply, car, cdr);
-          }
+        Cell *car = CAR (expr);
+        Cell *cdr = CDR (expr);
+
+        if (car == QUOTE)
+          return stk_push (lm, CAR (cdr));
+
+        if (IS_INST (car, LAMBDA))
+          return stk_push (lm, car);
+
+        return ctl_push_state (lm, S (eval_apply, .fn = car, .arglist = cdr));
       }
-    else
-      BAIL (lm, ERR_INTERNAL, "eval");
 
-    goto next;
+    return lm_err_set (lm, ERR_INTERNAL, "eval");
   }
 
 ctl_eval_apply:
   {
-    if (u.eval_apply.fn)
-      {
-        CTL_PUSH (lm, eval_apply, NULL, u.eval_apply.arglist);
-        CTL_PUSH (lm, eval, u.eval_apply.fn);
-      }
-    else
-      {
-        Cell *fn = STK_POP (lm);
+    Cell *fn = u.eval_apply.fn;
+    Cell *arglist = u.eval_apply.arglist;
 
-        // one of the fns this C code handles
-        if (IS_INST (fn, THUNK) && thunk_is_lispm (fn))
-          CTL_PUSH (lm, lispm, fn, u.eval_apply.arglist);
-        else
-          {
-            CTL_PUSH (lm, funcall, fn, NULL);
-            CTL_PUSH (lm, evlis, NIL, u.eval_apply.arglist);
-          }
-      }
-    goto next;
+    if (fn)
+      return ctl_push_states (
+          lm,
+          (State[]){
+              S (eval, .expr = fn),
+              S (eval_apply, .fn = NULL, .arglist = arglist),
+          },
+          2);
+
+    if (!(fn = stk_pop (lm)))
+      return false;
+
+    // one of the fns this C code handles
+    if (IS_INST (fn, THUNK) && thunk_is_lispm (fn))
+      return ctl_push_state (lm, S (lispm, .fn = fn, .arglist = arglist));
+
+    return ctl_push_states (lm,
+                            (State[]){
+                                S (evlis, .acc = NIL, .arglist = arglist),
+                                S (funcall, .fn = fn, .arglist = NULL),
+                            },
+                            2);
   }
 
 ctl_evlis:
   {
-    if (NILP (u.evlis.arglist))
-      {
-        Cell *res = reverse_inplace (u.evlis.acc);
-        STK_PUSH (lm, res);
-      }
-    else
-      {
-        Cell *car = CAR (u.evlis.arglist);
-        Cell *cdr = CDR (u.evlis.arglist);
+    Cell *acc = u.evlis.acc;
+    Cell *arglist = u.evlis.arglist;
 
-        CTL_PUSH (lm, evlis_acc, u.evlis.acc, cdr);
-        CTL_PUSH (lm, eval, car);
+    if (NILP (arglist))
+      {
+        Cell *res = reverse_inplace (acc);
+        return stk_push (lm, res);
       }
-    goto next;
+
+    Cell *car = CAR (arglist);
+    Cell *cdr = CDR (arglist);
+
+    return ctl_push_states (lm,
+                            (State[]){
+                                S (eval, .expr = car, ),
+                                S (evlis_acc, .acc = acc, .arglist = cdr),
+                            },
+                            2);
   }
 
 ctl_evlis_acc:
   {
-    Cell *eval_res = STK_POP (lm);
-    Cell *acc = CONS (eval_res, u.evlis_acc.acc, lm);
-    CTL_PUSH (lm, evlis, acc, u.evlis_acc.arglist);
-    goto next;
+    Cell *eval_res = stk_pop (lm);
+    if (!eval_res)
+      return false;
+
+    Cell *acc = u.evlis_acc.acc;
+    Cell *arglist = u.evlis_acc.arglist;
+
+    Cell *acc2 = CONS (eval_res, acc, lm);
+    return ctl_push_state (lm, S (evlis, .acc = acc2, .arglist = arglist));
   }
 
 ctl_funcall:
   {
-    Cell *fn = u.funcall.fn ?: STK_POP (lm);
-    Cell *arglist = u.funcall.arglist ?: STK_POP (lm);
+    Cell *fn = u.funcall.fn;
+    Cell *arglist = u.funcall.arglist;
+
+    if (!fn && !(fn = stk_pop (lm)))
+      return false;
+
+    if (!arglist && !(arglist = stk_pop (lm)))
+      return false;
 
     if (IS_INST (fn, THUNK))
-      {
-        Cell *ret = thunker (lm, fn, arglist);
-        STK_PUSH (lm, ret);
-      }
-    else if (IS_INST (fn, LAMBDA))
-      {
-        CTL_PUSH (lm, closure_leave);
-        CTL_PUSH (lm, lambda, fn, arglist);
-        CTL_PUSH (lm, closure_enter);
-      }
-    else
-      BAIL (lm, ERR_NOT_A_FUNCTION, "funcall");
+      return stk_push (lm, thunker (lm, fn, arglist));
 
-    goto next;
+    if (IS_INST (fn, LAMBDA))
+      return ctl_push_states (lm,
+                              (State[]){
+                                  S (closure_enter),
+                                  S (lambda, .fn = fn, .arglist = arglist),
+                                  S (closure_leave),
+                              },
+                              3);
+
+    return lm_err_set (lm, ERR_NOT_A_FUNCTION, "funcall");
   }
 
 ctl_lambda:
   {
-    Cell *fn = u.lambda.fn ?: STK_POP (lm);
-    Cell *arglist = u.lambda.arglist ?: STK_POP (lm);
+    Cell *fn = u.lambda.fn;
+    Cell *arglist = u.lambda.arglist;
+
+    if (!fn && !(fn = stk_pop (lm)))
+      return false;
+
+    if (!arglist && !(arglist = stk_pop (lm)))
+      return false;
 
     Lambda *lambda = &fn->lambda;
 
@@ -271,7 +312,7 @@ ctl_lambda:
       {
         ErrorCode err
             = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
-        BAIL (lm, err, "lambda");
+        return lm_err_set (lm, err, "lambda");
       }
 
     Cell *pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
@@ -279,14 +320,14 @@ ctl_lambda:
     while (!NILP (pairs))
       {
         Cell *pair = CAR (pairs);
+
         if (!lm_env_define (lm, (CAR (pair)), CADR (pair)))
-          goto next;
+          return false;
+
         pairs = CDR (pairs);
       }
 
-    CTL_PUSH (lm, progn, NIL, lambda->body);
-
-    goto next;
+    return ctl_push_state (lm, S (progn, .res = NIL, .arglist = lambda->body));
   }
 
 ctl_let:
@@ -302,7 +343,7 @@ ctl_let:
         Cell *pair = CAR (pairs);
 
         if (!CONSP (pair))
-          BAIL (lm, ERR_INVALID_ARG, "let: binding not a list");
+          return lm_err_set (lm, ERR_INVALID_ARG, "let: binding not a list");
 
         rev_vars = CONS (CAR (pair), rev_vars, lm);
         rev_exprs = CONS (CADR (pair), rev_exprs, lm);
@@ -313,304 +354,395 @@ ctl_let:
     Cell *vars = reverse_inplace (rev_vars);
     Cell *exprs = reverse_inplace (rev_exprs);
 
-    CTL_PUSH (lm, closure_leave);
-    CTL_PUSH (lm, lambda, LAMBDA (vars, progn, lm), NULL);
-    CTL_PUSH (lm, closure_enter);
-    CTL_PUSH (lm, evlis, NIL, exprs);
-
-    goto next;
+    return ctl_push_states (
+        lm,
+        (State[]){
+            S (evlis, .acc = NIL, .arglist = exprs),
+            S (closure_enter),
+            S (lambda, .fn = LAMBDA (vars, progn, lm), .arglist = NULL),
+            S (closure_leave),
+        },
+        4);
   }
 
 ctl_define:
   {
-    Cell *car = STK_POP (lm);
-    Cell *cdr = STK_POP (lm);
+    Cell *car = stk_pop (lm);
+    Cell *cdr = stk_pop (lm);
 
-    // TODO: check cdr len
+    if (!car || !cdr)
+      return false;
 
-    if (lm_env_define (lm, car, CAR (cdr)))
-      STK_PUSH (lm, CAR (cdr));
+    // TODO: validate pop & check cdr len
 
-    goto next;
+    if (!lm_env_define (lm, car, CAR (cdr)))
+      return false;
+
+    return stk_push (lm, CAR (cdr));
   }
 
 ctl_set:
   {
-    Cell *car = STK_POP (lm);
-    Cell *cdr = STK_POP (lm);
+    Cell *car = stk_pop (lm);
+    Cell *cdr = stk_pop (lm);
+
+    if (!car || !cdr)
+      return false;
 
     // TODO: check cdr len
 
-    if (lm_env_set (lm, car, CAR (cdr)))
-      STK_PUSH (lm, CAR (cdr));
+    if (!lm_env_set (lm, car, CAR (cdr)))
+      return false;
 
-    goto next;
+    return stk_push (lm, CAR (cdr));
   }
 
 ctl_apply:
   {
-    Cell *fn = u.apply.fn ?: STK_POP (lm);
-    Cell *arglist = u.apply.arglist ?: STK_POP (lm);
+    Cell *fn = u.apply.fn;
+    Cell *arglist = u.apply.arglist;
+
+    if (!fn && !(fn = stk_pop (lm)))
+      return false;
+
+    if (!arglist && !(arglist = stk_pop (lm)))
+      return false;
 
     if (!LISTP (arglist))
-      BAIL (lm, ERR_MISSING_ARG, "apply: not a list.");
+      return lm_err_set (lm, ERR_MISSING_ARG, "apply: not a list.");
 
     Cell *fixed = butlast (lm, arglist);
     Cell *tail_list = CAR (last (lm, arglist));
 
     if (!LISTP (tail_list))
-      BAIL (lm, ERR_MISSING_ARG, "apply: last not a list.");
+      return lm_err_set (lm, ERR_MISSING_ARG, "apply: last not a list.");
 
     Cell *all = append_inplace (fixed, tail_list);
 
-    CTL_PUSH (lm, funcall, fn, all);
-
-    goto next;
+    return ctl_push_state (lm, S (funcall, .fn = fn, .arglist = all));
   }
 
 ctl_progn:
   {
-    if (NILP (u.progn.arglist))
-      STK_PUSH (lm, u.progn.res);
-    else
-      {
-        CTL_PUSH (lm, progn_eval, CDR (u.progn.arglist));
-        CTL_PUSH (lm, eval, CAR (u.progn.arglist));
-      }
-    goto next;
+    Cell *res = u.progn.res;
+    Cell *arglist = u.progn.arglist;
+
+    if (NILP (arglist))
+      return stk_push (lm, res);
+
+    return ctl_push_states (
+        lm,
+        (State[]){ S (eval, .expr = CAR (arglist)),
+                   S (progn_eval, .arglist = CDR (arglist)) },
+        2);
   }
 
 ctl_progn_eval:
   {
-    Cell *eval_res = STK_POP (lm);
+    Cell *eval_res = stk_pop (lm);
+    Cell *arglist = u.progn_eval.arglist;
 
-    CTL_PUSH (lm, progn, eval_res, u.progn_eval.arglist);
+    if (!eval_res)
+      return false;
 
-    goto next;
+    return ctl_push_state (lm, S (progn, .res = eval_res, .arglist = arglist));
   }
 
 ctl_lispm:
   {
     Cell *fn = u.lispm.fn;
+    Cell *arglist = u.lispm.arglist;
 
     switch (fn->thunk)
       {
       case THUNK_APPLY:
-        CTL_PUSH (lm, apply, NULL, NULL);
-        CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
-        CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
-        break;
+        return ctl_push_states (
+            lm,
+            (State[]){
+                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
+                S (eval, .expr = CAR (arglist)),
+                S (apply, .fn = NULL, .arglist = NULL),
+            },
+            3);
+
       case THUNK_FUNCALL:
-        CTL_PUSH (lm, funcall, NULL, NULL);
-        CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
-        CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
-        break;
-      case THUNK_EVAL:
-        CTL_PUSH (lm, eval, NULL);
-        CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
-        break;
-      case THUNK_LIST:
-        CTL_PUSH (lm, evlis, NIL, u.lispm.arglist);
-        break;
-      case THUNK_PROGN:
-        CTL_PUSH (lm, progn, NIL, u.lispm.arglist);
-        break;
-      case THUNK_IF:
-        CTL_PUSH (lm, if_, u.lispm.arglist);
-        break;
-      case THUNK_AND:
-        CTL_PUSH (lm, and, u.lispm.arglist);
-        break;
-      case THUNK_OR:
-        CTL_PUSH (lm, or, u.lispm.arglist);
-        break;
+        return ctl_push_states (
+            lm,
+            (State[]){
+                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
+                S (eval, .expr = CAR (arglist)),
+                S (funcall, .fn = NULL, .arglist = NULL),
+            },
+            3);
+
       case THUNK_DEFINE:
-        CTL_PUSH (lm, define);
-        CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
-        CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
-        break;
+        return ctl_push_states (
+            lm,
+            (State[]){
+                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
+                S (eval, .expr = CAR (arglist)),
+                S (define),
+            },
+            3);
+
       case THUNK_SET:
-        CTL_PUSH (lm, set);
-        CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
-        CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
-        break;
-      case THUNK_LET:
-        CTL_PUSH (lm, let, CAR (u.lispm.arglist));
-        break;
+        return ctl_push_states (
+            lm,
+            (State[]){
+                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
+                S (eval, .expr = CAR (arglist)),
+                S (set),
+            },
+            3);
+
       case THUNK_MAP:
-        CTL_PUSH (lm, map, NULL, NULL);
-        CTL_PUSH (lm, eval, CAR (u.lispm.arglist));
-        CTL_PUSH (lm, evlis, NIL, CDR (u.lispm.arglist));
-        break;
+        return ctl_push_states (
+            lm,
+            (State[]){
+                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
+                S (eval, .expr = CAR (arglist)),
+                S (map, .fn = NULL, .arglist = NULL),
+            },
+            3);
+
+      case THUNK_EVAL:
+        return ctl_push_states (lm,
+                                (State[]){
+                                    S (eval, .expr = CAR (arglist)),
+                                    S (eval, .expr = NULL),
+                                },
+                                2);
+
+      case THUNK_LIST:
+        return ctl_push_state (lm, S (evlis, .acc = NIL, .arglist = arglist));
+
+      case THUNK_PROGN:
+        return ctl_push_state (lm, S (progn, .res = NIL, .arglist = arglist));
+
+      case THUNK_IF:
+        return ctl_push_state (lm, S (if_, .form = arglist));
+
+      case THUNK_AND:
+        return ctl_push_state (lm, S (and, .arglist = arglist));
+
+      case THUNK_OR:
+        return ctl_push_state (lm, S (or, .arglist = arglist));
+
+      case THUNK_LET:
+        return ctl_push_state (lm, S (let, .arglist = CAR (arglist)));
+
       case THUNK_GC:
         lm_gc (lm); // for now
-        STK_PUSH (lm, T);
-        break;
+        return stk_push (lm, T);
+
       default:
-        BAIL (lm, ERR_INTERNAL, "lispm");
+        break;
       }
-    goto next;
+
+    return lm_err_set (lm, ERR_INTERNAL, "lispm");
   }
 
 ctl_if_:
   {
-    CTL_PUSH (lm, if_cont, CDR (u.if_.form));
-    CTL_PUSH (lm, eval, CAR (u.if_.form));
-    goto next;
+    Cell *form = u.if_.form;
+
+    return ctl_push_states (lm,
+                            (State[]){
+                                S (eval, .expr = CAR (form)),
+                                S (if_cont, .form = CDR (form)),
+                            },
+                            2);
   }
 
 ctl_if_cont:
   {
-    Cell *pred_val = STK_POP (lm);
+    Cell *form = u.if_cont.form;
+    Cell *pred = stk_pop (lm);
 
-    if (!NILP (pred_val))
-      {
-        Cell *then_form = CAR (u.if_cont.form);
-        CTL_PUSH (lm, eval, then_form);
-      }
+    if (!pred)
+      return false;
+
+    if (!NILP (pred))
+      return ctl_push_state (lm, S (eval, .expr = CAR (form)));
+
+    Cell *else_form = CAR (CDR (form));
+
+    if (else_form)
+      return ctl_push_state (lm, S (eval, .expr = else_form));
     else
-      {
-        Cell *else_form = CAR (CDR (u.if_cont.form));
-        if (else_form)
-          CTL_PUSH (lm, eval, else_form);
-        else
-          STK_PUSH (lm, NIL);
-      }
-    goto next;
+      return stk_push (lm, NIL);
   }
 
 ctl_and:
   {
-    if (NILP (u.and.arglist))
-      STK_PUSH (lm, T);
-    else
-      {
-        CTL_PUSH (lm, and_cont, u.and.arglist);
-        CTL_PUSH (lm, eval, CAR (u.and.arglist));
-      }
-    goto next;
+    Cell *arglist = u.and.arglist;
+
+    if (NILP (arglist))
+      return stk_push (lm, T);
+
+    return ctl_push_states (lm,
+                            (State[]){
+                                S (eval, .expr = CAR (arglist)),
+                                S (and_cont, .arglist = arglist),
+                            },
+                            2);
   }
 
 ctl_and_cont:
   {
-    Cell *eval_res = STK_POP (lm);
+    Cell *eval_res = stk_pop (lm);
+    Cell *arglist = u.and_cont.arglist;
+
+    if (!eval_res)
+      return false;
 
     if (NILP (eval_res))
-      STK_PUSH (lm, NIL);
-    else
-      {
-        Cell *cdr = CDR (u.and.arglist);
+      return stk_push (lm, NIL);
 
-        if (NILP (cdr))
-          STK_PUSH (lm, eval_res);
-        else
-          {
-            CTL_PUSH (lm, and_cont, cdr);
-            CTL_PUSH (lm, eval, CAR (cdr));
-          }
-      }
-    goto next;
+    Cell *cdr = CDR (arglist);
+
+    if (NILP (cdr))
+      return stk_push (lm, eval_res);
+
+    return ctl_push_states (lm,
+                            (State[]){
+                                S (eval, .expr = CAR (cdr)),
+                                S (and_cont, .arglist = cdr),
+                            },
+                            2);
   }
 
 ctl_or:
   {
-    if (NILP (u.or.arglist))
-      STK_PUSH (lm, NIL);
-    else
-      {
-        CTL_PUSH (lm, or_cont, u.or.arglist);
-        CTL_PUSH (lm, eval, CAR (u.or.arglist));
-      }
-    goto next;
+    Cell *arglist = u.or.arglist;
+
+    if (NILP (arglist))
+      return stk_push (lm, NIL);
+
+    return ctl_push_states (lm,
+                            (State[]){
+                                S (eval, .expr = CAR (arglist)),
+                                S (or_cont, .arglist = arglist),
+                            },
+                            2);
   }
 
 ctl_or_cont:
   {
-    Cell *eval_res = STK_POP (lm);
+    Cell *eval_res = stk_pop (lm);
+    Cell *arglist = u.or_cont.arglist;
+
+    if (!eval_res)
+      return false;
 
     if (!NILP (eval_res))
-      STK_PUSH (lm, eval_res);
-    else
-      {
-        Cell *cdr = CDR (u.or_cont.arglist);
+      return stk_push (lm, eval_res);
 
-        if (NILP (cdr))
-          STK_PUSH (lm, eval_res);
-        else
-          {
-            CTL_PUSH (lm, or_cont, cdr);
-            CTL_PUSH (lm, eval, CAR (cdr));
-          }
-      }
-    goto next;
+    Cell *cdr = CDR (arglist);
+
+    if (NILP (cdr))
+      return stk_push (lm, eval_res);
+
+    return ctl_push_states (lm,
+                            (State[]){
+                                S (eval, .expr = CAR (cdr)),
+                                S (or_cont, .arglist = cdr),
+                            },
+                            2);
   }
 
 ctl_map:
   {
-    Cell *fn = u.funcall.fn ?: STK_POP (lm);
-    Cell *arglist = u.funcall.arglist ?: STK_POP (lm);
+    Cell *fn = u.map.fn;
+    Cell *arglist = u.map.arglist;
 
-    CTL_PUSH (lm, map_cont, fn, NIL, zip (lm, arglist));
+    if (!fn && !(fn = stk_pop (lm)))
+      return false;
 
-    goto next;
+    if (!arglist && !(arglist = stk_pop (lm)))
+      return false;
+
+    Cell *zipped = zip (lm, arglist);
+
+    return ctl_push_state (
+        lm, S (map_cont, .fn = fn, .acc = NIL, .ziplist = zipped));
   }
 
 ctl_map_cont:
   {
-    if (NILP (u.map_cont.ziplist))
-      {
-        Cell *res = reverse_inplace (u.map_cont.acc);
-        STK_PUSH (lm, res);
-      }
-    else
-      {
-        Cell *car = CAR (u.map_cont.ziplist);
-        Cell *cdr = CDR (u.map_cont.ziplist);
+    Cell *fn = u.map_cont.fn;
+    Cell *acc = u.map_cont.acc;
+    Cell *zipped = u.map_cont.ziplist;
 
-        CTL_PUSH (lm, map_acc, u.map_cont.fn, u.map_cont.acc, cdr);
-        CTL_PUSH (lm, funcall, u.map_cont.fn, car);
+    if (NILP (zipped))
+      {
+        Cell *res = reverse_inplace (acc);
+        return stk_push (lm, res);
       }
 
-    goto next;
+    Cell *car = CAR (zipped);
+    Cell *cdr = CDR (zipped);
+
+    return ctl_push_states (
+        lm,
+        (State[]){
+            S (funcall, .fn = fn, .arglist = car),
+            S (map_acc, .fn = fn, .acc = acc, .ziplist = cdr),
+        },
+        2);
   }
 
 ctl_map_acc:
   {
-    Cell *res = STK_POP (lm);
-    Cell *acc = CONS (res, u.map_acc.acc, lm);
+    Cell *fn = u.map_acc.fn;
+    Cell *acc = u.map_acc.acc;
+    Cell *zipped = u.map_acc.ziplist;
 
-    CTL_PUSH (lm, map_cont, u.map_cont.fn, acc, u.map_acc.ziplist);
+    Cell *res = stk_pop (lm);
+    if (!res)
+      return false;
 
-    goto next;
+    Cell *acc2 = CONS (res, acc, lm);
+
+    return ctl_push_state (
+        lm, S (map_cont, .fn = fn, .acc = acc2, .ziplist = zipped));
   }
-next:
-  {
-    return T;
-  }
-
-  LM_ERR_HANDLERS (lm, LM_ERR_STATE (error) LM_ERR_STATE (overflow)
-                           LM_ERR_STATE (underflow));
 }
 
 static Cell *
 lm_eval (LM *lm)
 {
-  size_t base_ctl = lm->ctl.sp;
+  size_t base_ptr = lm->ctl.sp;
+  State state;
 
   do
     {
       if (lm->err_bool)
         goto error;
 
-      State state = CTL_POP (lm);
+      if (!ctl_pop (lm, &state))
+        goto error;
 
-      if (lm_eval_switch (lm, state.s, state.u) == NIL)
-        return NIL;
+      lm_eval_switch (lm, state.s, state.u);
     }
-  while (base_ctl <= lm->ctl.sp);
+  while (base_ptr <= lm->ctl.sp);
 
-  return STK_POP (lm);
-  LM_ERR_HANDLERS (lm, LM_ERR_STATE (error) LM_ERR_STATE (underflow));
+  return stk_pop (lm);
+  LM_ERR_HANDLERS (lm, LM_ERR_STATE (error));
+
+  do
+    {
+    error:
+      fputs ("*** "
+             "error"
+             ":",
+             __stderrp);
+      goto reset;
+    reset:
+      lm_reset (lm);
+      return (&wrapper_nil.ptr);
+    }
+  while (0)
 }
 
 LM *
@@ -650,7 +782,7 @@ lm_alloc_cell (LM *lm)
   return pool_xalloc_hier (&lm->pool);
 }
 
-void
+bool
 lm_err_set (LM *lm, ErrorCode code, const char *fmt, ...)
 {
   va_list ap;
@@ -663,13 +795,17 @@ lm_err_set (LM *lm, ErrorCode code, const char *fmt, ...)
   va_end (ap);
 
   fputc ('\n', stderr);
+
+  return false;
 }
 
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
-  CTL_PUSH (lm, progn, NIL, progn);
+  if (!ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
+    goto error;
+
   return lm_eval (lm); // TODO: error detection
 
-  LM_ERR_HANDLERS (lm, LM_ERR_STATE (overflow));
+  LM_ERR_HANDLERS (lm, LM_ERR_STATE (error));
 }

@@ -28,58 +28,6 @@
 #define LM_OBJ_POOL_CAP 1024
 #endif
 
-#define STK_POP(lm)                                                           \
-  ({                                                                          \
-    if ((lm)->stk.sp == 0)                                                    \
-      goto underflow;                                                         \
-    (lm)->stk.cells[--(lm)->stk.sp];                                          \
-  })
-
-#define STK_PUSH(lm, val)                                                     \
-  do                                                                          \
-    {                                                                         \
-      if ((lm)->stk.sp >= LISPM_STK_MAX)                                      \
-        goto overflow;                                                        \
-      (lm)->stk.cells[(lm)->stk.sp++] = val;                                  \
-    }                                                                         \
-  while (0)
-
-#define LM_ENTER_FRAME(lm)                                                    \
-  do                                                                          \
-    {                                                                         \
-      if ((lm)->env.sp >= LISPM_ENV_MAX)                                      \
-        goto overflow;                                                        \
-      (lm)->env.dict[(lm)->env.sp++] = dict_create (NULL, 0);                 \
-    }                                                                         \
-  while (0)
-
-#define LM_LEAVE_FRAME(lm)                                                    \
-  do                                                                          \
-    {                                                                         \
-      if ((lm)->env.sp == 0)                                                  \
-        goto underflow;                                                       \
-      (lm)->env.sp--;                                                         \
-      dict_destroy ((lm)->env.dict[(lm)->env.sp]);                            \
-    }                                                                         \
-  while (0)
-
-#define CTL_POP(lm)                                                           \
-  ({                                                                          \
-    if ((lm)->ctl.sp == 0)                                                    \
-      goto underflow;                                                         \
-    (lm)->ctl.states[--(lm)->ctl.sp];                                         \
-  })
-
-#define CTL_PUSH(lm, tag, ...)                                                \
-  do                                                                          \
-    {                                                                         \
-      if ((lm)->ctl.sp >= LISPM_CTL_MAX)                                      \
-        goto overflow;                                                        \
-      (lm)->ctl.states[(lm)->ctl.sp++]                                        \
-          = (State){ .s = s_##tag, .u.tag = { __VA_ARGS__ } };                \
-    }                                                                         \
-  while (0)
-
 #define LM_ERR_STATE(_label)                                                  \
   _label:                                                                     \
   fputs ("*** " #_label ":", stderr);                                         \
@@ -92,14 +40,6 @@
     reset:                                                                    \
       lm_reset (lm);                                                          \
       return NIL;                                                             \
-    }                                                                         \
-  while (0)
-
-#define BAIL(lm, err_code, fmt, ...)                                          \
-  do                                                                          \
-    {                                                                         \
-      lm_err_set ((lm), (err_code), (fmt), ##__VA_ARGS__);                    \
-      goto error;                                                             \
     }                                                                         \
   while (0)
 
