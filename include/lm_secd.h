@@ -76,7 +76,7 @@
       if ((lm)->ctl.sp >= LISPM_CTL_MAX)                                      \
         goto overflow;                                                        \
       (lm)->ctl.states[(lm)->ctl.sp++]                                        \
-          = (State){ .state = s_##tag, .u.tag = { __VA_ARGS__ } };            \
+          = (State){ .s = s_##tag, .u.tag = { __VA_ARGS__ } };            \
     }                                                                         \
   while (0)
 
@@ -111,7 +111,7 @@ typedef enum
   COUNT,
 } StateEnum;
 
-typedef union lisp_mach
+typedef union
 {
 #define X(tag, ...)                                                           \
   struct                                                                      \
@@ -124,7 +124,7 @@ typedef union lisp_mach
 
 typedef struct state
 {
-  StateEnum state;
+  StateEnum s;
   Union u;
 } State;
 

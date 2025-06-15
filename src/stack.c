@@ -24,7 +24,7 @@ Stack *
 stack_create (void)
 {
   Stack *stack = xmalloc (sizeof *(stack));
-  stack_xgrow (stack, 0);
+  stack_xgrow (stack, STACK_INITIAL);
   stack->sp = stack->fp = 0;
   return stack;
 }
