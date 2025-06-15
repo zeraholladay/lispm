@@ -45,6 +45,7 @@ thunk_butlast (LM *lm, Cell *fn, Cell *lst)
 Cell *
 thunk_cons (LM *lm, Cell *fn, Cell *args)
 {
+  (void)fn;
   return CONS (CAR (args), CAR (CDR (args)), lm);
 }
 
@@ -129,18 +130,10 @@ thunk_reverse (LM *lm, Cell *fn, Cell *lst)
   return reverse (lm, CAR (lst));
 }
 
-// Cell *
-// thunk_set (LM *lm, Cell *fn, Cell *args)
-// {
-//   if (!IS_INST (CAR (args), SYMBOL))
-//     LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
-
-//   return set (lm, CAR (args), CAR (CDR (args)));
-// }
-
 Cell *
 thunk_string (LM *lm, Cell *fn, Cell *args)
 {
+  (void)fn;
   return STRING (format (CAR (args)), lm);
 }
 
@@ -150,6 +143,7 @@ Cell *
 thunk_eq (LM *lm, Cell *fn, Cell *args)
 {
   (void)lm;
+  (void)fn;
 
   Cell *car = CAR (args);
   Cell *card = CAR (CDR (args));
@@ -180,6 +174,8 @@ Cell *
 thunk_gt (LM *lm, Cell *fn, Cell *args)
 {
   (void)lm;
+  (void)fn;
+
   Cell *result = T;
 
   if (!IS_INST (args, CONS))
@@ -212,6 +208,8 @@ Cell *
 thunk_lt (LM *lm, Cell *fn, Cell *args)
 {
   (void)lm;
+  (void)fn;
+
   Cell *result = T;
 
   if (!IS_INST (args, CONS))
@@ -245,6 +243,8 @@ thunk_lt (LM *lm, Cell *fn, Cell *args)
 Cell *
 thunk_add (LM *lm, Cell *fn, Cell *args)
 {
+  (void)fn;
+
   if (!IS_INST (args, CONS))
     LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "add: argument is not a list");
 
@@ -271,6 +271,8 @@ thunk_add (LM *lm, Cell *fn, Cell *args)
 Cell *
 thunk_sub (LM *lm, Cell *fn, Cell *args)
 {
+  (void)fn;
+
   if (!IS_INST (args, CONS))
     LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "sub: argument is not a list");
 
@@ -297,6 +299,8 @@ thunk_sub (LM *lm, Cell *fn, Cell *args)
 Cell *
 thunk_mul (LM *lm, Cell *fn, Cell *args)
 {
+  (void)fn;
+
   if (!IS_INST (args, CONS))
     LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "mul: argument is not a list");
 
@@ -323,6 +327,8 @@ thunk_mul (LM *lm, Cell *fn, Cell *args)
 Cell *
 thunk_div (LM *lm, Cell *fn, Cell *args)
 {
+  (void)fn;
+
   if (!IS_INST (args, CONS))
     LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "div: argument is not a list");
 

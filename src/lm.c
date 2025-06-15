@@ -14,6 +14,69 @@
 #include "types.h"
 #include "xalloc.h"
 
+#include <stdbool.h>
+#include <stddef.h> // for offsetof, if you need it
+
+static inline Cell *
+stk_pop (LM *lm)
+{
+  if (lm->stk.sp == 0)
+    return NULL;
+
+  return lm->stk.cells[--lm->stk.sp];
+}
+
+static inline bool
+stk_push (LM *lm, Cell *val)
+{
+  if (lm->stk.sp >= LISPM_STK_MAX)
+    return false;
+
+  lm->stk.cells[lm->stk.sp++] = val;
+  return true;
+}
+
+static inline bool
+lm_enter_frame (LM *lm)
+{
+  if (lm->env.sp >= LISPM_ENV_MAX)
+    return false;
+
+  lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
+  return true;
+}
+
+static inline bool
+lm_leave_frame (LM *lm)
+{
+  if (lm->env.sp == 0)
+    return false;
+
+  lm->env.sp--;
+  dict_destroy (lm->env.dict[lm->env.sp]);
+  return true;
+}
+
+static inline bool
+ctl_pop (LM *lm, State *out)
+{
+  if (lm->ctl.sp == 0)
+    return false;
+
+  *out = lm->ctl.states[--lm->ctl.sp];
+  return true;
+}
+
+static inline bool
+ctl_push_state (LM *lm, State st)
+{
+  if (lm->ctl.sp >= LISPM_CTL_MAX)
+    return false;
+
+  lm->ctl.states[lm->ctl.sp++] = st;
+  return true;
+}
+
 static void
 lm_reset (LM *lm)
 {
@@ -31,40 +94,40 @@ lm_reset (LM *lm)
   lm->err_bool = false;
 }
 
-static bool
-lm_dump (LM *lm)
-{
-  if ((lm)->dmp.sp >= LISPM_DUMP_MAX)
-    return false;
+// static bool
+// lm_dump (LM *lm)
+// {
+//   if ((lm)->dmp.sp >= LISPM_DUMP_MAX)
+//     return false;
 
-  lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
-                                          .env_sp = lm->env.sp,
-                                          .ctl_sp = lm->ctl.sp };
-  LM_ENTER_FRAME (lm);
+//   lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
+//                                           .env_sp = lm->env.sp,
+//                                           .ctl_sp = lm->ctl.sp };
+//   LM_ENTER_FRAME (lm);
 
-  return true;
-overflow:
-  return false; // TODO: set err here
-}
+//   return true;
+// overflow:
+//   return false; // TODO: set err here
+// }
 
-static bool
-lm_dump_restore (LM *lm)
-{
-  if (lm->dmp.sp == 0)
-    return false;
+// static bool
+// lm_dump_restore (LM *lm)
+// {
+//   if (lm->dmp.sp == 0)
+//     return false;
 
-  Dump dump = lm->dmp.dumps[--lm->dmp.sp];
+//   Dump dump = lm->dmp.dumps[--lm->dmp.sp];
 
-  lm->stk.sp = dump.stk_sp;
-  lm->env.sp = dump.env_sp;
-  lm->ctl.sp = dump.ctl_sp;
+//   lm->stk.sp = dump.stk_sp;
+//   lm->env.sp = dump.env_sp;
+//   lm->ctl.sp = dump.ctl_sp;
 
-  LM_LEAVE_FRAME (lm);
+//   LM_LEAVE_FRAME (lm);
 
-  return true;
-underflow:
-  return false; // TODO: set err here
-}
+//   return true;
+// underflow:
+//   return false; // TODO: set err here
+// }
 
 static Cell *
 lm_eval_switch (LM *lm, StateEnum s, Union u)

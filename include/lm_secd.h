@@ -76,7 +76,7 @@
       if ((lm)->ctl.sp >= LISPM_CTL_MAX)                                      \
         goto overflow;                                                        \
       (lm)->ctl.states[(lm)->ctl.sp++]                                        \
-          = (State){ .s = s_##tag, .u.tag = { __VA_ARGS__ } };            \
+          = (State){ .s = s_##tag, .u.tag = { __VA_ARGS__ } };                \
     }                                                                         \
   while (0)
 
