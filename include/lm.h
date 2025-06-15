@@ -26,7 +26,7 @@ void lm_destroy (LM *lm);
 Cell *lm_alloc_cell (LM *lm);
 
 // error access
-void lm_err_set (LM *lm, ErrorCode code, const char *fmt, ...);
+bool lm_err_set (LM *lm, ErrorCode code, const char *fmt, ...);
 
 // external entrypoints
 Cell *lm_funcall (LM *lm, Cell *fn, Cell *arglist);

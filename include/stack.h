@@ -3,6 +3,10 @@
 
 #include <stdlib.h>
 
+#ifndef STACK_INITIAL
+#define STACK_INITIAL 4096
+#endif
+
 #ifndef STACK_GROWTH
 #define STACK_GROWTH 4096
 #endif

@@ -4,7 +4,7 @@
                     ((lambda (x) (print counter) (print x)) x)
                     (progn
                       (print x)
-                      (set! 'counter (add counter 1))))
+                      (set! 'counter (+ counter 1))))
     )
 )
 ;; basic expressions
@@ -78,7 +78,7 @@
     '(funcall (lambda () t)))
 (assert
     '(funcall (lambda (x Y) (cons x Y)) 'foo 'bar))
-;; MAtH (very buggy due to defaults)
+;; math (very buggy due to defaults)
 ;; BUGS
 ;; (assert '(eq 0 (+)))
 ;; (assert '(eq 1 (*)))
@@ -92,12 +92,12 @@
 (assert '(eq -8 (- 1 2 3 4)))
 (assert '(eq 42 (* 21 2)))
 (assert '(eq 42 (/ 84 2)))
-;; BOOLEANS
+;; booleans
 (assert '(gt 42 -42))
 (assert '(gt 0 -1 -2 -3))
 (assert '(lt -42 42))
 (assert '(lt -1 0 1 2 3))
-;; RECURION
+;; recursion
 (define 'lt_or_eq (lambda (x Y) (or (< x Y) (eq x Y))))
 (define 'fooer (lambda (x)
     (if (lt_or_eq x 0)
@@ -110,17 +110,34 @@
     (if (> x max)
         nil
         (cons x (range (add x 1) max))
-    )))
+    )
+  )
+)
 (assert '(eq 10 (length (range 0 9))))
 (assert '(eq 42 (length (range 0 41))))
 
 (assert '(eq 903 (apply + (range 0 42))))
 ;; Fibonacci
-(define 'fib (lambda (x)
-            (if (or (< x 1) (eq x 1))
-                x
-                (+ (fib (sub x 1)) (fib (sub x 2)))
-            )))
+(define 'fib 
+  (lambda (x)
+    (if (or (< x 1) (eq x 1))
+        x
+        (let ((x (sub x 1))
+              (y (sub x 2)))
+            (+ (fib x) (fib y))
+        )
+    )
+  )
+)
+;; (define (fib x)
+;;   (if (or (< x 1) (eq x 1))
+;;       x
+;;       (let ((x (sub x 1))
+;;             (y (sub x 2)))
+;;           (+ (fib x) (fib y))
+;;       )
+;;   )
+;; )
 (assert '(eq 0 (fib 0)))
 (assert '(eq 1 (fib 1)))
 (assert '(eq 1 (fib 2)))
@@ -129,11 +146,14 @@
 (assert '(eq 5 (fib 5)))
 (assert '(eq 55 (fib 10)))
 ;; Delayed evaluation Fibonacci
-(define 'layz_fib (lambda (x)
-            (if (or (< x 1) (eq x 1))
-                (list '+ x 0)
-                (list '+ (layz_fib (sub x 1)) (layz_fib (sub x 2)))
-            )))
+(define 'layz_fib 
+  (lambda (x)
+    (if (or (< x 1) (eq x 1))
+        (list '+ x 0)
+        (list '+ (layz_fib (sub x 1)) (layz_fib (sub x 2)))
+    )
+  )
+)
 (assert '(eq 0 (eval (layz_fib 0))))
 (assert '(eq 1 (eval (layz_fib 1))))
 (assert '(eq 1 (eval (layz_fib 2))))
