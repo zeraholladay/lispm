@@ -9,23 +9,23 @@
 #include "types.h"
 
 #ifndef LISPM_STK_MAX
-#define LISPM_STK_MAX 1024
+#define LISPM_STK_MAX 4096
 #endif
 
 #ifndef LISPM_ENV_MAX
-#define LISPM_ENV_MAX 512
+#define LISPM_ENV_MAX 4096
 #endif
 
 #ifndef LISPM_CTL_MAX
-#define LISPM_CTL_MAX 512
+#define LISPM_CTL_MAX 4096
 #endif
 
 #ifndef LISPM_DUMP_MAX
-#define LISPM_DUMP_MAX 512
+#define LISPM_DUMP_MAX 4096
 #endif
 
 #ifndef LM_OBJ_POOL_CAP
-#define LM_OBJ_POOL_CAP 1024
+#define LM_OBJ_POOL_CAP 4096
 #endif
 
 #define LM_ERR_STATE(_label)                                                  \

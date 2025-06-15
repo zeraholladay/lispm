@@ -729,20 +729,6 @@ lm_eval (LM *lm)
 
   return stk_pop (lm);
   LM_ERR_HANDLERS (lm, LM_ERR_STATE (error));
-
-  do
-    {
-    error:
-      fputs ("*** "
-             "error"
-             ":",
-             __stderrp);
-      goto reset;
-    reset:
-      lm_reset (lm);
-      return (&wrapper_nil.ptr);
-    }
-  while (0)
 }
 
 LM *
