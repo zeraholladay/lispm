@@ -102,6 +102,15 @@ Returns `expr` without evaluating it.
 ```lisp
 (define symbol value)
 
+(define (symbol zero-or-more-params …) body)
+```
+
+Binds `symbol` to `value` in the current lexical scope **or** creates a function (bound `lambda`) in the current lexical scope.
+
+```lisp
+(define 'x 10) ; ⇒ 10
+x              ; ⇒ 10
+
 (define (fib x)
   (if (or (< x 1) (eq x 1))
       x
@@ -113,13 +122,6 @@ Returns `expr` without evaluating it.
 )
 
 (fib 10) ; ⇒ 55
-```
-
-Binds `symbol` to `value` in the current lexical scope **or** creates a function (bound `lambda`) in the current lexical scope.
-
-```lisp
-(define 'x 10) ; ⇒ 10
-x              ; ⇒ 10
 ```
 
 ### `set!`
