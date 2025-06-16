@@ -36,14 +36,16 @@ void yyerror_handler (LM *lm, const char *s);
 
 %token ERROR LAMBDA QUOTE
 %token <integer> INTEGER
-%token <symbol>  IF LET SYMBOL
+%token <symbol>  IF DEFINE LET SET SYMBOL
 
 %type <cell>
   program
   forms
   form
   if_
+  define
   let
+  set
   symbol
   symbol_list
   param_list
@@ -78,6 +80,23 @@ form
       {
         $$ = LIST1 (LAMBDA ($3, $4, lm), lm);
       }
+    | '(' define symbol forms ')'
+      {
+        $$ = CONS ($2, CONS ($3, $4, lm), lm);
+      }
+    | '(' define '(' symbol symbol_list ')' forms ')'
+      {
+        Cell *body = LIST1 (LAMBDA ($5, $7, lm), lm);
+        $$ = CONS ($2, CONS ($4, body, lm), lm);
+      }
+    | '(' let forms forms ')'
+      {
+        $$ = CONS ($2, CONS ($3, $4, lm), lm);
+      }
+    | '(' set symbol forms ')'
+      {
+        $$ = CONS ($2, CONS ($3, $4, lm), lm);
+      }
     | '(' if_ form form ')'
       {
         $$ = CONS ($2, LIST2 ($3, $4, lm), lm);
@@ -85,10 +104,6 @@ form
     | '(' if_ form form form ')'
       {
         $$ = CONS ($2, CONS ( $3, LIST2 ($4, $5, lm), lm), lm);
-      }
-    | '(' let forms forms ')'
-      {
-        $$ = CONS ($2, CONS ($3, $4, lm), lm);
       }
     | symbol
       {
@@ -145,8 +160,8 @@ symbol
     }
   ;
 
-if_
-  : IF
+define
+  : DEFINE
     {
       $$ = SYMBOL ($1.str, $1.len, lm);
     }
@@ -154,6 +169,20 @@ if_
 
 let
   : LET
+    {
+      $$ = SYMBOL ($1.str, $1.len, lm);
+    }
+  ;
+
+set
+  : SET
+    {
+      $$ = SYMBOL ($1.str, $1.len, lm);
+    }
+  ;
+
+if_
+  : IF
     {
       $$ = SYMBOL ($1.str, $1.len, lm);
     }

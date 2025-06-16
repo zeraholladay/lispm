@@ -37,19 +37,23 @@ ID       [a-zA-Z_][a-zA-Z0-9_!?]*
                   }
   {ID}            {
                     // special types: not symbols
-                    if (!strncasecmp ("QUOTE", yytext, yyleng + 1))
-                      return QUOTE;
                     if (!strncasecmp ("LAMBDA", yytext, yyleng + 1))
                       return LAMBDA;
+                    if (!strncasecmp ("QUOTE", yytext, yyleng + 1))
+                      return QUOTE;
 
                     yylval.symbol.len = yyleng;
                     yylval.symbol.str = str_intern (yytext, yyleng);
 
                     // special forms but still a symbol
-                    if (!strncasecmp ("IF", yytext, yyleng + 1))
-                      return IF;
+                    if (!strncasecmp ("DEFINE", yytext, yyleng + 1))
+                      return DEFINE;
                     if (!strncasecmp ("LET", yytext, yyleng + 1))
                       return LET;
+                    if (!strncasecmp ("SET", yytext, yyleng + 1))
+                      return SET;
+                    if (!strncasecmp ("IF", yytext, yyleng + 1))
+                      return IF;
 
                     return SYMBOL;
                   }

@@ -1,10 +1,10 @@
-(define 'counter 0)
-(define 'assert
-    (lambda (x) (if (eq nil (eval x))
-                    ((lambda (x) (print counter) (print x)) x)
-                    (progn
-                      (print x)
-                      (set! 'counter (+ counter 1))))
+(define counter 0)
+(define (assert x)
+    (if (eq nil (eval x))
+      ((lambda (x) (print counter) (print x)) x)
+      (progn
+        (print x)
+        (set! counter (+ counter 1)))
     )
 )
 ;; basic expressions
@@ -26,10 +26,10 @@
 (assert '(eq 'foo 'foo))
 (assert '(not(eq 'foo 'bar)))
 ;; symbols
-(define 'foo 'bar)
-(assert '(set! 'foo 'bar))
+(define foo 'bar)
+(assert '(set! foo 'bar))
 (assert ''foo)
-(assert '(set! 'foo '(1 2 3)))
+(assert '(set! foo '(1 2 3)))
 (assert ''foo)
 ;; cons
 (assert '(cons 'foo 'bar))
@@ -49,10 +49,6 @@
 (assert '(eq (length nil) 0))
 (assert '(eq (length nil) (length nil)))
 (assert '(not (eq (length '(1)) (length nil))))
-;; ;; PAIR
-;; (assert '(eq 0 (length (PAIR '() '()))))
-;; (assert '(eq 1 (length (PAIR '(1) '(1)))))
-;; (assert '(eq 2 (length (PAIR '(A B) '(1 2)))))
 ;; if
 (assert '(if t t))
 (assert '(not (if t nil)))
@@ -63,7 +59,7 @@
 (assert '(lambda (x) t))
 (assert '((lambda (x) t) 42))
 (assert '(eq 42 ((lambda (x) x) 42)))
-(define 'foobar 42)
+(define foobar 42)
 (assert '(eq 42 ((lambda () foobar))))
 ;; apply
 (assert '(apply first '((t))))
@@ -77,7 +73,7 @@
 (assert
     '(funcall (lambda () t)))
 (assert
-    '(funcall (lambda (x Y) (cons x Y)) 'foo 'bar))
+    '(funcall (lambda (x y) (cons x y)) 'foo 'bar))
 ;; math (very buggy due to defaults)
 ;; BUGS
 ;; (assert '(eq 0 (+)))
@@ -98,46 +94,33 @@
 (assert '(lt -42 42))
 (assert '(lt -1 0 1 2 3))
 ;; recursion
-(define 'lt_or_eq (lambda (x Y) (or (< x Y) (eq x Y))))
-(define 'fooer (lambda (x)
-    (if (lt_or_eq x 0)
-        x
-        (fooer (sub x 1))
-    )))
+(define (lt_or_eq x y) (or (< x y) (eq x y)))
+(define (fooer x)
+  (if (lt_or_eq x 0)
+      x
+      (fooer (sub x 1)))
+)
 (assert (eq 0 (fooer 42)))
 (assert (eq -42 (fooer -42)))
-(define 'range (lambda (x max)
-    (if (> x max)
-        nil
-        (cons x (range (add x 1) max))
-    )
+(define (range x max)
+  (if (> x max)
+      nil
+      (cons x (range (+ x 1) max))
   )
 )
 (assert '(eq 10 (length (range 0 9))))
 (assert '(eq 42 (length (range 0 41))))
 
 (assert '(eq 903 (apply + (range 0 42))))
-;; Fibonacci
-(define 'fib 
-  (lambda (x)
-    (if (or (< x 1) (eq x 1))
-        x
-        (let ((x (sub x 1))
-              (y (sub x 2)))
-            (+ (fib x) (fib y))
-        )
-    )
+(define (fib x)
+  (if (or (< x 1) (eq x 1))
+      x
+      (let ((x (sub x 1))
+            (y (sub x 2)))
+          (+ (fib x) (fib y))
+      )
   )
 )
-;; (define (fib x)
-;;   (if (or (< x 1) (eq x 1))
-;;       x
-;;       (let ((x (sub x 1))
-;;             (y (sub x 2)))
-;;           (+ (fib x) (fib y))
-;;       )
-;;   )
-;; )
 (assert '(eq 0 (fib 0)))
 (assert '(eq 1 (fib 1)))
 (assert '(eq 1 (fib 2)))
@@ -146,12 +129,10 @@
 (assert '(eq 5 (fib 5)))
 (assert '(eq 55 (fib 10)))
 ;; Delayed evaluation Fibonacci
-(define 'layz_fib 
-  (lambda (x)
-    (if (or (< x 1) (eq x 1))
-        (list '+ x 0)
-        (list '+ (layz_fib (sub x 1)) (layz_fib (sub x 2)))
-    )
+(define (layz_fib x)
+  (if (or (< x 1) (eq x 1))
+      (list '+ x 0)
+      (list '+ (layz_fib (sub x 1)) (layz_fib (sub x 2)))
   )
 )
 (assert '(eq 0 (eval (layz_fib 0))))
@@ -161,9 +142,9 @@
 (assert '(eq 2 (eval (layz_fib 3))))
 (assert '(eq 5 (eval (layz_fib 5))))
 (assert '(eq 55 (eval (layz_fib 10))))
-(define 'result 6765)
+(define result 6765)
 (assert '(eq result (eval (layz_fib 20))))
-(set! 'result 832040)
+(set! result 832040)
 (assert '(eq result (eval (layz_fib 30)))) ;; 32 is the max as of 5-17-25
 (print 'END)
 (assert nil)
