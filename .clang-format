@@ -1,5 +1,5 @@
-BasedOnStyle: LLVM
+BasedOnStyle: GNU
 AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: false
+AlignConsecutiveDeclarations: true
 AlignConsecutiveMacros: Consecutive
 SortIncludes: true

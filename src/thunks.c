@@ -12,9 +12,9 @@ typedef Cell *(*ThunkFn) (LM *lm, Cell *, Cell *);
 typedef struct
 {
   const char *name;
-  bool is_lispm;
-  int arity;
-  ThunkFn fn;
+  bool        is_lispm;
+  int         arity;
+  ThunkFn     fn;
 } Thunk;
 
 // thunks
@@ -102,8 +102,8 @@ thunk_nth (LM *lm, Cell *fn, Cell *args)
       || !LISTP (CAR (CDR (args))))
     LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "%s i lst", thunk_get_name (fn));
 
-  size_t idx = (size_t)CAR (args)->integer;
-  Cell *list = CAR (CDR (args));
+  size_t idx  = (size_t)CAR (args)->integer;
+  Cell  *list = CAR (CDR (args));
 
   return nth (idx, list);
 }
@@ -145,7 +145,7 @@ thunk_eq (LM *lm, Cell *fn, Cell *args)
   (void)lm;
   (void)fn;
 
-  Cell *car = CAR (args);
+  Cell *car  = CAR (args);
   Cell *card = CAR (CDR (args));
 
   EqFn eqfn = type (car)->eq;

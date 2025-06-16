@@ -9,24 +9,24 @@
 // NIL & T
 
 PrimWrapper wrapped_t = {
-  .free = 0,
-  .gc_mark = 1,
+  .free      = 0,
+  .gc_mark   = 1,
   .next_free = NULL,
-  .ptr = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("t") },
+  .ptr       = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("t") },
 };
 
 PrimWrapper wrapper_nil = {
-  .free = 0,
-  .gc_mark = 1,
+  .free      = 0,
+  .gc_mark   = 1,
   .next_free = NULL,
-  .ptr = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } },
+  .ptr       = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } },
 };
 
 PrimWrapper wrapper_quote = {
-  .free = 0,
-  .gc_mark = 1,
+  .free      = 0,
+  .gc_mark   = 1,
   .next_free = NULL,
-  .ptr = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("quote") },
+  .ptr       = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("quote") },
 };
 
 // sequence operations
@@ -90,7 +90,7 @@ Cell *
 last (LM *lm, Cell *lst)
 {
   (void)lm;
-  Cell *rev = reverse_inplace (lst);
+  Cell *rev  = reverse_inplace (lst);
   Cell *last = CAR (rev);
   reverse_inplace (rev);
   return LIST1 (last, lm);
@@ -139,14 +139,14 @@ Cell *
 reverse_inplace (Cell *lst)
 {
   Cell *prev = NIL;
-  Cell *cur = lst;
+  Cell *cur  = lst;
 
   while (!NILP (cur))
     {
       Cell *next = CDR (cur);
       RPLACD (cur, prev);
       prev = cur;
-      cur = next;
+      cur  = next;
     }
 
   return prev;
@@ -186,7 +186,7 @@ zip (LM *lm, Cell *lsts)
 
       for (size_t i = 0; i < len; ++i)
         {
-          row_rev = CONS (CAR (heads[i]), row_rev, lm);
+          row_rev  = CONS (CAR (heads[i]), row_rev, lm);
           heads[i] = CDR (heads[i]);
         }
 

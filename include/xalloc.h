@@ -9,8 +9,8 @@
 #endif
 
 #define OOM_STRINGIFY_HELPER(x) #x
-#define OOM_STRINGIFY(x) OOM_STRINGIFY_HELPER (x)
-#define OOM_LOCATION "[" __FILE__ ":" OOM_STRINGIFY (__LINE__) "] "
+#define OOM_STRINGIFY(x)        OOM_STRINGIFY_HELPER (x)
+#define OOM_LOCATION            "[" __FILE__ ":" OOM_STRINGIFY (__LINE__) "] "
 
 typedef void *(*oom_handler_t) (void *, const char *msg);
 void *oom_handler_die (void *void_ptr, const char *msg);
@@ -45,8 +45,8 @@ xrealloc (void *ptr, size_t size)
 typedef struct
 {
   size_t capacity;
-  void *heap;
-  char stack[SCRATCH_STACK_LIMIT];
+  void  *heap;
+  char   stack[SCRATCH_STACK_LIMIT];
 } scratch_t;
 
 static inline void *
@@ -55,13 +55,13 @@ xalloc_scratch (scratch_t *s, size_t nbytes)
   if (nbytes <= SCRATCH_STACK_LIMIT)
     {
       s->capacity = SCRATCH_STACK_LIMIT;
-      s->heap = NULL;
+      s->heap     = NULL;
       return s->stack;
     }
   else
     {
       s->capacity = nbytes;
-      s->heap = xmalloc (nbytes);
+      s->heap     = xmalloc (nbytes);
       return s->heap;
     }
 }

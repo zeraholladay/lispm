@@ -3,19 +3,19 @@
 
 #include "xalloc.h"
 
-#define EMPTY -1
+#define EMPTY     -1
 #define TOMBSTONE -2
 
-#define HASH(str) ((size_t)djb2 (key))
-#define LIST_IDX(d_ptr, i) ((DictEntity *)((d_ptr)->list->items[i]))
+#define HASH(str)           ((size_t)djb2 (key))
+#define LIST_IDX(d_ptr, i)  ((DictEntity *)((d_ptr)->list->items[i]))
 #define STR_EQ(s1, s2, len) (!safe_strncmp_minlen (s1, s2, len + 1))
 
 static size_t
 get_bins_idx (Dict *dict, size_t hash_key, const char *key, size_t len)
 {
-  size_t start_bin_idx, bin_idx;
+  size_t  start_bin_idx, bin_idx;
   ssize_t first_tombstone = -1;
-  int *bins = dict->bins, bin_val;
+  int    *bins            = dict->bins, bin_val;
 
   // ie hash_key & 0x0111 when dict->capacity is 8
   start_bin_idx = bin_idx = hash_key & (dict->capacity - 1);
@@ -56,16 +56,16 @@ xalloc_bins (size_t capacity)
 static int
 xgrow_bins (Dict *dict)
 {
-  int *old_bins, old_bin_val;
+  int   *old_bins, old_bin_val;
   size_t new_capacity = dict->capacity * 2;
   size_t old_capacity;
 
   int *new_bins = xalloc_bins (new_capacity);
 
-  old_capacity = dict->capacity;
+  old_capacity   = dict->capacity;
   dict->capacity = new_capacity;
 
-  old_bins = dict->bins;
+  old_bins   = dict->bins;
   dict->bins = new_bins;
 
   // reindex
@@ -78,9 +78,9 @@ xgrow_bins (Dict *dict)
 
       DictEntity *entity = LIST_IDX (dict, old_bin_val);
 
-      size_t hash_key = entity->hash_key;
-      const char *key = entity->key;
-      size_t len = entity->len;
+      size_t      hash_key = entity->hash_key;
+      const char *key      = entity->key;
+      size_t      len      = entity->len;
 
       size_t new_bins_idx = get_bins_idx (dict, hash_key, key, len);
 
@@ -94,7 +94,7 @@ xgrow_bins (Dict *dict)
 Dict *
 dict_create_va_list (const char *key, ...)
 {
-  Dict *dict = dict_create (NULL, 0);
+  Dict   *dict = dict_create (NULL, 0);
   va_list ap;
 
   va_start (ap, key);
@@ -110,7 +110,7 @@ dict_create (const DictEntity *entities, size_t n)
 {
   Dict *dict = xmalloc (sizeof *(dict));
 
-  dict->count = 0;
+  dict->count    = 0;
   dict->capacity = DICT_INIT_CAP;
 
   dict->bins = xalloc_bins (dict->capacity);
@@ -141,9 +141,9 @@ dict_destroy (Dict *dict)
 void
 dict_del (Dict *dict, const char *key)
 {
-  size_t len = safe_strnlen (key, DICT_STR_MAX_LEN);
+  size_t len      = safe_strnlen (key, DICT_STR_MAX_LEN);
   size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
-  int bin_val = dict->bins[bins_idx];
+  int    bin_val  = dict->bins[bins_idx];
 
   if (bin_val >= 0)
     {
@@ -155,9 +155,9 @@ dict_del (Dict *dict, const char *key)
 bool
 dict_has_key (Dict *dict, const char *key)
 {
-  size_t len = safe_strnlen (key, DICT_STR_MAX_LEN);
+  size_t len      = safe_strnlen (key, DICT_STR_MAX_LEN);
   size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
-  int bin_val = dict->bins[bins_idx];
+  int    bin_val  = dict->bins[bins_idx];
 
   if (bin_val >= 0)
     return true;
@@ -171,8 +171,8 @@ dict_insert (Dict *dict, const char *key, void *val)
     xgrow_bins (dict);
 
   size_t hash_key = HASH (key);
-  size_t len = safe_strnlen (key, DICT_STR_MAX_LEN);
-  size_t bin_idx = get_bins_idx (dict, hash_key, key, len);
+  size_t len      = safe_strnlen (key, DICT_STR_MAX_LEN);
+  size_t bin_idx  = get_bins_idx (dict, hash_key, key, len);
 
   int bin_val = dict->bins[bin_idx];
 
@@ -185,9 +185,9 @@ dict_insert (Dict *dict, const char *key, void *val)
   DictEntity *entity = xmalloc (sizeof *(entity));
 
   entity->hash_key = hash_key;
-  entity->key = key;
-  entity->len = len;
-  entity->val = val;
+  entity->key      = key;
+  entity->len      = len;
+  entity->val      = val;
 
   list_append (dict->list, entity);
 
@@ -200,9 +200,9 @@ dict_insert (Dict *dict, const char *key, void *val)
 DictEntity *
 dict_lookup (Dict *dict, const char *key)
 {
-  size_t len = safe_strnlen (key, DICT_STR_MAX_LEN);
+  size_t len      = safe_strnlen (key, DICT_STR_MAX_LEN);
   size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
-  int bin_val = dict->bins[bins_idx];
+  int    bin_val  = dict->bins[bins_idx];
 
   if (bin_val >= 0)
     return LIST_IDX (dict, bin_val);

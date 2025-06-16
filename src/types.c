@@ -56,13 +56,13 @@ string_eq (Cell *self, Cell *other)
 }
 
 static Type type_tab[] = {
-  [TYPE_NIL] = { .type_name = "NIL", .eq = nil_eq },
+  [TYPE_NIL]     = { .type_name = "NIL", .eq = nil_eq },
   [TYPE_INTEGER] = { .type_name = "INTEGER", .eq = integer_eq },
-  [TYPE_STRING] = { .type_name = "STRING", .eq = string_eq },
-  [TYPE_SYMBOL] = { .type_name = "SYMBOL", .eq = symbol_eq },
-  [TYPE_CONS] = { .type_name = "CONS", .eq = cons_eq },
-  [TYPE_THUNK] = { .type_name = "THUNK", .eq = thunk_eq },
-  [TYPE_LAMBDA] = { .type_name = "LAMBDA", .eq = lambda_eq },
+  [TYPE_STRING]  = { .type_name = "STRING", .eq = string_eq },
+  [TYPE_SYMBOL]  = { .type_name = "SYMBOL", .eq = symbol_eq },
+  [TYPE_CONS]    = { .type_name = "CONS", .eq = cons_eq },
+  [TYPE_THUNK]   = { .type_name = "THUNK", .eq = thunk_eq },
+  [TYPE_LAMBDA]  = { .type_name = "LAMBDA", .eq = lambda_eq },
 };
 
 const Type *
@@ -86,7 +86,7 @@ new (LM *lm, TypeEnum type, ...)
     {
     case TYPE_LAMBDA:
       c->lambda.params = va_arg (ap, Cell *);
-      c->lambda.body = va_arg (ap, Cell *);
+      c->lambda.body   = va_arg (ap, Cell *);
       break;
     case TYPE_INTEGER:
       c->integer = va_arg (ap, Integer);

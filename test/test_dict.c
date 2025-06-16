@@ -20,8 +20,8 @@ teardown (void)
   dict_destroy (dict);
 }
 
-static const char *keys[] = { "alpha", "beta", "gamma", "delta" };
-static int vals_int[] = { 10, 20, 30, 40 };
+static const char *keys[]     = { "alpha", "beta", "gamma", "delta" };
+static int         vals_int[] = { 10, 20, 30, 40 };
 
 START_TEST (test_insert_and_lookup)
 {
@@ -112,7 +112,7 @@ START_TEST (test_initialization)
           DICT_ENTITY ("gamma", (void *)(intptr_t)-7),
           DICT_ENTITY ("delta", (void *)"hello"),
           DICT_ENTITY ("epsilon", (void *)(intptr_t)99999) };
-  Dict *local_dict;
+  Dict       *local_dict;
   DictEntity *entity;
 
   local_dict = dict_create (entities, 5);
@@ -149,11 +149,11 @@ START_TEST (test_uuid_fuzz)
   struct
   {
     char key[37];
-    int val;
+    int  val;
   } uuid_fuzz[N_FUZZ];
-  Dict *local_dict = dict_create (NULL, 0);
+  Dict       *local_dict = dict_create (NULL, 0);
   DictEntity *entity;
-  uuid_t uuid;
+  uuid_t      uuid;
 
   ck_assert_ptr_nonnull (local_dict);
 
@@ -169,7 +169,7 @@ START_TEST (test_uuid_fuzz)
   for (int i = 0; i < N_FUZZ; ++i)
     {
       char *key = uuid_fuzz[i].key;
-      entity = dict_lookup (local_dict, key);
+      entity    = dict_lookup (local_dict, key);
       ck_assert_ptr_nonnull (entity);
       ck_assert_int_eq ((intptr_t)entity->val, i);
     }
@@ -179,7 +179,7 @@ START_TEST (test_uuid_fuzz)
   // delete every 7th
   for (int i = 0; i < N_FUZZ; ++i)
     {
-      char *key = uuid_fuzz[i].key;
+      char  *key       = uuid_fuzz[i].key;
       size_t old_count = local_dict->count;
 
       if (i % 7 == 0)
@@ -201,7 +201,7 @@ START_TEST (test_uuid_fuzz)
   // delete every 7th by 3 for some randomness
   for (int i = 0; i < N_FUZZ; i += 3)
     {
-      char *key = uuid_fuzz[i].key;
+      char  *key       = uuid_fuzz[i].key;
       size_t old_count = local_dict->count;
 
       if (i % 7 == 0)
@@ -225,7 +225,7 @@ START_TEST (test_uuid_fuzz)
 Suite *
 dict_suite (void)
 {
-  Suite *s = suite_create ("Dict");
+  Suite *s  = suite_create ("Dict");
   TCase *tc = tcase_create ("Core");
   tcase_add_checked_fixture (tc, setup, teardown);
   tcase_add_test (tc, test_insert_and_lookup);

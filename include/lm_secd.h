@@ -20,28 +20,13 @@
 #define LISPM_CTL_MAX 4096
 #endif
 
-#ifndef LISPM_DUMP_MAX
-#define LISPM_DUMP_MAX 4096
+#ifndef LISPM_DMP_MAX
+#define LISPM_DMP_MAX 4096
 #endif
 
-#ifndef LM_OBJ_POOL_CAP
-#define LM_OBJ_POOL_CAP 4096
+#ifndef LM_CAP_PER_POOL
+#define LM_CAP_PER_POOL 4096
 #endif
-
-#define LM_ERR_STATE(_label)                                                  \
-  _label:                                                                     \
-  fputs ("*** " #_label ":", stderr);                                         \
-  goto reset;
-
-#define LM_ERR_HANDLERS(lm, ...)                                              \
-  do                                                                          \
-    {                                                                         \
-      __VA_ARGS__                                                             \
-    reset:                                                                    \
-      lm_reset (lm);                                                          \
-      return NIL;                                                             \
-    }                                                                         \
-  while (0)
 
 typedef enum
 {
@@ -65,7 +50,7 @@ typedef union
 typedef struct state
 {
   StateEnum s;
-  Union u;
+  Union     u;
 } State;
 
 typedef struct dump
@@ -73,30 +58,30 @@ typedef struct dump
   size_t stk_sp, env_sp, ctl_sp;
 } Dump;
 
-typedef struct lispm_secd
+typedef struct lm
 {
   struct
   {
     size_t sp;
-    Cell *cells[LISPM_STK_MAX];
+    Cell  *cells[LISPM_STK_MAX];
   } stk;
   struct lm_secd
   {
     size_t sp;
-    Dict *dict[LISPM_ENV_MAX];
+    Dict  *dict[LISPM_ENV_MAX];
   } env;
   struct
   {
     size_t sp;
-    State states[LISPM_CTL_MAX];
+    State  states[LISPM_CTL_MAX];
   } ctl;
   struct
   {
     size_t sp;
-    Dump dumps[LISPM_DUMP_MAX];
+    Dump   dumps[LISPM_DMP_MAX];
   } dmp;
   Pool *pool;
-  bool err_bool;
+  bool  err_bool;
 } LM;
 
 #endif

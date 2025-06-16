@@ -13,15 +13,15 @@
 Pool *
 pool_init (size_t count, size_t size)
 {
-  Pool *p = xcalloc (1, sizeof *(p));
+  Pool  *p      = xcalloc (1, sizeof *(p));
   size_t stride = STRIDE (sizeof (PallocWrapper)
                           + size); // array-aligned PallocWrapper and size
 
   p->pool = xcalloc (count, stride);
 
-  p->count = count;
+  p->count  = count;
   p->stride = stride;
-  p->size = size;
+  p->size   = size;
   p->next = p->prev = NULL;
 
   pool_reset_all (p);
@@ -33,7 +33,7 @@ void
 pool_destroy (Pool **p)
 {
   free ((*p)->pool), (*p)->pool = NULL;
-  free (*p), *p = NULL;
+  free (*p), *p                 = NULL;
 }
 
 void
@@ -57,8 +57,8 @@ pool_xalloc (Pool *p)
     return oom_handler_die (p, OOM_LOCATION "free_list empty");
 
   PallocWrapper *wrapper = p->free_list;
-  p->free_list = wrapper->next_free;
-  wrapper->free = 0;
+  p->free_list           = wrapper->next_free;
+  wrapper->free          = 0;
 
   return &wrapper->ptr;
 }
@@ -75,8 +75,8 @@ pool_xalloc_hier (Pool **head)
 
   new_pool->prev = NULL;
   new_pool->next = *head;
-  cur->prev = new_pool;
-  *head = new_pool;
+  cur->prev      = new_pool;
+  *head          = new_pool;
 
   return pool_xalloc (new_pool);
 }
@@ -88,26 +88,26 @@ pool_free (Pool *p, void *ptr)
       = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
 
   wrapper->next_free = p->free_list;
-  p->free_list = wrapper;
-  wrapper->free = 1;
+  p->free_list       = wrapper;
+  wrapper->free      = 1;
 }
 
 void
 pool_reset_all (Pool *p)
 {
-  size_t count = p->count;
+  size_t count  = p->count;
   size_t stride = p->stride;
 
   for (size_t i = 0; i < count - 1; ++i)
     {
       PallocWrapper *cur = INDEX (p->pool, i, stride);
-      cur->next_free = INDEX (p->pool, i + 1, stride);
-      cur->free = 1;
-      cur->gc_mark = 0;
+      cur->next_free     = INDEX (p->pool, i + 1, stride);
+      cur->free          = 1;
+      cur->gc_mark       = 0;
     }
 
   INDEX (p->pool, count - 1, stride)->next_free = NULL;
-  p->free_list = INDEX (p->pool, 0, stride);
+  p->free_list                                  = INDEX (p->pool, 0, stride);
 }
 
 bool

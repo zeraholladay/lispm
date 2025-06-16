@@ -39,7 +39,7 @@ START_TEST (test_capacity_growth)
   for (int i = 0; i < 100; i++)
     {
       int *v = xmalloc (sizeof *v);
-      *v = i;
+      *v     = i;
       ck_assert (list_append (lst, v));
       ck_assert_int_eq (lst->count, i + 1);
     }
@@ -81,7 +81,7 @@ END_TEST
 START_TEST (test_copy)
 {
   List *lst_cpy = NULL;
-  int v[3] = { 1, 2, 3 };
+  int   v[3]    = { 1, 2, 3 };
 
   // empty
   lst_cpy = list_copy (lst);
@@ -115,8 +115,8 @@ START_TEST (test_reverse)
   ck_assert_int_eq (lst->count, 0);
 
   // one item
-  List *lst1 = list_create ();
-  int v1[1] = { 1 };
+  List *lst1  = list_create ();
+  int   v1[1] = { 1 };
   list_append (lst1, &v1[0]);
   list_reverse (lst1);
   ck_assert_int_eq (lst1->count, 1);
@@ -124,8 +124,8 @@ START_TEST (test_reverse)
   list_destroy (lst1);
 
   // two items (even)
-  List *lst2 = list_create ();
-  int v2[2] = { 1, 2 };
+  List *lst2  = list_create ();
+  int   v2[2] = { 1, 2 };
   list_append (lst2, &v2[0]);
   list_append (lst2, &v2[1]);
   list_reverse (lst2);
@@ -135,8 +135,8 @@ START_TEST (test_reverse)
   list_destroy (lst2);
 
   // two three (odd)
-  List *lst3 = list_create ();
-  int v3[3] = { 1, 2, 3 };
+  List *lst3  = list_create ();
+  int   v3[3] = { 1, 2, 3 };
   list_append (lst3, &v3[0]);
   list_append (lst3, &v3[1]);
   list_append (lst3, &v3[2]);

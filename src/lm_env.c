@@ -22,8 +22,7 @@ lm_env_define (LM *lm, Cell *car, Cell *cdr)
   if (check)
     {
       ErrorCode code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
-      lm_err_set (lm, code, "define");
-      return false;
+      return lm_err (lm, code, "define");
     }
 
   return (lm->env.sp >= 1)
@@ -38,16 +37,14 @@ lm_env_set (LM *lm, Cell *car, Cell *cdr)
   if (check)
     {
       ErrorCode code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
-      lm_err_set (lm, code, "set!");
-      return false;
+      return lm_err (lm, code, "set!");
     }
 
   for (size_t i = lm->env.sp; i >= 1; --i)
     if (dict_has_key (lm->env.dict[i - 1], car->symbol.str))
       return dict_insert (lm->env.dict[i - 1], car->symbol.str, cdr);
 
-  lm_err_set (lm, ERR_SYMBOL_NOT_FOUND, car->symbol.str);
-  return false;
+  return lm_err (lm, ERR_SYMBOL_NOT_FOUND, car->symbol.str);
 }
 
 Cell *
@@ -64,6 +61,6 @@ lm_env_lookup (LM *lm, Cell *sym)
         return entity->val;
     }
 
-  lm_err_set (lm, ERR_SYMBOL_NOT_FOUND, sym->symbol.str);
+  lm_err (lm, ERR_SYMBOL_NOT_FOUND, sym->symbol.str);
   return NIL;
 }

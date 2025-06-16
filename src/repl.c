@@ -15,7 +15,7 @@ int
 repl (LM *lm)
 {
   Cell *progn = NULL;
-  char input[RL_BUF_SIZ];
+  char  input[RL_BUF_SIZ];
 
   rl_init ();
 

@@ -228,7 +228,7 @@ gc_mark (LM *lm)
 
   for (size_t i = 0; i < lm->env.sp; ++i)
     {
-      DictIter iter = dict_iter (lm->env.dict[i]);
+      DictIter    iter = dict_iter (lm->env.dict[i]);
       DictEntity *entity;
 
       while ((entity = dict_items (&iter)))

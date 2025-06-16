@@ -25,7 +25,7 @@ stk_pop (LM *lm)
 {
   if (lm->stk.sp == 0)
     {
-      lm_err_set (lm, ERR_UNDERFLOW, "stk_pop");
+      lm_err (lm, ERR_UNDERFLOW, "stk_pop");
       return NULL;
     }
   return lm->stk.cells[--lm->stk.sp];
@@ -35,7 +35,7 @@ static inline bool
 stk_push (LM *lm, Cell *val)
 {
   if (lm->stk.sp >= LISPM_STK_MAX)
-    return lm_err_set (lm, ERR_OVERFLOW, "stk_push");
+    return lm_err (lm, ERR_OVERFLOW, "stk_push");
 
   lm->stk.cells[lm->stk.sp++] = val;
   return true;
@@ -45,7 +45,7 @@ static inline bool
 enter_frame (LM *lm)
 {
   if (lm->env.sp >= LISPM_ENV_MAX)
-    return lm_err_set (lm, ERR_OVERFLOW, "enter_frame");
+    return lm_err (lm, ERR_OVERFLOW, "enter_frame");
 
   lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
   return true;
@@ -55,7 +55,7 @@ static inline bool
 leave_frame (LM *lm)
 {
   if (lm->env.sp == 0)
-    return lm_err_set (lm, ERR_UNDERFLOW, "leave_frame");
+    return lm_err (lm, ERR_UNDERFLOW, "leave_frame");
 
   lm->env.sp--;
   dict_destroy (lm->env.dict[lm->env.sp]);
@@ -66,7 +66,7 @@ static inline bool
 ctl_pop (LM *lm, State *out)
 {
   if (lm->ctl.sp == 0)
-    return lm_err_set (lm, ERR_UNDERFLOW, "ctl_pop");
+    return lm_err (lm, ERR_UNDERFLOW, "ctl_pop");
 
   *out = lm->ctl.states[--lm->ctl.sp];
   return true;
@@ -76,7 +76,7 @@ static inline bool
 ctl_push_state (LM *lm, State st)
 {
   if (lm->ctl.sp >= LISPM_CTL_MAX)
-    return lm_err_set (lm, ERR_OVERFLOW, "ctl_push_state");
+    return lm_err (lm, ERR_OVERFLOW, "ctl_push_state");
 
   lm->ctl.states[lm->ctl.sp++] = st;
   return true;
@@ -93,55 +93,60 @@ ctl_push_states (LM *lm, const State sts[], size_t n)
   return true;
 }
 
-// static bool
-// dump (LM *lm)
-// {
-//   if ((lm)->dmp.sp >= LISPM_DUMP_MAX)
-//     return false;
+static bool
+dump_push (LM *lm)
+{
+  if ((lm)->dmp.sp >= LISPM_DMP_MAX)
+    return false;
 
-//   lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
-//                                           .env_sp = lm->env.sp,
-//                                           .ctl_sp = lm->ctl.sp };
-//   LM_ENTER_FRAME (lm);
+  lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
+                                          .env_sp = lm->env.sp,
+                                          .ctl_sp = lm->ctl.sp };
+  if (!enter_frame (lm))
+    return false;
 
-//   return true;
-// overflow:
-//   return false; // TODO: set err here
-// }
+  return true;
+}
 
-// static bool
-// dump_restore (LM *lm)
-// {
-//   if (lm->dmp.sp == 0)
-//     return false;
+static bool
+dump_pop (LM *lm)
+{
+  if (lm->dmp.sp == 0)
+    return false;
 
-//   Dump dump = lm->dmp.dumps[--lm->dmp.sp];
+  Dump dump = lm->dmp.dumps[--lm->dmp.sp];
 
-//   lm->stk.sp = dump.stk_sp;
-//   lm->env.sp = dump.env_sp;
-//   lm->ctl.sp = dump.ctl_sp;
+  lm->stk.sp = dump.stk_sp;
+  lm->env.sp = dump.env_sp;
+  lm->ctl.sp = dump.ctl_sp;
 
-//   LM_LEAVE_FRAME (lm);
+  if (!leave_frame (lm))
+    return false;
 
-//   return true;
-// underflow:
-//   return false; // TODO: set err here
-// }
+  return true;
+}
 
 static void
 lm_reset (LM *lm)
 {
-  static const char *fmt
-      = "Reset\nstk:0x%zX\nenv:0x%zX\nctl:0x%zX\ndmp:0x%zX\n";
-  fprintf (stderr, fmt, lm->stk.sp, lm->env.sp, lm->ctl.sp, lm->dmp.sp);
-
-  lm->stk.sp = lm->ctl.sp = lm->dmp.sp = 0;
+  fprintf (stderr,
+           "Registers:\n"
+           "  stk: %zu\n"
+           "  env: %zu\n"
+           "  ctl: %zu\n"
+           "  dmp: %zu\n",
+           lm->stk.sp, lm->env.sp, lm->ctl.sp, lm->dmp.sp);
 
   // Destroy every frame except the reserved global at index 0
   for (size_t i = 1; i < lm->env.sp; ++i)
     dict_destroy (lm->env.dict[i]);
 
-  lm->env.sp = 1;
+  // Reset stack pointers
+  lm->stk.sp = 0;
+  lm->env.sp = 1; // save global env
+  lm->ctl.sp = 0;
+  lm->dmp.sp = 0;
+
   lm->err_bool = false;
 }
 
@@ -156,7 +161,7 @@ lm_eval_switch (LM *lm, StateEnum s, Union u)
 #include "lm.def"
 #undef X
     default:
-      return lm_err_set (lm, ERR_INTERNAL, "no such state");
+      return lm_err (lm, ERR_INTERNAL, "no such state");
     }
 
 ctl_closure_enter:
@@ -199,12 +204,12 @@ ctl_eval:
         return ctl_push_state (lm, S (eval_apply, .fn = car, .arglist = cdr));
       }
 
-    return lm_err_set (lm, ERR_INTERNAL, "eval");
+    return lm_err (lm, ERR_INTERNAL, "eval");
   }
 
 ctl_eval_apply:
   {
-    Cell *fn = u.eval_apply.fn;
+    Cell *fn      = u.eval_apply.fn;
     Cell *arglist = u.eval_apply.arglist;
 
     if (fn)
@@ -233,7 +238,7 @@ ctl_eval_apply:
 
 ctl_evlis:
   {
-    Cell *acc = u.evlis.acc;
+    Cell *acc     = u.evlis.acc;
     Cell *arglist = u.evlis.arglist;
 
     if (NILP (arglist))
@@ -255,20 +260,20 @@ ctl_evlis:
 
 ctl_evlis_acc:
   {
-    Cell *eval_res = stk_pop (lm);
-    if (!eval_res)
-      return false;
-
-    Cell *acc = u.evlis_acc.acc;
+    Cell *acc     = u.evlis_acc.acc;
     Cell *arglist = u.evlis_acc.arglist;
 
-    Cell *acc2 = CONS (eval_res, acc, lm);
+    Cell *res = stk_pop (lm);
+    if (!res)
+      return false;
+
+    Cell *acc2 = CONS (res, acc, lm);
     return ctl_push_state (lm, S (evlis, .acc = acc2, .arglist = arglist));
   }
 
 ctl_funcall:
   {
-    Cell *fn = u.funcall.fn;
+    Cell *fn      = u.funcall.fn;
     Cell *arglist = u.funcall.arglist;
 
     if (!fn && !(fn = stk_pop (lm)))
@@ -289,12 +294,12 @@ ctl_funcall:
                               },
                               3);
 
-    return lm_err_set (lm, ERR_NOT_A_FUNCTION, "funcall");
+    return lm_err (lm, ERR_NOT_A_FUNCTION, "funcall");
   }
 
 ctl_lambda:
   {
-    Cell *fn = u.lambda.fn;
+    Cell *fn      = u.lambda.fn;
     Cell *arglist = u.lambda.arglist;
 
     if (!fn && !(fn = stk_pop (lm)))
@@ -312,7 +317,7 @@ ctl_lambda:
       {
         ErrorCode err
             = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
-        return lm_err_set (lm, err, "lambda");
+        return lm_err (lm, err, "lambda");
       }
 
     Cell *pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
@@ -335,7 +340,7 @@ ctl_let:
     Cell *progn = CDR (u.let.arglist);
     Cell *pairs = CAR (u.let.arglist);
 
-    Cell *rev_vars = NIL;
+    Cell *rev_vars  = NIL;
     Cell *rev_exprs = NIL;
 
     while (!NILP (pairs))
@@ -343,15 +348,15 @@ ctl_let:
         Cell *pair = CAR (pairs);
 
         if (!CONSP (pair))
-          return lm_err_set (lm, ERR_INVALID_ARG, "let: binding not a list");
+          return lm_err (lm, ERR_INVALID_ARG, "let: binding not a list");
 
-        rev_vars = CONS (CAR (pair), rev_vars, lm);
+        rev_vars  = CONS (CAR (pair), rev_vars, lm);
         rev_exprs = CONS (CADR (pair), rev_exprs, lm);
 
         pairs = CDR (pairs);
       }
 
-    Cell *vars = reverse_inplace (rev_vars);
+    Cell *vars  = reverse_inplace (rev_vars);
     Cell *exprs = reverse_inplace (rev_exprs);
 
     return ctl_push_states (
@@ -399,7 +404,7 @@ ctl_set:
 
 ctl_apply:
   {
-    Cell *fn = u.apply.fn;
+    Cell *fn      = u.apply.fn;
     Cell *arglist = u.apply.arglist;
 
     if (!fn && !(fn = stk_pop (lm)))
@@ -409,13 +414,13 @@ ctl_apply:
       return false;
 
     if (!LISTP (arglist))
-      return lm_err_set (lm, ERR_MISSING_ARG, "apply: not a list.");
+      return lm_err (lm, ERR_MISSING_ARG, "apply: not a list.");
 
-    Cell *fixed = butlast (lm, arglist);
+    Cell *fixed     = butlast (lm, arglist);
     Cell *tail_list = CAR (last (lm, arglist));
 
     if (!LISTP (tail_list))
-      return lm_err_set (lm, ERR_MISSING_ARG, "apply: last not a list.");
+      return lm_err (lm, ERR_MISSING_ARG, "apply: last not a list.");
 
     Cell *all = append_inplace (fixed, tail_list);
 
@@ -424,7 +429,7 @@ ctl_apply:
 
 ctl_progn:
   {
-    Cell *res = u.progn.res;
+    Cell *res     = u.progn.res;
     Cell *arglist = u.progn.arglist;
 
     if (NILP (arglist))
@@ -439,18 +444,18 @@ ctl_progn:
 
 ctl_progn_eval:
   {
-    Cell *eval_res = stk_pop (lm);
+    Cell *res     = stk_pop (lm);
     Cell *arglist = u.progn_eval.arglist;
 
-    if (!eval_res)
+    if (!res)
       return false;
 
-    return ctl_push_state (lm, S (progn, .res = eval_res, .arglist = arglist));
+    return ctl_push_state (lm, S (progn, .res = res, .arglist = arglist));
   }
 
 ctl_lispm:
   {
-    Cell *fn = u.lispm.fn;
+    Cell *fn      = u.lispm.fn;
     Cell *arglist = u.lispm.arglist;
 
     switch (fn->thunk)
@@ -532,14 +537,14 @@ ctl_lispm:
         return ctl_push_state (lm, S (let, .arglist = CAR (arglist)));
 
       case THUNK_GC:
-        lm_gc (lm); // for now
+        lm_gc (lm); // for testing
         return stk_push (lm, T);
 
       default:
         break;
       }
 
-    return lm_err_set (lm, ERR_INTERNAL, "lispm");
+    return lm_err (lm, ERR_INTERNAL, "lispm");
   }
 
 ctl_if_:
@@ -590,19 +595,19 @@ ctl_and:
 
 ctl_and_cont:
   {
-    Cell *eval_res = stk_pop (lm);
+    Cell *res     = stk_pop (lm);
     Cell *arglist = u.and_cont.arglist;
 
-    if (!eval_res)
+    if (!res)
       return false;
 
-    if (NILP (eval_res))
+    if (NILP (res))
       return stk_push (lm, NIL);
 
     Cell *cdr = CDR (arglist);
 
     if (NILP (cdr))
-      return stk_push (lm, eval_res);
+      return stk_push (lm, res);
 
     return ctl_push_states (lm,
                             (State[]){
@@ -629,19 +634,19 @@ ctl_or:
 
 ctl_or_cont:
   {
-    Cell *eval_res = stk_pop (lm);
+    Cell *res     = stk_pop (lm);
     Cell *arglist = u.or_cont.arglist;
 
-    if (!eval_res)
+    if (!res)
       return false;
 
-    if (!NILP (eval_res))
-      return stk_push (lm, eval_res);
+    if (!NILP (res))
+      return stk_push (lm, res);
 
     Cell *cdr = CDR (arglist);
 
     if (NILP (cdr))
-      return stk_push (lm, eval_res);
+      return stk_push (lm, res);
 
     return ctl_push_states (lm,
                             (State[]){
@@ -653,7 +658,7 @@ ctl_or_cont:
 
 ctl_map:
   {
-    Cell *fn = u.map.fn;
+    Cell *fn      = u.map.fn;
     Cell *arglist = u.map.arglist;
 
     if (!fn && !(fn = stk_pop (lm)))
@@ -662,16 +667,16 @@ ctl_map:
     if (!arglist && !(arglist = stk_pop (lm)))
       return false;
 
-    Cell *zipped = zip (lm, arglist);
+    Cell *ziplst = zip (lm, arglist);
 
     return ctl_push_state (
-        lm, S (map_cont, .fn = fn, .acc = NIL, .ziplist = zipped));
+        lm, S (map_cont, .fn = fn, .acc = NIL, .ziplist = ziplst));
   }
 
 ctl_map_cont:
   {
-    Cell *fn = u.map_cont.fn;
-    Cell *acc = u.map_cont.acc;
+    Cell *fn     = u.map_cont.fn;
+    Cell *acc    = u.map_cont.acc;
     Cell *zipped = u.map_cont.ziplist;
 
     if (NILP (zipped))
@@ -694,8 +699,8 @@ ctl_map_cont:
 
 ctl_map_acc:
   {
-    Cell *fn = u.map_acc.fn;
-    Cell *acc = u.map_acc.acc;
+    Cell *fn     = u.map_acc.fn;
+    Cell *acc    = u.map_acc.acc;
     Cell *zipped = u.map_acc.ziplist;
 
     Cell *res = stk_pop (lm);
@@ -713,39 +718,47 @@ static Cell *
 lm_eval (LM *lm)
 {
   size_t base_ptr = lm->ctl.sp;
-  State state;
+  State  state;
 
   do
     {
       if (lm->err_bool)
-        goto error;
+        {
+          lm_reset (lm);
+          return NIL;
+        }
 
       if (!ctl_pop (lm, &state))
-        goto error;
+        {
+          lm_reset (lm);
+          return NIL;
+        }
 
-      lm_eval_switch (lm, state.s, state.u);
+      if (!lm_eval_switch (lm, state.s, state.u))
+        {
+          lm_reset (lm);
+          return NIL;
+        }
     }
   while (base_ptr <= lm->ctl.sp);
 
   return stk_pop (lm);
-  LM_ERR_HANDLERS (lm, LM_ERR_STATE (error));
 }
 
 LM *
 lm_create (void)
 {
+  // Initialize NIL
   CAR (NIL) = CDR (NIL) = NIL;
 
-  LM *lm = xmalloc (sizeof *(lm));
+  // Zeros out stack pointers
+  LM *lm = xcalloc (1, sizeof *(lm));
 
-  lm->stk.sp = 0;
-  lm->env.sp = 0;
-  lm->ctl.sp = 0;
-  lm->dmp.sp = 0;
-
+  // Create global frame
   lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
 
-  lm->pool = pool_init (LM_OBJ_POOL_CAP, sizeof (Cell));
+  // Allocate pool
+  lm->pool = pool_init (LM_CAP_PER_POOL, sizeof (Cell));
 
   return lm;
 }
@@ -769,13 +782,14 @@ lm_alloc_cell (LM *lm)
 }
 
 bool
-lm_err_set (LM *lm, ErrorCode code, const char *fmt, ...)
+lm_err (LM *lm, ErrorCode code, const char *fmt, ...)
 {
-  va_list ap;
   lm->err_bool = true;
 
-  fprintf (stderr, "%s: ", error_messages[code]);
+  const char *msg = error_messages[code];
+  fprintf (stderr, "***error: %s: ", msg);
 
+  va_list ap;
   va_start (ap, fmt);
   vfprintf (stderr, fmt, ap);
   va_end (ap);
@@ -788,10 +802,9 @@ lm_err_set (LM *lm, ErrorCode code, const char *fmt, ...)
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
-  if (!ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
-    goto error;
+  if (ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
+    return lm_eval (lm);
 
-  return lm_eval (lm); // TODO: error detection
-
-  LM_ERR_HANDLERS (lm, LM_ERR_STATE (error));
+  lm_reset (lm);
+  return NIL;
 }

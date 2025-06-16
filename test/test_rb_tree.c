@@ -11,7 +11,7 @@ make_node (const char *key, size_t len)
 {
   rb_node *n = rb_xalloc ();
 
-  RB_KEY (n) = safe_strndup (key, len);
+  RB_KEY (n)     = safe_strndup (key, len);
   RB_KEY_LEN (n) = len;
 
   return n;
@@ -21,7 +21,7 @@ START_TEST (test_insert_and_lookup)
 {
   rb_node *root = NULL;
 
-  char *apple = "apple";
+  char *apple  = "apple";
   char *cherry = "cherry";
   char *banana = "banana";
 
@@ -63,7 +63,7 @@ START_TEST (test_remove)
 {
   rb_node *root = NULL;
 
-  char *apple = "apple";
+  char *apple  = "apple";
   char *cherry = "cherry";
   char *banana = "banana";
 
@@ -109,7 +109,7 @@ rb_tree_suite (void)
   Suite *s;
   TCase *tc_core;
 
-  s = suite_create ("RedBlackTree");
+  s       = suite_create ("RedBlackTree");
   tc_core = tcase_create ("Core");
 
   tcase_add_test (tc_core, test_insert_and_lookup);

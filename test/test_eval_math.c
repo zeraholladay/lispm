@@ -10,7 +10,7 @@
 #include "types.h"
 
 static Cell *progn = NULL;
-static LM *lm = NULL;
+static LM   *lm    = NULL;
 
 static void
 setup (void)

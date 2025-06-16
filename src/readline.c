@@ -54,7 +54,7 @@ void
 rl_init (void)
 {
   rl_attempted_completion_function = _attempted_completion_function;
-  const char *hist_path = get_history_path ();
+  const char *hist_path            = get_history_path ();
   read_history (hist_path);
   stifle_history (READLINE_HISTORY_MAX);
   rl_variable_bind ("blink-matching-paren", "on");
@@ -64,8 +64,8 @@ rl_init (void)
 int
 rl_readline (char *full_input, size_t n)
 {
-  size_t len = 0;
-  char *line = NULL;
+  size_t len  = 0;
+  char  *line = NULL;
 
   full_input[0] = '\0';
 

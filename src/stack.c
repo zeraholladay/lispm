@@ -5,9 +5,9 @@
 
 struct stack
 {
-  uintptr_t sp;
-  uintptr_t fp;
-  size_t data_size;
+  uintptr_t  sp;
+  uintptr_t  fp;
+  size_t     data_size;
   uintptr_t *data;
 };
 
@@ -15,8 +15,8 @@ static void *
 stack_xgrow (Stack *stack, size_t count)
 {
   uintptr_t *new_ptr = xrealloc (stack->data, (count) * sizeof *(stack->data));
-  stack->data = new_ptr;
-  stack->data_size = count;
+  stack->data        = new_ptr;
+  stack->data_size   = count;
   return new_ptr;
 }
 
@@ -73,7 +73,7 @@ stack_exit_frame (Stack *stack)
   if (stack->fp > 0)
     {
       uintptr_t old_fp = (uintptr_t)(stack->data[stack->fp - 1]);
-      stack->sp = stack->fp - 1;
-      stack->fp = old_fp;
+      stack->sp        = stack->fp - 1;
+      stack->fp        = old_fp;
     }
 }

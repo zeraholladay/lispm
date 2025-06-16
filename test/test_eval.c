@@ -11,7 +11,7 @@
 #include "types.h"
 
 static Cell *progn = NULL;
-static LM *lm = NULL;
+static LM   *lm    = NULL;
 
 static void
 setup (void)
@@ -60,8 +60,8 @@ END_TEST
 START_TEST (test_quote)
 {
   Cell *eval_res = NULL;
-  Cell *car = NULL;
-  Cell *cdr = NULL;
+  Cell *car      = NULL;
+  Cell *cdr      = NULL;
 
   // NULL progn
   eval_res = run_eval_progn ("()");
@@ -87,8 +87,8 @@ END_TEST
 START_TEST (test_cons)
 {
   Cell *eval_res = NULL;
-  Cell *car = NULL;
-  Cell *cdr = NULL;
+  Cell *car      = NULL;
+  Cell *cdr      = NULL;
 
   eval_res = run_eval_progn ("(cons 'foo 'bar)");
   ck_assert (!NILP (eval_res));
@@ -213,7 +213,7 @@ START_TEST (test_list)
   ck_assert_int_eq (CAR (CDR (CDR (eval_res)))->integer, 3);
   ck_assert (NILP (CDR (CDR (CDR (eval_res)))));
 
-  eval_res = run_eval_progn ("(list 'a 'b)");
+  eval_res     = run_eval_progn ("(list 'a 'b)");
   Cell *second = CAR (CDR (eval_res));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "a");
   ck_assert_str_eq (second->symbol.str, "b");
@@ -262,8 +262,8 @@ END_TEST
 START_TEST (test_apply)
 {
   Cell *eval_res = NULL;
-  Cell *car = NULL;
-  Cell *cdr = NULL;
+  Cell *car      = NULL;
+  Cell *cdr      = NULL;
 
   eval_res = run_eval_progn ("(apply (lambda () ()) '())");
   ck_assert (NILP (eval_res));
@@ -297,8 +297,8 @@ END_TEST
 START_TEST (test_funcall)
 {
   Cell *eval_res = NULL;
-  Cell *car = NULL;
-  Cell *cdr = NULL;
+  Cell *car      = NULL;
+  Cell *cdr      = NULL;
 
   eval_res = run_eval_progn ("(funcall (lambda () ()))");
   ck_assert (NILP (eval_res));
@@ -480,7 +480,7 @@ START_TEST (test_nested_let_lexical_scope)
   const char *prog = "(define 'x 100) "
                      "(let ((x 1) (x 2)) x) "
                      "x";
-  Cell *r = run_eval_progn (prog);
+  Cell       *r    = run_eval_progn (prog);
   ck_assert_int_eq (r->integer, 100);
 }
 END_TEST
