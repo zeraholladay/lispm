@@ -49,10 +49,6 @@
 (assert '(eq (length nil) 0))
 (assert '(eq (length nil) (length nil)))
 (assert '(not (eq (length '(1)) (length nil))))
-;; ;; PAIR
-;; (assert '(eq 0 (length (PAIR '() '()))))
-;; (assert '(eq 1 (length (PAIR '(1) '(1)))))
-;; (assert '(eq 2 (length (PAIR '(A B) '(1 2)))))
 ;; if
 (assert '(if t t))
 (assert '(not (if t nil)))
@@ -77,7 +73,7 @@
 (assert
     '(funcall (lambda () t)))
 (assert
-    '(funcall (lambda (x Y) (cons x Y)) 'foo 'bar))
+    '(funcall (lambda (x y) (cons x y)) 'foo 'bar))
 ;; math (very buggy due to defaults)
 ;; BUGS
 ;; (assert '(eq 0 (+)))
@@ -98,46 +94,33 @@
 (assert '(lt -42 42))
 (assert '(lt -1 0 1 2 3))
 ;; recursion
-(define lt_or_eq (lambda (x Y) (or (< x Y) (eq x Y))))
-(define fooer (lambda (x)
-    (if (lt_or_eq x 0)
-        x
-        (fooer (sub x 1))
-    )))
+(define (lt_or_eq x y) (or (< x y) (eq x y)))
+(define (fooer x)
+  (if (lt_or_eq x 0)
+      x
+      (fooer (sub x 1)))
+)
 (assert (eq 0 (fooer 42)))
 (assert (eq -42 (fooer -42)))
-(define range (lambda (x max)
-    (if (> x max)
-        nil
-        (cons x (range (+ x 1) max))
-    )
+(define (range x max)
+  (if (> x max)
+      nil
+      (cons x (range (+ x 1) max))
   )
 )
 (assert '(eq 10 (length (range 0 9))))
 (assert '(eq 42 (length (range 0 41))))
 
 (assert '(eq 903 (apply + (range 0 42))))
-;; Fibonacci
-(define fib 
-  (lambda (x)
-    (if (or (< x 1) (eq x 1))
-        x
-        (let ((x (sub x 1))
-              (y (sub x 2)))
-            (+ (fib x) (fib y))
-        )
-    )
+(define (fib x)
+  (if (or (< x 1) (eq x 1))
+      x
+      (let ((x (sub x 1))
+            (y (sub x 2)))
+          (+ (fib x) (fib y))
+      )
   )
 )
-;; (define (fib x)
-;;   (if (or (< x 1) (eq x 1))
-;;       x
-;;       (let ((x (sub x 1))
-;;             (y (sub x 2)))
-;;           (+ (fib x) (fib y))
-;;       )
-;;   )
-;; )
 (assert '(eq 0 (fib 0)))
 (assert '(eq 1 (fib 1)))
 (assert '(eq 1 (fib 2)))
@@ -146,12 +129,10 @@
 (assert '(eq 5 (fib 5)))
 (assert '(eq 55 (fib 10)))
 ;; Delayed evaluation Fibonacci
-(define layz_fib 
-  (lambda (x)
-    (if (or (< x 1) (eq x 1))
-        (list '+ x 0)
-        (list '+ (layz_fib (sub x 1)) (layz_fib (sub x 2)))
-    )
+(define (layz_fib x)
+  (if (or (< x 1) (eq x 1))
+      (list '+ x 0)
+      (list '+ (layz_fib (sub x 1)) (layz_fib (sub x 2)))
   )
 )
 (assert '(eq 0 (eval (layz_fib 0))))

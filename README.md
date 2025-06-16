@@ -1,6 +1,6 @@
 # lispm
 
-A simple Lisp-dialect with parts from Scheme.
+A simple Scheme-dialect.
 
 ---
 
@@ -101,10 +101,21 @@ Returns `expr` without evaluating it.
 
 ```lisp
 (define symbol value)
+
+(define (fib x)
+  (if (or (< x 1) (eq x 1))
+      x
+      (let ((x (- x 1))
+            (y (- x 2)))
+          (+ (fib x) (fib y))
+      )
+  )
+)
+
+(fib 10) ; ⇒ 55
 ```
 
-Currently evaluates `symbol`, but this isn't right.
-Binds `symbol` to `value` in the current lexical scope.
+Binds `symbol` to `value` in the current lexical scope **or** creates a function (bound `lambda`) in the current lexical scope.
 
 ```lisp
 (define 'x 10) ; ⇒ 10
@@ -121,7 +132,7 @@ Evaluate `symbol`, then update the *existing* binding of `symbol` in the *innerm
 Signal an error if `symbol` has not been previously bound.
 
 ```lisp
-(set! 'x 10) ; ⇒ 10
+(set! x 10) ; ⇒ 10
 x            ; ⇒ 10
 ```
 
@@ -162,7 +173,7 @@ Bindings must be two‐element lists `(name init-expr)`.
 Creates an anonymous function closing over the current environment.
 
 ```lisp
-(set 'add2 (lambda (x y) (+ x y)))
+(define add2 (lambda (x y) (+ x y))) ; or (define (add2 xy) (+ x y))
 (add2 3 4) ; ⇒ 7
 ```
 
@@ -176,7 +187,7 @@ Evaluate each `exprN` in sequence and return the last value.
 
 ```lisp
 (progn
-  (set 'x 5)
+  (set! x 5)
   (* x 2)) ; ⇒ 10
 ```
 
@@ -197,7 +208,7 @@ T      ; ⇒ T   (true)
 
 See [Special Forms](#special-forms).
 
-### `set`
+### `set!`
 
 See [Special Forms](#special-forms).
 
@@ -214,7 +225,7 @@ See [Special Forms](#special-forms).
 * **`funcall`** — call a function with individual args:
 
   ```lisp
-  (funcall set 'x 100) ; ⇒ 100
+  (funcall cons 'x 100) ; ⇒ (x.100)
   ```
 
 * **`apply`** — call a function with a list of args:
@@ -256,12 +267,14 @@ See [Special Forms](#special-forms).
   (list a b c) ; ⇒ (a b c)
   ```
 
-* **`first`**, **`rest`**
+* **`car`**, **`cdr`**
 
   ```lisp
-  (first '(a b)) ; ⇒ a
-  (rest  '(a b)) ; ⇒ (b)
+  (car '(a b))  ; ⇒ a
+  (cdr  '(a b)) ; ⇒ (b)
   ```
+
+Alternatively, `first` and `rest`.
 
 * **`length`**
 
@@ -276,7 +289,7 @@ See [Special Forms](#special-forms).
   (butlast '(1 2 3))   ; ⇒ (1 2)
   (last '(1 2 3))      ; ⇒ (3)
   (nth 1 '(a b c))     ; ⇒ b
-  (mapcar list '(A B) '(1 2)) ; ⇒ ((A 1) (B 2))
+  (map list '(A B) '(1 2)) ; ⇒ ((A 1) (B 2))
   ```
 
 ### Equality
@@ -284,8 +297,8 @@ See [Special Forms](#special-forms).
 * **`eq`**
 
   ```lisp
-  (eq 'a 'a) ; ⇒ T
-  (eq '(a) '(a)) ; ⇒ NIL  ; pointer equality, not deep
+  (eq 'a 'a)      ; ⇒ T
+  (eq '(a) '(a))  ; ⇒ NIL  ; pointer equality, not deep
   ```
 
 ### Printing
@@ -313,7 +326,6 @@ See [Special Forms](#special-forms).
 ## TODO
 
 * [ ] Fix `add` / `mul` with zero args should return `1`
-* [ ] Fix `define` form for globals
 * [ ] Full support for strings
 * [ ] Parse‐error reporting (exceptions)
 * [ ] Garbage collection
