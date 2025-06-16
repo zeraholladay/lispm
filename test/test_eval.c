@@ -106,23 +106,23 @@ START_TEST (test_cons)
 }
 END_TEST
 
-START_TEST (test_set_and_lookup)
+START_TEST (test_define_set_and_lookup)
 {
   Cell *eval_res = NULL;
 
-  eval_res = run_eval_progn ("(define 'foo 42)");
+  eval_res = run_eval_progn ("(define foo 42)");
   ck_assert (eval_res->integer == 42);
 
   eval_res = run_eval_progn ("foo");
   ck_assert (eval_res->integer == 42);
 
-  eval_res = run_eval_progn ("(define 'bar 'foo)");
+  eval_res = run_eval_progn ("(define bar 'foo)");
   ck_assert (IS_INST (eval_res, SYMBOL));
 
-  eval_res = run_eval_progn ("(set! 'bar '(1 2 3))");
+  eval_res = run_eval_progn ("(set! bar '(1 2 3))");
   ck_assert (IS_INST (eval_res, CONS));
 
-  eval_res = run_eval_progn ("(set! 'bar (lambda () ()))");
+  eval_res = run_eval_progn ("(set! bar (lambda () ()))");
   ck_assert (IS_INST (eval_res, LAMBDA));
 }
 END_TEST
@@ -241,19 +241,19 @@ START_TEST (test_lambda)
   eval_res = run_eval_progn ("((lambda (a) a) 42)");
   ck_assert (IS_INST (eval_res, INTEGER) && eval_res->integer == 42);
 
-  // define 'foo and run
-  eval_res = run_eval_progn ("(define 'foo (lambda () (cons 'a 'b)))"
+  // define foo and run
+  eval_res = run_eval_progn ("(define foo (lambda () (cons 'a 'b)))"
                              "(foo)");
   ck_assert (IS_INST (eval_res, CONS));
 
   // with parameters
-  eval_res = run_eval_progn ("(define 'foo (lambda (a b) (cons a b)))"
+  eval_res = run_eval_progn ("(define foo (lambda (a b) (cons a b)))"
                              "(foo 'bar 'biz)");
   ck_assert (IS_INST (eval_res, CONS));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
 
   // test lexical scope
-  eval_res = run_eval_progn ("(define 'foo 'bar)"
+  eval_res = run_eval_progn ("(define foo 'bar)"
                              "((lambda () foo))");
   ck_assert_str_eq (eval_res->symbol.str, "bar");
 }
@@ -377,13 +377,43 @@ START_TEST (test_map)
 }
 END_TEST
 
+START_TEST (test_define)
+{
+  Cell *eval_res = NULL;
+
+  eval_res = run_eval_progn ("(define (range x max)"
+                             "    (if (> x max)"
+                             "        nil"
+                             "        (cons x (range (+ x 1) max))"
+                             "    )"
+                             ")"
+                             "(apply + (range 0 100))");
+  ck_assert_int_eq (eval_res->integer, 5050);
+
+  eval_res = run_eval_progn ("(define (fib x)"
+                             "  (if (or (< x 1) (eq x 1))"
+                             "      x"
+                             "      (let ((x (sub x 1))"
+                             "            (y (sub x 2)))"
+                             "          (+ (fib x) (fib y))"
+                             "      )"
+                             "  )"
+                             ")"
+                             "(fib 5)");
+  ck_assert_int_eq (eval_res->integer, 5);
+
+  eval_res = run_eval_progn ("(fib 10)");
+  ck_assert_int_eq (eval_res->integer, 55);
+}
+END_TEST
+
 START_TEST (test_let)
 {
   Cell *eval_res = NULL;
 
   eval_res = run_eval_progn (
-      "(define 'a 1)"
-      "(define 'b 2)"
+      "(define a 1)"
+      "(define b 2)"
       "(apply + (let ((c (+ a 2)) (d (+ b 2))) (list a b c d)))");
   ck_assert (eval_res->integer == 10);
 }
@@ -432,7 +462,7 @@ START_TEST (test_progn)
   ck_assert_int_eq (r->integer, 3);
 
   // side-effect ordering: define x then use
-  r = run_eval_progn ("(progn (define 'x 10) (set! 'x (+ x 5)) x)");
+  r = run_eval_progn ("(progn (define x 10) (set! x (+ x 5)) x)");
   ck_assert_int_eq (r->integer, 15);
 }
 END_TEST
@@ -477,7 +507,7 @@ END_TEST
 START_TEST (test_nested_let_lexical_scope)
 {
   // inner let shouldn't override outer
-  const char *prog = "(define 'x 100) "
+  const char *prog = "(define x 100) "
                      "(let ((x 1) (x 2)) x) "
                      "x";
   Cell       *r    = run_eval_progn (prog);
@@ -516,7 +546,7 @@ eval_suite (void)
   tcase_add_test (tc, test_literal_expressions);
   tcase_add_test (tc, test_quote);
   tcase_add_test (tc, test_cons);
-  tcase_add_test (tc, test_set_and_lookup);
+  tcase_add_test (tc, test_define_set_and_lookup);
   tcase_add_test (tc, test_first);
   tcase_add_test (tc, test_rest);
   tcase_add_test (tc, test_len);
@@ -529,6 +559,7 @@ eval_suite (void)
   tcase_add_test (tc, test_last);
   tcase_add_test (tc, test_butlast);
   tcase_add_test (tc, test_map);
+  tcase_add_test (tc, test_define);
   tcase_add_test (tc, test_let);
   tcase_add_test (tc, test_and_or);
   tcase_add_test (tc, test_progn);

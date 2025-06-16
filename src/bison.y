@@ -84,10 +84,10 @@ form
       {
         $$ = CONS ($2, CONS ($3, $4, lm), lm);
       }
-    | '(' define '(' symbol symbol_list ')' '(' forms ')' ')'
+    | '(' define '(' symbol symbol_list ')' forms ')'
       {
-        Cell *lambda = LIST1 (LAMBDA ($5, $8, lm), lm);
-        $$ = CONS ($2, CONS ($4, lambda, lm), lm);
+        Cell *body = LIST1 (LAMBDA ($5, $7, lm), lm);
+        $$ = CONS ($2, CONS ($4, body, lm), lm);
       }
     | '(' let forms forms ')'
       {

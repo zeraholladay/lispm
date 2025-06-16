@@ -185,7 +185,7 @@ ctl_eval:
     if (IS_INST (expr, SYMBOL))
       return stk_push (lm, lm_env_lookup (lm, expr));
 
-     // Literals
+    // Literals
     if (!LISTP (expr))
       return stk_push (lm, expr);
 
@@ -806,13 +806,9 @@ lm_err (LM *lm, ErrorCode code, const char *fmt, ...)
   return false;
 }
 
-#include "fmt.h"
-
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
-  // PRINT (progn);
-
   if (ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
     return lm_eval (lm);
 
