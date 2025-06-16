@@ -10,10 +10,10 @@
 
 #define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 
-#define INTEGER(integer, lm) (new (lm, TYPE_INTEGER, integer))
-#define SYMBOL(str, len, lm) (new (lm, TYPE_SYMBOL, str, len))
-#define STRING(str, lm) (new (lm, TYPE_STRING, str))
-#define CONS(car, cdr, lm) (new (lm, TYPE_CONS, car, cdr))
+#define INTEGER(integer, lm)     (new (lm, TYPE_INTEGER, integer))
+#define SYMBOL(str, len, lm)     (new (lm, TYPE_SYMBOL, str, len))
+#define STRING(str, lm)          (new (lm, TYPE_STRING, str))
+#define CONS(car, cdr, lm)       (new (lm, TYPE_CONS, car, cdr))
 #define LAMBDA(params, body, lm) (new (lm, TYPE_LAMBDA, params, body))
 
 // forward decls
@@ -25,7 +25,7 @@ typedef int (*EqFn) (Cell *, Cell *);
 typedef struct Type
 {
   const char *type_name;
-  EqFn eq;
+  EqFn        eq;
 } Type;
 
 // Cells
@@ -47,7 +47,7 @@ typedef long long Integer;
 typedef struct
 {
   const char *str;
-  size_t len;
+  size_t      len;
 } Symbol;
 
 typedef struct
@@ -73,7 +73,7 @@ typedef struct
 typedef struct
 {
   ErrorCode err_code;
-  Cell *cell;
+  Cell     *cell;
 } Error;
 
 struct Cell
@@ -83,13 +83,13 @@ struct Cell
   {
     // Literal values
     Integer integer;
-    char *string;
-    Symbol symbol;
+    char   *string;
+    Symbol  symbol;
     // Composite structures
     Cons cons;
     // Function-like values
     ThunkEnum thunk;
-    Lambda lambda;
+    Lambda    lambda;
   };
 };
 

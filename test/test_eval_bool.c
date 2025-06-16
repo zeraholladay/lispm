@@ -10,7 +10,7 @@
 #include "types.h"
 
 static Cell *progn = NULL;
-static LM *lm = NULL;
+static LM   *lm    = NULL;
 
 static void
 setup (void)
@@ -58,13 +58,13 @@ START_TEST (test_eq)
   test_program = "(define 'foo (lambda () ()))"
                  "(define 'bar foo)"
                  "(eq foo bar)";
-  eval_result = run_eval_progn (test_program);
+  eval_result  = run_eval_progn (test_program);
   ck_assert_ptr_eq (eval_result, T);
 
   test_program = "(define 'foo '(1 2 3 4))"
                  "(define 'bar foo)"
                  "(eq foo bar)";
-  eval_result = run_eval_progn (test_program);
+  eval_result  = run_eval_progn (test_program);
   ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(eq (string 'foo) (string 'foo))");
@@ -95,13 +95,13 @@ START_TEST (test_eq)
   test_program = "(define 'foo (lambda () ()))"
                  "(define 'bar (lambda () ()))"
                  "(eq foo bar)";
-  eval_result = run_eval_progn (test_program);
+  eval_result  = run_eval_progn (test_program);
   ck_assert (NILP (eval_result));
 
   test_program = "(define 'foo '(1 2 3 4))"
                  "(define 'bar '(1 2 3 4))"
                  "(eq foo bar)";
-  eval_result = run_eval_progn (test_program);
+  eval_result  = run_eval_progn (test_program);
   ck_assert (NILP (eval_result));
 
   eval_result = run_eval_progn ("(eq (string 'foo) (string 'bar))");

@@ -107,7 +107,7 @@ $(BIN)/%.o: $(TEST_SRC)/%.c
 # linting
 .PHONY: lint
 lint: clean
-	clang-format --style=GNU -i */*.c */*.y */*.h
+	clang-format -i */*.c */*.y */*.h
 	cppcheck */*.c */*.h --check-level=exhaustive
 
 # bin/

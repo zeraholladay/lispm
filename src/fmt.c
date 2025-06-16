@@ -13,7 +13,7 @@
 typedef struct str_sb
 {
   size_t cap, used;
-  char *str;
+  char  *str;
 } StrBuf;
 
 static void appendf (StrBuf *str_sb, const char *fmt, ...);
@@ -37,9 +37,9 @@ static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
 static void
 appendf (StrBuf *sb, const char *fmt, ...)
 {
-  bool retry = false;
+  bool    retry = false;
   va_list ap, ap2;
-  int n;
+  int     n;
 
   va_start (ap, fmt);
 
@@ -60,14 +60,14 @@ appendf (StrBuf *sb, const char *fmt, ...)
       else if ((size_t)n >= avail)
         {
           size_t cap2x = sb->cap * 2; // double: 8, 16, 32, ...
-          void *ptr = realloc (sb->str, cap2x * sizeof *(sb->str));
+          void  *ptr   = realloc (sb->str, cap2x * sizeof *(sb->str));
           if (!ptr)
             retry = false;
           else
             {
               sb->cap = cap2x;
               sb->str = ptr;
-              retry = true;
+              retry   = true;
             }
         }
       else
@@ -151,7 +151,7 @@ void
 fmt_lambda (StrBuf *sb, Cell *n)
 {
   char *params_str = format (n->lambda.params);
-  char *body_str = format (n->lambda.body);
+  char *body_str   = format (n->lambda.body);
 
   appendf (sb, "#<LAMBDA %s %s>", params_str, body_str);
 
@@ -169,10 +169,10 @@ char *
 format (Cell *n)
 {
   size_t cap = 8;
-  StrBuf sb = {
-    .cap = cap,
-    .used = 0,
-    .str = NULL,
+  StrBuf sb  = {
+     .cap  = cap,
+     .used = 0,
+     .str  = NULL,
   };
   size_t idx = TYPE_UNKNOWN;
 

@@ -23,7 +23,7 @@ START_TEST (test_safe_strndup)
   for (int i = 0; i < NUM_STRINGS; ++i)
     {
       size_t len = strlen (test_safe_str_similar_strings[i]);
-      char *dup = safe_strndup (test_safe_str_similar_strings[i], len);
+      char  *dup = safe_strndup (test_safe_str_similar_strings[i], len);
       ck_assert_str_eq (test_safe_str_similar_strings[i], dup);
       free (dup);
     }
@@ -57,7 +57,7 @@ END_TEST
 Suite *
 str_safe_str_suite (void)
 {
-  Suite *s = suite_create ("Safe String");
+  Suite *s       = suite_create ("Safe String");
   TCase *tc_core = tcase_create ("Core");
   tcase_add_test (tc_core, test_safe_strndup);
   tcase_add_test (tc_core, test_safe_strnlen);

@@ -22,7 +22,7 @@ START_TEST (test_str_intern)
 {
   struct
   {
-    size_t len;
+    size_t      len;
     const char *saved_str;
   } saved[NUM_STRINGS];
 
@@ -74,7 +74,7 @@ END_TEST
 Suite *
 str_save_suite (void)
 {
-  Suite *s = suite_create ("String Intern");
+  Suite *s       = suite_create ("String Intern");
   TCase *tc_core = tcase_create ("Core");
   tcase_add_test (tc_core, test_str_intern);
   suite_add_tcase (s, tc_core);

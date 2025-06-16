@@ -23,7 +23,7 @@ list_xresize (List *lst, size_t min_capacity)
 
   void **ptr = xrealloc (lst->items, new_capacity * sizeof (void *));
 
-  lst->items = ptr;
+  lst->items    = ptr;
   lst->capacity = new_capacity;
 
   return true;
@@ -34,9 +34,9 @@ list_create (void)
 {
   List *lst = xcalloc (1, sizeof (List));
 
-  lst->items = xcalloc (LIST_INIT_CAPACITY, sizeof *(lst->items));
+  lst->items    = xcalloc (LIST_INIT_CAPACITY, sizeof *(lst->items));
   lst->capacity = LIST_INIT_CAPACITY;
-  lst->count = 0;
+  lst->count    = 0;
 
   return lst;
 }
@@ -88,12 +88,12 @@ list_reverse (List *lst)
     return;
 
   size_t start = 0;
-  size_t end = lst->count - 1;
+  size_t end   = lst->count - 1;
 
   while (start < end)
     {
-      void *tmp = lst->items[start];
+      void *tmp           = lst->items[start];
       lst->items[start++] = lst->items[end];
-      lst->items[end--] = tmp;
+      lst->items[end--]   = tmp;
     }
 }
