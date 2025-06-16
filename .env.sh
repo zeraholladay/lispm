@@ -31,3 +31,5 @@ case "$OS_NAME" in
         echo "Unknown OS: $OS_NAME"
         ;;
 esac
+
+export PATH=$PWD/bin:$PATH

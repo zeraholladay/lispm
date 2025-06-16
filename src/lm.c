@@ -181,23 +181,28 @@ ctl_eval:
     if (!expr && !(expr = stk_pop (lm)))
       return false;
 
+    // Lookup symbol.
     if (IS_INST (expr, SYMBOL))
       return stk_push (lm, lm_env_lookup (lm, expr));
 
-    if (!LISTP (expr)) // literal
+     // Literals
+    if (!LISTP (expr))
       return stk_push (lm, expr);
 
     if (LISTP (expr))
       {
+        // nil
         if (NILP (expr))
           return stk_push (lm, NIL);
 
         Cell *car = CAR (expr);
         Cell *cdr = CDR (expr);
 
+        // quote is a special symbol.
         if (car == QUOTE)
           return stk_push (lm, CAR (cdr));
 
+        // Lambda is an AST-type.
         if (IS_INST (car, LAMBDA))
           return stk_push (lm, car);
 
@@ -212,6 +217,7 @@ ctl_eval_apply:
     Cell *fn      = u.eval_apply.fn;
     Cell *arglist = u.eval_apply.arglist;
 
+    // If fn is not NULL, then evalute fn.
     if (fn)
       return ctl_push_states (
           lm,
@@ -221,10 +227,11 @@ ctl_eval_apply:
           },
           2);
 
+    // fn was NULL, so pop the evaluated value from the stack.
     if (!(fn = stk_pop (lm)))
       return false;
 
-    // one of the fns this C code handles
+    // One of the special fns this C code handles
     if (IS_INST (fn, THUNK) && thunk_is_lispm (fn))
       return ctl_push_state (lm, S (lispm, .fn = fn, .arglist = arglist));
 
@@ -236,11 +243,13 @@ ctl_eval_apply:
                             2);
   }
 
+// list
 ctl_evlis:
   {
     Cell *acc     = u.evlis.acc;
     Cell *arglist = u.evlis.arglist;
 
+    // Done.
     if (NILP (arglist))
       {
         Cell *res = reverse_inplace (acc);
@@ -372,15 +381,15 @@ ctl_let:
 
 ctl_define:
   {
-    Cell *car = stk_pop (lm);
+    Cell *sym = u.define.sym;
     Cell *cdr = stk_pop (lm);
 
-    if (!car || !cdr)
+    if (!cdr)
       return false;
 
     // TODO: validate pop & check cdr len
 
-    if (!lm_env_define (lm, car, CAR (cdr)))
+    if (!lm_env_define (lm, sym, CAR (cdr)))
       return false;
 
     return stk_push (lm, CAR (cdr));
@@ -388,15 +397,15 @@ ctl_define:
 
 ctl_set:
   {
-    Cell *car = stk_pop (lm);
+    Cell *sym = u.set.sym;
     Cell *cdr = stk_pop (lm);
 
-    if (!car || !cdr)
+    if (!cdr)
       return false;
 
     // TODO: check cdr len
 
-    if (!lm_env_set (lm, car, CAR (cdr)))
+    if (!lm_env_set (lm, sym, CAR (cdr)))
       return false;
 
     return stk_push (lm, CAR (cdr));
@@ -480,26 +489,6 @@ ctl_lispm:
             },
             3);
 
-      case THUNK_DEFINE:
-        return ctl_push_states (
-            lm,
-            (State[]){
-                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
-                S (eval, .expr = CAR (arglist)),
-                S (define),
-            },
-            3);
-
-      case THUNK_SET:
-        return ctl_push_states (
-            lm,
-            (State[]){
-                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
-                S (eval, .expr = CAR (arglist)),
-                S (set),
-            },
-            3);
-
       case THUNK_MAP:
         return ctl_push_states (
             lm,
@@ -509,6 +498,24 @@ ctl_lispm:
                 S (map, .fn = NULL, .arglist = NULL),
             },
             3);
+
+      case THUNK_DEFINE:
+        return ctl_push_states (
+            lm,
+            (State[]){
+                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
+                S (define, .sym = CAR (arglist)),
+            },
+            2);
+
+      case THUNK_SET:
+        return ctl_push_states (
+            lm,
+            (State[]){
+                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
+                S (set, .sym = CAR (arglist)),
+            },
+            2);
 
       case THUNK_EVAL:
         return ctl_push_states (lm,
@@ -799,9 +806,13 @@ lm_err (LM *lm, ErrorCode code, const char *fmt, ...)
   return false;
 }
 
+#include "fmt.h"
+
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
+  // PRINT (progn);
+
   if (ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
     return lm_eval (lm);
 
