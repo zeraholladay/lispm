@@ -381,6 +381,11 @@ START_TEST (test_define)
 {
   Cell *eval_res = NULL;
 
+  eval_res = run_eval_progn ("(define (square x) (* x x))"
+      "(square 12)"
+  );
+  ck_assert_int_eq (eval_res->integer, 144);
+
   eval_res = run_eval_progn ("(define (range x max)"
                              "    (if (> x max)"
                              "        nil"
@@ -403,6 +408,15 @@ START_TEST (test_define)
   ck_assert_int_eq (eval_res->integer, 5);
 
   eval_res = run_eval_progn ("(fib 10)");
+  ck_assert_int_eq (eval_res->integer, 55);
+
+  eval_res = run_eval_progn ("(define (sum-to n)"
+                             "  (define (loop i acc)"
+                             "    (if (> i n)"
+                             "        acc"
+                             "        (loop (+ i 1) (+ acc i))))"
+                             "  (loop 1 0))"
+                             "(sum-to 10)");
   ck_assert_int_eq (eval_res->integer, 55);
 }
 END_TEST
