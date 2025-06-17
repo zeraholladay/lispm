@@ -26,6 +26,6 @@ static ThunkWrapper wrapped_thunks[_THUNK_END] = {
 
 Cell       *thunker (LM *lm, Cell *fn, Cell *arglist);
 const char *thunk_get_name (Cell *thunk);
-bool        thunk_is_lispm (Cell *c);
+bool        thunk_sf_bool (Cell *c);
 
 #endif

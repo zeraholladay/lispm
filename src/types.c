@@ -109,3 +109,17 @@ new (LM *lm, TypeEnum type, ...)
   va_end (ap);
   return c;
 }
+
+Cell *
+cons_next (ConsIter *iter)
+{
+  Cell *cur = iter->cur;
+
+  if (cur != NIL)
+    {
+      iter->cur = CDR (iter->cur);
+      return CAR (cur);
+    }
+
+  return NULL;
+}

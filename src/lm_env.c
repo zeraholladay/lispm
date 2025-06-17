@@ -1,5 +1,6 @@
 #include "lm_env.h"
 #include "keywords.h"
+#include "lm_err.h"
 #include "prims.h"
 #include "types.h"
 
@@ -21,8 +22,8 @@ lm_env_define (LM *lm, Cell *car, Cell *cdr)
   int check = lm_env_update_guard (car);
   if (check)
     {
-      ErrorCode code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
-      return lm_err (lm, code, "define");
+      Err code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
+      return lm_err_bool (lm, code, "define");
     }
 
   return (lm->env.sp >= 1)
@@ -36,15 +37,15 @@ lm_env_set (LM *lm, Cell *car, Cell *cdr)
   int check = lm_env_update_guard (car);
   if (check)
     {
-      ErrorCode code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
-      return lm_err (lm, code, "set!");
+      Err code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
+      return lm_err_bool (lm, code, "set!");
     }
 
   for (size_t i = lm->env.sp; i >= 1; --i)
     if (dict_has_key (lm->env.dict[i - 1], car->symbol.str))
       return dict_insert (lm->env.dict[i - 1], car->symbol.str, cdr);
 
-  return lm_err (lm, ERR_SYMBOL_NOT_FOUND, car->symbol.str);
+  return lm_err_bool (lm, ERR_SYM_NOT_FOUND, car->symbol.str);
 }
 
 Cell *
@@ -61,6 +62,5 @@ lm_env_lookup (LM *lm, Cell *sym)
         return entity->val;
     }
 
-  lm_err (lm, ERR_SYMBOL_NOT_FOUND, sym->symbol.str);
-  return NIL;
+  return lm_err_nil (lm, ERR_SYM_NOT_FOUND, sym->symbol.str);
 }

@@ -34,12 +34,12 @@ PrimWrapper wrapper_quote = {
 Cell *
 append_inplace (Cell *lst1, Cell *lst2)
 {
-  if (NILP (lst1))
+  if (lst1 == NIL)
     return lst2;
 
   Cell *l1 = lst1;
 
-  while (!NILP (CDR (l1)))
+  while (NIL != CDR (l1))
     l1 = CDR (l1);
 
   RPLACD (l1, lst2);
@@ -56,7 +56,7 @@ append_list (LM *lm, Cell *lst1, Cell *lst2)
   Cell *new_head = NULL;
   Cell *new_tail = NULL;
 
-  for (Cell *l1 = lst1; !NILP (l1); l1 = CDR (l1))
+  for (Cell *l1 = lst1; l1 != NIL; l1 = CDR (l1))
     {
       Cell *cpy = CONS (CAR (l1), NIL, lm);
 
@@ -115,7 +115,7 @@ nth (size_t idx, Cell *lst)
 {
   for (size_t i = 0; i < idx; ++i)
     {
-      if (NILP (lst))
+      if (lst == NIL)
         return NIL;
       lst = CDR (lst);
     }
@@ -141,7 +141,7 @@ reverse_inplace (Cell *lst)
   Cell *prev = NIL;
   Cell *cur  = lst;
 
-  while (!NILP (cur))
+  while (cur != NIL)
     {
       Cell *next = CDR (cur);
       RPLACD (cur, prev);
@@ -173,7 +173,7 @@ zip (LM *lm, Cell *lsts)
       int done = 0;
 
       for (size_t i = 0; i < len; ++i)
-        if (NILP (heads[i]))
+        if (heads[i] == NIL)
           {
             done = 1;
             break;

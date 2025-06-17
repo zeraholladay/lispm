@@ -93,7 +93,7 @@ START_TEST (test_sub)
   ck_assert_int_eq (eval_res->integer, 5);
 
   eval_res = run_eval_progn ("(sub 5)");
-  ck_assert_int_eq (eval_res->integer, 5);
+  ck_assert_int_eq (eval_res->integer, -5);
 
   eval_res = run_eval_progn ("(sub 2 5)");
   ck_assert_int_eq (eval_res->integer, -3);
