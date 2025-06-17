@@ -232,42 +232,51 @@ thunk_add (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)fn;
 
-  Cell    *sum  = INTEGER (0, lm);
-  ConsIter iter = cons_iter (arglist);
-  Cell    *item;
+  Cell *total = INTEGER (0, lm);
+  Cell *item;
 
-  while ((item = cons_next (&iter)))
+  for (ConsIter iter = cons_iter (arglist); (item = cons_next (&iter));)
     {
       if (!IS_INST (item, INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "add: %s",
-                           "not an integer");
-
-      sum->integer += item->integer;
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "add: not an integer");
+      total->integer += item->integer;
     }
 
-  return sum;
+  return total;
 }
 
 Cell *
 thunk_sub (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)fn;
-  const char *fmt = "sub:%s";
 
-  if (!IS_INST (arglist, CONS) || NILP (arglist))
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, fmt, "not a list");
+  if (arglist == NIL)
+    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "sub: not a list");
 
-  Integer total = CAR (arglist)->integer;
+  ConsIter iter = cons_iter (arglist);
+  Cell    *item = cons_next (&iter);
 
-  for (Cell *x = CDR (arglist); !NILP (x); x = CDR (x))
+  if (!IS_INST (item, INTEGER))
+    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "sub: not an integer");
+
+  Cell *res = INTEGER (item->integer, lm);
+  Cell *cdr = cons_next (&iter);
+
+  if (!cdr)
     {
-      if (!IS_INST (CAR (x), INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
-
-      total -= CAR (x)->integer;
+      res->integer *= -1;
+      return res;
     }
+  do
+    {
+      if (!IS_INST (cdr, INTEGER))
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "sub: not an integer");
 
-  return INTEGER (total, lm);
+      res->integer -= cdr->integer;
+    }
+  while ((cdr = cons_next (&iter)));
+
+  return res;
 }
 
 Cell *
