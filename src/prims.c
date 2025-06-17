@@ -89,7 +89,6 @@ butlast (LM *lm, Cell *lst)
 Cell *
 last (LM *lm, Cell *lst)
 {
-  (void)lm;
   Cell *rev  = reverse_inplace (lst);
   Cell *last = CAR (rev);
   reverse_inplace (rev);
@@ -126,7 +125,6 @@ nth (size_t idx, Cell *lst)
 Cell *
 reverse (LM *lm, Cell *lst)
 {
-  (void)lm;
   Cell *result = NIL;
 
   for (Cell *l = lst; l != NIL; l = CDR (l))

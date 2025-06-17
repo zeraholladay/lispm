@@ -327,7 +327,6 @@ Alternatively, `first` and `rest`.
 
 ## TODO
 
-* [ ] Fix `add` / `mul` with zero args should return `1`
 * [ ] Full support for strings
 * [ ] Parse‐error reporting (exceptions)
 * [ ] Garbage collection
