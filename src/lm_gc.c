@@ -1,7 +1,6 @@
 #include <assert.h>
 
 #include "lm_gc.h"
-#include "lm_secd.h"
 #include "palloc.h"
 #include "prims.h"
 #include "stack.h"

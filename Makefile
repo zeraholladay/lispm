@@ -41,7 +41,7 @@ GPERF := gperf
 
 FLEX_SRC := $(SRC)/flex.l
 BISON_SRC := $(SRC)/bison.y
-GPERF_SCR := $(SRC)/keywords.gperf
+GPERF_SCR := $(SRC)/keywords.g
 
 FLEX_C := $(GEN)/flex.c
 FLEX_H := $(GEN)/flex.h

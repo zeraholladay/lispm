@@ -6,8 +6,8 @@
 #include "keywords.h"
 #include "lm.h"
 #include "lm_env.h"
+#include "lm_err.h"
 #include "lm_gc.h"
-#include "lm_secd.h"
 #include "palloc.h"
 #include "prims.h"
 #include "thunks.h"
@@ -24,10 +24,8 @@ static inline Cell *
 stk_pop (LM *lm)
 {
   if (lm->stk.sp == 0)
-    {
-      lm_err (lm, ERR_UNDERFLOW, "stk_pop");
-      return NULL;
-    }
+    return lm_err_null (lm, ERR_UNDERFLOW, "stk_pop");
+
   return lm->stk.cells[--lm->stk.sp];
 }
 
@@ -35,7 +33,7 @@ static inline bool
 stk_push (LM *lm, Cell *val)
 {
   if (lm->stk.sp >= LISPM_STK_MAX)
-    return lm_err (lm, ERR_OVERFLOW, "stk_push");
+    return lm_err_bool (lm, ERR_OVERFLOW, "stk_push");
 
   lm->stk.cells[lm->stk.sp++] = val;
   return true;
@@ -45,7 +43,7 @@ static inline bool
 enter_frame (LM *lm)
 {
   if (lm->env.sp >= LISPM_ENV_MAX)
-    return lm_err (lm, ERR_OVERFLOW, "enter_frame");
+    return lm_err_bool (lm, ERR_OVERFLOW, "enter_frame");
 
   lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
   return true;
@@ -55,7 +53,7 @@ static inline bool
 leave_frame (LM *lm)
 {
   if (lm->env.sp == 0)
-    return lm_err (lm, ERR_UNDERFLOW, "leave_frame");
+    return lm_err_bool (lm, ERR_UNDERFLOW, "leave_frame");
 
   lm->env.sp--;
   dict_destroy (lm->env.dict[lm->env.sp]);
@@ -66,7 +64,7 @@ static inline bool
 ctl_pop (LM *lm, State *out)
 {
   if (lm->ctl.sp == 0)
-    return lm_err (lm, ERR_UNDERFLOW, "ctl_pop");
+    return lm_err_bool (lm, ERR_UNDERFLOW, "ctl_pop");
 
   *out = lm->ctl.states[--lm->ctl.sp];
   return true;
@@ -76,7 +74,7 @@ static inline bool
 ctl_push_state (LM *lm, State st)
 {
   if (lm->ctl.sp >= LISPM_CTL_MAX)
-    return lm_err (lm, ERR_OVERFLOW, "ctl_push_state");
+    return lm_err_null (lm, ERR_OVERFLOW, "ctl_push_state");
 
   lm->ctl.states[lm->ctl.sp++] = st;
   return true;
@@ -161,7 +159,7 @@ lm_eval_switch (LM *lm, StateEnum s, Union u)
 #include "lm.def"
 #undef X
     default:
-      return lm_err (lm, ERR_INTERNAL, "no such state");
+      return lm_err_bool (lm, ERR_INTERNAL, "no such state");
     }
 
 ctl_closure_enter:
@@ -209,7 +207,7 @@ ctl_eval:
         return ctl_push_state (lm, S (eval_apply, .fn = car, .arglist = cdr));
       }
 
-    return lm_err (lm, ERR_INTERNAL, "eval");
+    return lm_err_bool (lm, ERR_INTERNAL, "eval");
   }
 
 ctl_eval_apply:
@@ -312,7 +310,7 @@ ctl_funcall:
                               },
                               3);
 
-    return lm_err (lm, ERR_NOT_A_FUNCTION, "funcall");
+    return lm_err_bool (lm, ERR_NOT_A_FUNCTION, "funcall");
   }
 
 ctl_lambda:
@@ -333,9 +331,8 @@ ctl_lambda:
 
     if (expected != received)
       {
-        ErrorCode err
-            = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
-        return lm_err (lm, err, "lambda");
+        Err err = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
+        return lm_err_bool (lm, err, "lambda");
       }
 
     Cell *pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
@@ -366,7 +363,7 @@ ctl_let:
         Cell *pair = CAR (pairs);
 
         if (!CONSP (pair))
-          return lm_err (lm, ERR_INVALID_ARG, "let: binding not a list");
+          return lm_err_bool (lm, ERR_INVALID_ARG, "let: binding not a list");
 
         rev_vars  = CONS (CAR (pair), rev_vars, lm);
         rev_exprs = CONS (CADR (pair), rev_exprs, lm);
@@ -432,13 +429,13 @@ ctl_apply:
       return false;
 
     if (!LISTP (arglist))
-      return lm_err (lm, ERR_MISSING_ARG, "apply: not a list.");
+      return lm_err_bool (lm, ERR_MISSING_ARG, "apply: not a list.");
 
     Cell *fixed     = butlast (lm, arglist);
     Cell *tail_list = CAR (last (lm, arglist));
 
     if (!LISTP (tail_list))
-      return lm_err (lm, ERR_MISSING_ARG, "apply: last not a list.");
+      return lm_err_bool (lm, ERR_MISSING_ARG, "apply: last not a list.");
 
     Cell *all = append_inplace (fixed, tail_list);
 
@@ -560,7 +557,7 @@ ctl_lispm:
         break;
       }
 
-    return lm_err (lm, ERR_INTERNAL, "lispm");
+    return lm_err_bool (lm, ERR_INTERNAL, "lispm");
   }
 
 ctl_if_:
@@ -730,6 +727,7 @@ ctl_map_acc:
   }
 }
 
+// clang-format off
 static Cell *
 lm_eval (LM *lm)
 {
@@ -738,19 +736,9 @@ lm_eval (LM *lm)
 
   do
     {
-      if (lm->err_bool)
-        {
-          lm_reset (lm);
-          return NIL;
-        }
-
-      if (!ctl_pop (lm, &state))
-        {
-          lm_reset (lm);
-          return NIL;
-        }
-
-      if (!lm_eval_switch (lm, state.s, state.u))
+      if (lm->err_bool 
+          || !ctl_pop (lm, &state)
+          || !lm_eval_switch (lm, state.s, state.u))
         {
           lm_reset (lm);
           return NIL;
@@ -760,6 +748,7 @@ lm_eval (LM *lm)
 
   return stk_pop (lm);
 }
+// clang-format on
 
 LM *
 lm_create (void)
@@ -797,30 +786,14 @@ lm_alloc_cell (LM *lm)
   return pool_xalloc_hier (&lm->pool);
 }
 
-bool
-lm_err (LM *lm, ErrorCode code, const char *fmt, ...)
-{
-  lm->err_bool = true;
-
-  const char *msg = error_messages[code];
-  fprintf (stderr, "***error: %s: ", msg);
-
-  va_list ap;
-  va_start (ap, fmt);
-  vfprintf (stderr, fmt, ap);
-  va_end (ap);
-
-  fputc ('\n', stderr);
-
-  return false;
-}
-
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
-  if (ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
-    return lm_eval (lm);
-
-  lm_reset (lm);
-  return NIL;
+  if (!ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
+    {
+      lm_reset (lm);
+      return NIL;
+    }
+    
+  return ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn));
 }

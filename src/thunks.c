@@ -23,7 +23,7 @@ Cell *
 thunk_append (LM *lm, Cell *fn, Cell *lst)
 {
   if (!LISTP (lst))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   Cell *result = CAR (lst);
 
@@ -37,7 +37,7 @@ Cell *
 thunk_butlast (LM *lm, Cell *fn, Cell *lst)
 {
   if (!LISTP (lst))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return butlast (lm, CAR (lst));
 }
@@ -55,7 +55,7 @@ thunk_car (LM *lm, Cell *fn, Cell *args)
   (void)lm;
 
   if (!LISTP (CAR (args)))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return CAR (CAR (args));
 }
@@ -68,7 +68,7 @@ thunk_cdr (LM *lm, Cell *fn, Cell *args)
   Cell *car = CAR (args);
 
   if (!LISTP (car))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return CDR (car);
 }
@@ -77,7 +77,7 @@ Cell *
 thunk_last (LM *lm, Cell *fn, Cell *lst)
 {
   if (!LISTP (lst))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return last (lm, CAR (lst));
 }
@@ -88,7 +88,7 @@ thunk_length (LM *lm, Cell *fn, Cell *lst)
   Cell *car = CAR (lst);
 
   if (!LISTP (lst))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return INTEGER (length (car), lm);
 }
@@ -100,7 +100,8 @@ thunk_nth (LM *lm, Cell *fn, Cell *args)
 
   if (!IS_INST (args, CONS) || !IS_INST (CAR (args), INTEGER)
       || !LISTP (CAR (CDR (args))))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "%s i lst", thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_ARG_NOT_ITERABLE, "%s i lst",
+                       thunk_get_name (fn));
 
   size_t idx  = (size_t)CAR (args)->integer;
   Cell  *list = CAR (CDR (args));
@@ -114,7 +115,7 @@ thunk_print (LM *lm, Cell *fn, Cell *args)
   (void)lm;
 
   if (!LISTP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   PRINT (CAR (args));
 
@@ -125,7 +126,7 @@ Cell *
 thunk_reverse (LM *lm, Cell *fn, Cell *lst)
 {
   if (!LISTP (lst))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return reverse (lm, CAR (lst));
 }
@@ -163,7 +164,7 @@ thunk_not (LM *lm, Cell *fn, Cell *args)
   EqFn nil_eq = type (NIL)->eq;
 
   if (!LISTP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return nil_eq (NIL, CAR (args)) ? T : NIL;
 }
@@ -179,20 +180,21 @@ thunk_gt (LM *lm, Cell *fn, Cell *args)
   Cell *result = T;
 
   if (!IS_INST (args, CONS))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "gt: is not a list");
+    return lm_err_nil (lm, ERR_ARG_NOT_ITERABLE, "gt: is not a list");
 
   if (NILP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG_LENGTH, "gt: expected >= 1 arguments");
+    return lm_err_nil (lm, ERR_INVALID_ARG_LENGTH,
+                       "gt: expected >= 1 arguments");
 
   if (!IS_INST (CAR (args), INTEGER))
-    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "gt: is not an integer");
+    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "gt: is not an integer");
 
   Cell *prev = CAR (args);
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "gt: is not an integer");
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "gt: is not an integer");
 
       if (!(prev->integer > CAR (rest)->integer))
         return NIL;
@@ -212,20 +214,21 @@ thunk_lt (LM *lm, Cell *fn, Cell *args)
   Cell *result = T;
 
   if (!IS_INST (args, CONS))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "lt: is not a list");
+    return lm_err_nil (lm, ERR_ARG_NOT_ITERABLE, "lt: is not a list");
 
   if (NILP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG_LENGTH, "lt: expected >= 1 arguments");
+    return lm_err_nil (lm, ERR_INVALID_ARG_LENGTH,
+                       "lt: expected >= 1 arguments");
 
   if (!IS_INST (CAR (args), INTEGER))
-    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "lt: is not an integer");
+    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: is not an integer");
 
   Cell *prev = CAR (args);
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "lt: is not an integer");
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: is not an integer");
 
       if (!(prev->integer < CAR (rest)->integer))
         return NIL;
@@ -244,24 +247,22 @@ thunk_add (LM *lm, Cell *fn, Cell *args)
   const char *fmt = "add:%s";
 
   if (!LISTP (args))
+    return lm_err_nil (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
+
+  Cell *sum = INTEGER (0, lm);
+
+  ConsIter iter = cons_iter (args);
+  Cell    *item;
+
+  while ((item = cons_next (&iter)))
     {
-      lm_err (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
-      return NIL;
+      if (!IS_INST (item, INTEGER))
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
+
+      sum->integer += item->integer;
     }
 
-  Integer sum = 0;
-
-  for (Cell *x = args; x != NIL; x = CDR (x))
-    {
-      if (!IS_INST (CAR (x), INTEGER))
-        {
-          lm_err (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
-          return NIL;
-        }
-      sum += CAR (x)->integer;
-    }
-
-  return INTEGER (sum, lm);
+  return sum;
 }
 
 Cell *
@@ -271,20 +272,15 @@ thunk_sub (LM *lm, Cell *fn, Cell *args)
   const char *fmt = "sub:%s";
 
   if (!IS_INST (args, CONS) || NILP (args))
-    {
-      lm_err (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
-      return NIL;
-    }
+    return lm_err_nil (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
 
   Integer total = CAR (args)->integer;
 
   for (Cell *x = CDR (args); !NILP (x); x = CDR (x))
     {
       if (!IS_INST (CAR (x), INTEGER))
-        {
-          lm_err (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
-          return NIL;
-        }
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
+
       total -= CAR (x)->integer;
     }
 
@@ -298,20 +294,15 @@ thunk_mul (LM *lm, Cell *fn, Cell *args)
   const char *fmt = "mul:%s";
 
   if (!LISTP (args))
-    {
-      lm_err (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
-      return NIL;
-    }
+    return lm_err_nil (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
 
   Integer res = 1;
 
   for (Cell *x = args; x != NIL; x = CDR (x))
     {
       if (!IS_INST (CAR (x), INTEGER))
-        {
-          lm_err (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
-          return NIL;
-        }
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
+
       res *= CAR (x)->integer;
     }
 
@@ -325,26 +316,17 @@ thunk_div (LM *lm, Cell *fn, Cell *args)
   const char *fmt = "div:%s";
 
   if (!IS_INST (args, CONS) || NILP (args))
-    {
-      lm_err (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
-      return NIL;
-    }
+    return lm_err_nil (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
 
   Integer res = CAR (args)->integer;
 
   for (Cell *x = CDR (args); !NILP (x); x = CDR (x))
     {
       if (!IS_INST (CAR (x), INTEGER))
-        {
-          lm_err (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
-          return NIL;
-        }
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
 
       if (CAR (x)->integer == 0)
-        {
-          lm_err (lm, ERR_DIVISION_BY_0, fmt, "is zero");
-          return NIL;
-        }
+        return lm_err_nil (lm, ERR_DIVISION_BY_0, fmt, "is zero");
 
       res /= CAR (x)->integer;
     }
@@ -374,18 +356,19 @@ Cell *
 thunker (LM *lm, Cell *fn, Cell *arglist)
 {
   if (!fn)
-    LM_ERR_RET (lm, ERR_INTERNAL, "null thunk");
+    return lm_err_nil (lm, ERR_INTERNAL, "null thunk");
 
   Thunk thunk = thunk_table[fn->thunk];
 
   if (!thunk.fn)
-    LM_ERR_RET (lm, ERR_NOT_A_FUNCTION, thunk.name ?: "not a true thunk");
+    return lm_err_nil (lm, ERR_NOT_A_FUNCTION,
+                       thunk.name ?: "not a true thunk");
 
   int received = (int)length (arglist);
 
   if (thunk.arity > 0 && thunk.arity != received)
     {
-      ErrorCode err
+      Err err
           = (received < thunk.arity) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
       return NIL; // FIXME
     }

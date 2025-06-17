@@ -32,9 +32,9 @@ typedef struct Type
 typedef enum
 {
   TYPE_NIL,     // special constant
-  TYPE_INTEGER, // literal
+  TYPE_INTEGER, // literal number
   TYPE_SYMBOL,  // identifiers
-  TYPE_STRING,  // literal
+  TYPE_STRING,  // literal string
   TYPE_CONS,    // cons cells
   TYPE_THUNK,   // thunk fn
   TYPE_LAMBDA,  // user-defined fn
@@ -70,12 +70,6 @@ typedef struct
   Cell *body;
 } Lambda;
 
-typedef struct
-{
-  ErrorCode err_code;
-  Cell     *cell;
-} Error;
-
 struct Cell
 {
   TypeEnum type;
@@ -93,7 +87,20 @@ struct Cell
   };
 };
 
+// cons iter
+typedef struct
+{
+  Cell *cur;
+} ConsIter;
+
+static inline ConsIter
+cons_iter (Cell *c)
+{
+  return (ConsIter){ .cur = c };
+}
+
 const Type *type (Cell *self);
 Cell *new (LM *lm, TypeEnum type, ...);
+Cell *cons_next (ConsIter *iter);
 
 #endif

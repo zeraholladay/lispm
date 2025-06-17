@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "lm_secd.h"
+#include "lm.h"
 #include "types.h"
 
 bool  lm_env_define (LM *lm, Cell *car, Cell *cdr);
