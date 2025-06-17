@@ -230,7 +230,7 @@ ctl_eval_apply:
       return false;
 
     // One of the special fns this C code handles
-    if (IS_INST (fn, THUNK) && thunk_is_lispm (fn))
+    if (IS_INST (fn, THUNK) && thunk_sf_bool (fn))
       return ctl_push_state (lm, S (lispm, .fn = fn, .arglist = arglist));
 
     return ctl_push_states (lm,
@@ -310,7 +310,7 @@ ctl_funcall:
                               },
                               3);
 
-    return lm_err_bool (lm, ERR_NOT_A_FUNCTION, "funcall");
+    return lm_err_bool (lm, ERR_NOT_A_FN, "funcall");
   }
 
 ctl_lambda:
@@ -794,6 +794,6 @@ lm_progn (LM *lm, Cell *progn)
       lm_reset (lm);
       return NIL;
     }
-    
-  return ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn));
+
+  return lm_eval (lm);
 }

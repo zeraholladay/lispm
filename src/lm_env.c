@@ -45,7 +45,7 @@ lm_env_set (LM *lm, Cell *car, Cell *cdr)
     if (dict_has_key (lm->env.dict[i - 1], car->symbol.str))
       return dict_insert (lm->env.dict[i - 1], car->symbol.str, cdr);
 
-  return lm_err_bool (lm, ERR_SYMBOL_NOT_FOUND, car->symbol.str);
+  return lm_err_bool (lm, ERR_SYM_NOT_FOUND, car->symbol.str);
 }
 
 Cell *
@@ -62,5 +62,5 @@ lm_env_lookup (LM *lm, Cell *sym)
         return entity->val;
     }
 
-  return lm_err_nil (lm, ERR_SYMBOL_NOT_FOUND, sym->symbol.str);
+  return lm_err_nil (lm, ERR_SYM_NOT_FOUND, sym->symbol.str);
 }
