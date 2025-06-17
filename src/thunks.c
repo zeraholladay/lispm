@@ -179,21 +179,20 @@ thunk_gt (LM *lm, Cell *fn, Cell *args)
   Cell *result = T;
 
   if (!IS_INST (args, CONS))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "gt: argument is not a list");
+    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "gt: is not a list");
 
   if (NILP (args))
     LM_ERR_RET (lm, ERR_INVALID_ARG_LENGTH, "gt: expected >= 1 arguments");
 
   if (!IS_INST (CAR (args), INTEGER))
-    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "gt: argument is not an integer");
+    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "gt: is not an integer");
 
   Cell *prev = CAR (args);
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH,
-                    "gt: argument is not an integer");
+        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "gt: is not an integer");
 
       if (!(prev->integer > CAR (rest)->integer))
         return NIL;
@@ -213,21 +212,20 @@ thunk_lt (LM *lm, Cell *fn, Cell *args)
   Cell *result = T;
 
   if (!IS_INST (args, CONS))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "lt: argument is not a list");
+    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "lt: is not a list");
 
   if (NILP (args))
     LM_ERR_RET (lm, ERR_INVALID_ARG_LENGTH, "lt: expected >= 1 arguments");
 
   if (!IS_INST (CAR (args), INTEGER))
-    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "lt: argument is not an integer");
+    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "lt: is not an integer");
 
   Cell *prev = CAR (args);
 
   for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
     {
       if (!IS_INST (CAR (rest), INTEGER))
-        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH,
-                    "lt: argument is not an integer");
+        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "lt: is not an integer");
 
       if (!(prev->integer < CAR (rest)->integer))
         return NIL;
@@ -238,31 +236,29 @@ thunk_lt (LM *lm, Cell *fn, Cell *args)
   return result;
 }
 
-// TODO: BUG IN gt (1 OR more args) and add, and mul take  (0 or more)
 // TODO: check for over/underflow someday
 Cell *
 thunk_add (LM *lm, Cell *fn, Cell *args)
 {
   (void)fn;
+  const char *fmt = "add:%s";
 
-  if (!IS_INST (args, CONS))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "add: argument is not a list");
-
-  if (NILP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG_LENGTH, "add: expected >= 1 arguments");
-
-  if (!IS_INST (CAR (args), INTEGER))
-    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "add: argument is not an integer");
-
-  Integer sum = CAR (args)->integer;
-
-  for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
+  if (!LISTP (args))
     {
-      if (!IS_INST (CAR (rest), INTEGER))
-        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH,
-                    "add: argument is not an integer");
+      lm_err (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
+      return NIL;
+    }
 
-      sum += CAR (rest)->integer;
+  Integer sum = 0;
+
+  for (Cell *x = args; x != NIL; x = CDR (x))
+    {
+      if (!IS_INST (CAR (x), INTEGER))
+        {
+          lm_err (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
+          return NIL;
+        }
+      sum += CAR (x)->integer;
     }
 
   return INTEGER (sum, lm);
@@ -272,25 +268,24 @@ Cell *
 thunk_sub (LM *lm, Cell *fn, Cell *args)
 {
   (void)fn;
+  const char *fmt = "sub:%s";
 
-  if (!IS_INST (args, CONS))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "sub: argument is not a list");
-
-  if (NILP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG_LENGTH, "sub: expected >= 1 arguments");
-
-  if (!IS_INST (CAR (args), INTEGER))
-    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "sub: argument is not an integer");
+  if (!IS_INST (args, CONS) || NILP (args))
+    {
+      lm_err (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
+      return NIL;
+    }
 
   Integer total = CAR (args)->integer;
 
-  for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
+  for (Cell *x = CDR (args); !NILP (x); x = CDR (x))
     {
-      if (!IS_INST (CAR (rest), INTEGER))
-        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH,
-                    "sub: argument is not an integer");
-
-      total -= CAR (rest)->integer;
+      if (!IS_INST (CAR (x), INTEGER))
+        {
+          lm_err (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
+          return NIL;
+        }
+      total -= CAR (x)->integer;
     }
 
   return INTEGER (total, lm);
@@ -300,59 +295,61 @@ Cell *
 thunk_mul (LM *lm, Cell *fn, Cell *args)
 {
   (void)fn;
+  const char *fmt = "mul:%s";
 
-  if (!IS_INST (args, CONS))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "mul: argument is not a list");
-
-  if (NILP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG_LENGTH, "mul: expected >= 1 arguments");
-
-  if (!IS_INST (CAR (args), INTEGER))
-    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "mul: argument is not an integer");
-
-  Integer result = CAR (args)->integer;
-
-  for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
+  if (!LISTP (args))
     {
-      if (!IS_INST (CAR (rest), INTEGER))
-        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH,
-                    "mul: argument is not an integer");
-
-      result *= CAR (rest)->integer;
+      lm_err (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
+      return NIL;
     }
 
-  return INTEGER (result, lm);
+  Integer res = 1;
+
+  for (Cell *x = args; x != NIL; x = CDR (x))
+    {
+      if (!IS_INST (CAR (x), INTEGER))
+        {
+          lm_err (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
+          return NIL;
+        }
+      res *= CAR (x)->integer;
+    }
+
+  return INTEGER (res, lm);
 }
 
 Cell *
 thunk_div (LM *lm, Cell *fn, Cell *args)
 {
   (void)fn;
+  const char *fmt = "div:%s";
 
-  if (!IS_INST (args, CONS))
-    LM_ERR_RET (lm, ERR_ARG_NOT_ITERABLE, "div: argument is not a list");
-
-  if (NILP (args))
-    LM_ERR_RET (lm, ERR_INVALID_ARG_LENGTH, "div: expected >= 1 arguments");
-
-  if (!IS_INST (CAR (args), INTEGER))
-    LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH, "div: argument is not an integer");
-
-  Integer result = CAR (args)->integer;
-
-  for (Cell *rest = CDR (args); !NILP (rest); rest = CDR (rest))
+  if (!IS_INST (args, CONS) || NILP (args))
     {
-      if (!IS_INST (CAR (rest), INTEGER))
-        LM_ERR_RET (lm, ERR_ARG_TYPE_MISMATCH,
-                    "div: argument is not an integer");
-
-      if (CAR (rest)->integer == 0)
-        LM_ERR_RET (lm, ERR_DIVISION_BY_0, "div: argument is zero");
-
-      result /= CAR (rest)->integer;
+      lm_err (lm, ERR_ARG_NOT_ITERABLE, fmt, "not a list");
+      return NIL;
     }
 
-  return INTEGER (result, lm);
+  Integer res = CAR (args)->integer;
+
+  for (Cell *x = CDR (args); !NILP (x); x = CDR (x))
+    {
+      if (!IS_INST (CAR (x), INTEGER))
+        {
+          lm_err (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
+          return NIL;
+        }
+
+      if (CAR (x)->integer == 0)
+        {
+          lm_err (lm, ERR_DIVISION_BY_0, fmt, "is zero");
+          return NIL;
+        }
+
+      res /= CAR (x)->integer;
+    }
+
+  return INTEGER (res, lm);
 }
 
 static const Thunk thunk_table[_THUNK_END] = {

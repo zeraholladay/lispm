@@ -382,8 +382,7 @@ START_TEST (test_define)
   Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(define (square x) (* x x))"
-      "(square 12)"
-  );
+                             "(square 12)");
   ck_assert_int_eq (eval_res->integer, 144);
 
   eval_res = run_eval_progn ("(define (range x max)"
@@ -394,6 +393,15 @@ START_TEST (test_define)
                              ")"
                              "(apply + (range 0 100))");
   ck_assert_int_eq (eval_res->integer, 5050);
+
+  eval_res = run_eval_progn ("(define (fact n)"
+                             "  (define (loop k acc)"
+                             "    (if (eq 0 k)"
+                             "        acc"
+                             "        (loop (- k 1) (* acc k))))"
+                             "  (loop n 1))"
+                             "(fact 20)");
+  ck_assert_int_eq (eval_res->integer, 2432902008176640000);
 
   eval_res = run_eval_progn ("(define (fib x)"
                              "  (if (or (< x 1) (eq x 1))"
