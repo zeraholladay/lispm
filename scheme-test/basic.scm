@@ -74,16 +74,13 @@
     '(funcall (lambda () t)))
 (assert
     '(funcall (lambda (x y) (cons x y)) 'foo 'bar))
-;; math (very buggy due to defaults)
-;; BUGS
-;; (assert '(eq 0 (+)))
-;; (assert '(eq 1 (*)))
+;; math
+(assert '(eq 0 (+)))
+(assert '(eq 1 (*)))
 (assert '(eq 42 (+ 42)))
-;; BUGS
-;; (assert '(eq -42 (- 42))) == -42
+(assert '(eq -42 (- 42)))
 (assert '(eq 42 (* 42)))
-;; BUG SHOULD not WorK
-;; (assert '(eq 42 (/ 42)))
+(assert '(eq 42 (/ 42)))
 (assert '(eq 10 (+ 1 2 3 4)))
 (assert '(eq -8 (- 1 2 3 4)))
 (assert '(eq 42 (* 21 2)))
@@ -129,22 +126,22 @@
 (assert '(eq 5 (fib 5)))
 (assert '(eq 55 (fib 10)))
 ;; Delayed evaluation Fibonacci
-(define (layz_fib x)
+(define (layz-fib x)
   (if (or (< x 1) (eq x 1))
       (list '+ x 0)
-      (list '+ (layz_fib (sub x 1)) (layz_fib (sub x 2)))
+      (list '+ (layz-fib (sub x 1)) (layz-fib (sub x 2)))
   )
 )
-(assert '(eq 0 (eval (layz_fib 0))))
-(assert '(eq 1 (eval (layz_fib 1))))
-(assert '(eq 1 (eval (layz_fib 2))))
-(assert '(eq 2 (eval (layz_fib 3))))
-(assert '(eq 2 (eval (layz_fib 3))))
-(assert '(eq 5 (eval (layz_fib 5))))
-(assert '(eq 55 (eval (layz_fib 10))))
+(assert '(eq 0 (eval (layz-fib 0))))
+(assert '(eq 1 (eval (layz-fib 1))))
+(assert '(eq 1 (eval (layz-fib 2))))
+(assert '(eq 2 (eval (layz-fib 3))))
+(assert '(eq 2 (eval (layz-fib 3))))
+(assert '(eq 5 (eval (layz-fib 5))))
+(assert '(eq 55 (eval (layz-fib 10))))
 (define result 6765)
-(assert '(eq result (eval (layz_fib 20))))
+(assert '(eq result (eval (layz-fib 20))))
 (set! result 832040)
-(assert '(eq result (eval (layz_fib 30)))) ;; 32 is the max as of 5-17-25
+(assert '(eq result (eval (layz-fib 30)))) ;; 32 is the max as of 5-17-25
 (print 'END)
 (assert nil)

@@ -71,6 +71,9 @@ START_TEST (test_add)
 {
   Cell *eval_res = NULL;
 
+  eval_res = run_eval_progn ("(+)");
+  ck_assert_int_eq (eval_res->integer, 0);
+
   eval_res = run_eval_progn ("(add 1 2 3)");
   ck_assert_int_eq (eval_res->integer, 6);
 

@@ -150,7 +150,7 @@ lm_reset (LM *lm)
   lm->err_bool = false;
 }
 
-static bool
+static inline bool
 lm_eval_switch (LM *lm, StateEnum s, Union u)
 {
   switch (s)
@@ -292,7 +292,16 @@ ctl_funcall:
       return false;
 
     if (IS_INST (fn, THUNK))
-      return stk_push (lm, thunker (lm, fn, arglist));
+      switch (fn->thunk)
+        {
+        case THUNK_LIST:
+          return stk_push (lm, arglist);
+          break;
+
+        default:
+          return stk_push (lm, thunker (lm, fn, arglist));
+          break;
+        }
 
     if (IS_INST (fn, LAMBDA))
       return ctl_push_states (lm,
