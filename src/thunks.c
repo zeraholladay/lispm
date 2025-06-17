@@ -109,6 +109,7 @@ Cell *
 thunk_print (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)lm;
+  (void)fn;
 
   PRINT (CAR (arglist));
 
@@ -264,14 +265,13 @@ thunk_sub (LM *lm, Cell *fn, Cell *arglist)
 
   if (!cdr)
     {
-      res->integer *= -1;
+      res->integer *= -1; // negate if only one arg
       return res;
     }
   do
     {
       if (!IS_INST (cdr, INTEGER))
         return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "sub: not an integer");
-
       res->integer -= cdr->integer;
     }
   while ((cdr = cons_next (&iter)));
@@ -283,47 +283,53 @@ Cell *
 thunk_mul (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)fn;
-  const char *fmt = "mul:%s";
 
-  if (!LISTP (arglist))
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, fmt, "not a list");
+  Cell *total = INTEGER (1, lm);
+  Cell *item;
 
-  Integer res = 1;
-
-  for (Cell *x = arglist; x != NIL; x = CDR (x))
+  for (ConsIter iter = cons_iter (arglist); (item = cons_next (&iter));)
     {
-      if (!IS_INST (CAR (x), INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
-
-      res *= CAR (x)->integer;
+      if (!IS_INST (item, INTEGER))
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "mul: not an integer");
+      total->integer *= item->integer;
     }
 
-  return INTEGER (res, lm);
+  return total;
 }
 
 Cell *
 thunk_div (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)fn;
-  const char *fmt = "div:%s";
 
-  if (!IS_INST (arglist, CONS) || NILP (arglist))
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, fmt, "not a list");
+  if (arglist == NIL)
+    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "div: not a list");
 
-  Integer res = CAR (arglist)->integer;
+  ConsIter iter = cons_iter (arglist);
+  Cell    *item = cons_next (&iter);
 
-  for (Cell *x = CDR (arglist); !NILP (x); x = CDR (x))
+  if (!IS_INST (item, INTEGER))
+    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "div: not an integer");
+
+  Cell *res = INTEGER (item->integer, lm);
+  Cell *cdr = cons_next (&iter);
+
+  if (!cdr)
     {
-      if (!IS_INST (CAR (x), INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, fmt, "not an integer");
-
-      if (CAR (x)->integer == 0)
-        return lm_err_nil (lm, ERR_DIVISION_BY_0, fmt, "is zero");
-
-      res /= CAR (x)->integer;
+      res->integer /= 1;
+      return res;
     }
+  do
+    {
+      if (!IS_INST (cdr, INTEGER))
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "div: not an integer");
+      if (cdr->integer == 0)
+        return lm_err_nil (lm, ERR_DIVISION_BY_0, "div: argument is zero");
+      res->integer /= cdr->integer;
+    }
+  while ((cdr = cons_next (&iter)));
 
-  return INTEGER (res, lm);
+  return res;
 }
 
 static const Thunk thunk_table[_THUNK_END] = {
