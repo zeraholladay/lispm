@@ -29,7 +29,7 @@
 #endif
 
 // forward decls
-typedef struct Cell Cell;
+typedef struct cell Cell;
 typedef struct lm   LM;
 
 typedef enum

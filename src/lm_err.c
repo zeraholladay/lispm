@@ -23,7 +23,7 @@ static const char *err_msg[] = {
 };
 
 static void
-lm_err_vprint (LM *lm, Err code, const char *fmt, va_list ap)
+lm_err_vprint (Err code, const char *fmt, va_list ap)
 {
   fprintf (stderr, "***error: %s: ", err_msg[code]);
   vfprintf (stderr, fmt, ap);
@@ -38,7 +38,7 @@ lm_err_bool (LM *lm, Err code, const char *fmt, ...)
 {
   va_list ap;
   va_start (ap, fmt);
-  lm_err_vprint (lm, code, fmt, ap);
+  lm_err_vprint (code, fmt, ap);
   va_end (ap);
 
   lm->err_bool = true;
@@ -53,7 +53,7 @@ lm_err_nil (LM *lm, Err code, const char *fmt, ...)
 {
   va_list ap;
   va_start (ap, fmt);
-  lm_err_vprint (lm, code, fmt, ap);
+  lm_err_vprint (code, fmt, ap);
   va_end (ap);
 
   lm->err_bool = true;
@@ -68,7 +68,7 @@ lm_err_null (LM *lm, Err code, const char *fmt, ...)
 {
   va_list ap;
   va_start (ap, fmt);
-  lm_err_vprint (lm, code, fmt, ap);
+  lm_err_vprint (code, fmt, ap);
   va_end (ap);
 
   lm->err_bool = true;

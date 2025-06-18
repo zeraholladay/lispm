@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "fmt.h"
 #include "lm.h"
@@ -12,7 +13,7 @@ typedef Cell *(*ThunkFn) (LM *lm, Cell *, Cell *);
 typedef struct
 {
   const char *name;
-  bool        is_lispm;
+  bool        sform;
   int         arity;
   ThunkFn     fn;
 } Thunk;
@@ -112,7 +113,6 @@ thunk_print (LM *lm, Cell *fn, Cell *arglist)
   (void)fn;
 
   PRINT (CAR (arglist));
-
   return T;
 }
 
@@ -132,23 +132,41 @@ thunk_string (LM *lm, Cell *fn, Cell *arglist)
   return STRING (format (CAR (arglist)), lm);
 }
 
-// bool fns
-
 Cell *
 thunk_eq (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)lm;
   (void)fn;
 
-  Cell *car  = CAR (arglist);
-  Cell *card = CAR (CDR (arglist));
+  Cell *a = CAR (arglist);
+  Cell *b = CAR (CDR (arglist));
 
-  EqFn eqfn = type (car)->eq;
+  if (a->type != b->type)
+    return NIL;
 
-  if (eqfn (CAR (arglist), card))
-    return T;
+  switch (a->type)
+    {
+    case TYPE_NIL:
+      return (a == b) ? T : NIL;
 
-  return NIL;
+    case TYPE_INTEGER:
+      return (a->integer == b->integer) ? T : NIL;
+
+    case TYPE_SYMBOL:
+      return (a->symbol.str == b->symbol.str) ? T : NIL;
+
+    case TYPE_STRING:
+      return (strcmp (a->string, b->string) == 0) ? T : NIL;
+
+    case TYPE_CONS:
+    case TYPE_THUNK:
+    case TYPE_LAMBDA:
+      return (a == b) ? T : NIL;
+
+    default:
+      return lm_err_nil (lm, ERR_INTERNAL, "null thunk");
+      ;
+    }
 }
 
 Cell *
@@ -167,31 +185,30 @@ thunk_gt (LM *lm, Cell *fn, Cell *arglist)
   (void)lm;
   (void)fn;
 
-  Cell *result = T;
+  if (arglist == NIL)
+    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "lt: not a list");
 
-  if (!IS_INST (arglist, CONS))
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "gt: is not a list");
+  ConsIter iter = cons_iter (arglist);
+  Cell    *item = cons_next (&iter);
 
-  if (NILP (arglist))
-    return lm_err_nil (lm, ERR_INVALID_ARG_LEN, "gt: expected >= 1 arguments");
+  if (!IS_INST (item, INTEGER))
+    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: not an integer");
 
-  if (!IS_INST (CAR (arglist), INTEGER))
-    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "gt: is not an integer");
+  Cell *prev = INTEGER (item->integer, lm);
+  Cell *next = cons_next (&iter);
 
-  Cell *prev = CAR (arglist);
-
-  for (Cell *rest = CDR (arglist); !NILP (rest); rest = CDR (rest))
+  if (!next)
+    return T;
+  do
     {
-      if (!IS_INST (CAR (rest), INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "gt: is not an integer");
-
-      if (!(prev->integer > CAR (rest)->integer))
+      if (!IS_INST (next, INTEGER))
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: not an integer");
+      if (prev->integer <= next->integer)
         return NIL;
-
-      prev = CAR (rest);
     }
+  while ((next = cons_next (&iter)));
 
-  return result;
+  return T;
 }
 
 Cell *
@@ -200,31 +217,30 @@ thunk_lt (LM *lm, Cell *fn, Cell *arglist)
   (void)lm;
   (void)fn;
 
-  Cell *result = T;
+  if (arglist == NIL)
+    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "lt: not a list");
 
-  if (!IS_INST (arglist, CONS))
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "lt: is not a list");
+  ConsIter iter = cons_iter (arglist);
+  Cell    *item = cons_next (&iter);
 
-  if (NILP (arglist))
-    return lm_err_nil (lm, ERR_INVALID_ARG_LEN, "lt: expected >= 1 arguments");
+  if (!IS_INST (item, INTEGER))
+    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: not an integer");
 
-  if (!IS_INST (CAR (arglist), INTEGER))
-    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: is not an integer");
+  Cell *prev = INTEGER (item->integer, lm);
+  Cell *next = cons_next (&iter);
 
-  Cell *prev = CAR (arglist);
-
-  for (Cell *rest = CDR (arglist); !NILP (rest); rest = CDR (rest))
+  if (!next)
+    return T;
+  do
     {
-      if (!IS_INST (CAR (rest), INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: is not an integer");
-
-      if (!(prev->integer < CAR (rest)->integer))
+      if (!IS_INST (next, INTEGER))
+        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: not an integer");
+      if (prev->integer >= next->integer)
         return NIL;
-
-      prev = CAR (rest);
     }
+  while ((next = cons_next (&iter)));
 
-  return result;
+  return T;
 }
 
 // TODO: check for over/underflow someday
@@ -347,7 +363,7 @@ thunk_get_name (Cell *c)
 bool
 thunk_sf_bool (Cell *c)
 {
-  return thunk_table[c->thunk].is_lispm;
+  return thunk_table[c->thunk].sform;
 }
 
 Cell *

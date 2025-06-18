@@ -6,7 +6,7 @@
 #include "types.h"
 
 // keywords.g
-struct Cell *keyword_lookup (const char *str, size_t len);
-const char  *is_keyword_strncmp (const char *text, int state);
+Cell       *keyword_lookup (const char *str, size_t len);
+const char *is_keyword_strncmp (const char *text, int state);
 
 #endif
