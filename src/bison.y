@@ -4,6 +4,7 @@
 
 #include "bison.h"
 #include "flex.h"
+#include "lm.h"
 #include "prims.h"
 
 #define yyerror(n, lm, s)                                                     \
