@@ -67,8 +67,7 @@ struct Keyword;
 "/",       &wrapped_thunks[THUNK_DIV].ptr
 %%
 
-
-struct Cell *
+Cell *
 keyword_lookup (const char *str, size_t len)
 {
   Keyword *keyword = in_word_set(str, len);
@@ -94,7 +93,9 @@ is_keyword_strncmp (const char *text, int state)
   while (idx < GPERF_TOTAL_KEYWORDS)
     {
       const char *name = keyword_table[idx++].name;
-      if (!strncasecmp (name, text, len))
+      if (name[0] == '\0')
+        continue;
+      else if (!strncasecmp (name, text, len))
         return name;
     }
 

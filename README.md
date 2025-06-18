@@ -332,3 +332,101 @@ Alternatively, `first` and `rest`.
 * [ ] Garbage collection
 * [ ] Maximum symbol length
 * [ ] `let*`, `letrec`, `define`
+
+---
+
+ChatGPT's list of Scheme functions (these are here for my reference):
+
+## Special Forms
+
+(These aren’t functions—you can’t rebind them.)
+
+* **`(quote x)`** — prevent evaluation
+* **`(lambda (…params…) …body…)`** — anonymous function
+* **`(if test then else)`** — conditional
+* **`(set! var expr)`** — mutate existing binding
+* **`(define var expr)`** / **`(define (f args…) …)`** — top-level or internal binding
+* **`(begin e1 e2 …)`** — sequence
+* **`(cond (t1 e1 …) (t2 e2 …) … [else eN …])`** — multi-branch conditional
+* **`(case key ((v1 v2) e1 …) … [else eN …])`** — branch by value
+* **`(let ((v1 e1) …) body…)`** — local bindings
+* **`(let* ((v1 e1) (v2 e2) …) body…)`** — sequential locals
+* **`(letrec ((v1 e1) …) body…)`** — mutually recursive locals
+* **`(do ((v1 init1 step1) …) (test result…) body…)`** — imperative loop
+* **`(delay expr)`** / **`(force promise)`** — lazy evaluation
+* **`` `… ,… ,@… ``** — quasiquotation
+
+---
+
+## Data‐structure Primitives
+
+### Pairs & Lists
+
+* **`(cons a d)`**, **`(car p)`**, **`(cdr p)`**, **`(set-car! p v)`**, **`(set-cdr! p v)`**
+* **`(list e1 e2 …)`**, **`(null? x)`**, **`(pair? x)`**, **`(list? x)`**, **`(length lst)`**
+
+### Vectors
+
+* **`(make-vector n [init])`**, **`(vector-ref v i)`**, **`(vector-set! v i x)`**,
+  **`(vector-length v)`**, **`(vector->list v)`**, **`(list->vector lst)`**
+
+### Strings & Characters
+
+* **`(string? s)`**, **`(string-length s)`**, **`(string-ref s i)`**, **`(string-set! s i ch)`**
+* **`(string-append s1 s2 …)`**, **`(substring s start end)`**, **`(string->list s)`**,
+  **`(list->string lst)`**, **`(char->integer ch)`**, **`(integer->char n)`**,
+* **`(string=? s1 s2)`**, **`(string<? s1 s2)`**, etc.
+
+---
+
+## Type Predicates & Equality
+
+* **Types**:
+  `boolean?`, `number?`, `integer?`, `real?`, `rational?`, `complex?`,
+  `exact?`, `inexact?`, `symbol?`, `string?`, `char?`, `vector?`, `port?`
+
+* **Equality**:
+
+  * **`eq?`** (pointer/symbol identity)
+  * **`eqv?`** (numeric/string/boolean identity)
+  * **`equal?`** (deep structural equality)
+
+---
+
+## Numeric Primitives
+
+### Arithmetic
+
+* **Integers & Rationals**:
+  `+`, `-`, `*`, `/`, `quotient`, `remainder`, `modulo`,
+  `numerator`, `denominator`, `gcd`, `lcm`
+* **Reals & Complex**:
+  `exp`, `log`, `sqrt`, `sin`, `cos`, `tan`, `atan`, `expt`,
+  `real-part`, `imag-part`, `magnitude`, `angle`
+* **Rounding**:
+  `floor`, `ceiling`, `truncate`, `round`, `inexact->exact`, `exact->inexact`
+
+### Comparisons
+
+* Numeric: `=`, `<`, `>`, `<=`, `>=`
+* Generic: `zero?`, `positive?`, `negative?`, `odd?`, `even?`
+
+---
+
+## Logical & Control
+
+* **`(not x)`**, **`(and e1 e2 …)`**, **`(or e1 e2 …)`**
+* **`(call/cc f)`** or **`(call-with-current-continuation f)`** — first-class continuations
+
+---
+
+## I/O & Ports
+
+* **Basic**:
+  `display`, `write`, `newline`, `read`, `read-char`, `peek-char`
+* **File access**:
+  `open-input-file`, `open-output-file`, `close-input-port`, `close-output-port`
+* **With-resource**:
+  `call-with-input-file`, `call-with-output-file`
+
+---

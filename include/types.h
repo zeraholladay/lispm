@@ -17,16 +17,7 @@
 #define LAMBDA(params, body, lm) (new (lm, TYPE_LAMBDA, params, body))
 
 // forward decls
-struct Cell;
-typedef struct Cell Cell;
-
-typedef int (*EqFn) (Cell *, Cell *);
-
-typedef struct Type
-{
-  const char *type_name;
-  EqFn        eq;
-} Type;
+typedef struct cell Cell;
 
 // Cells
 typedef enum
@@ -70,7 +61,7 @@ typedef struct
   Cell *body;
 } Lambda;
 
-struct Cell
+struct cell
 {
   TypeEnum type;
   union
@@ -99,7 +90,6 @@ cons_iter (Cell *c)
   return (ConsIter){ .cur = c };
 }
 
-const Type *type (Cell *self);
 Cell *new (LM *lm, TypeEnum type, ...);
 Cell *cons_next (ConsIter *iter);
 
