@@ -7,7 +7,7 @@
 #include "lm.h"
 #include "prims.h"
 
-#define yyerror(progn, parser_ptr, lm, s)                                       \
+#define yyerror(yyloc, progn, parser_ptr, lm, s)                              \
   do                                                                          \
     {                                                                         \
       yyerror_handler (s);                                                    \
@@ -20,6 +20,8 @@ void yyerror_handler (const char *s);
 static inline LType
 ltype_from_yyltype(YYLTYPE p, void **parser_ptr)
 {
+  printf("first %d\nlast %d\n", p.first_line, p.last_line);
+
   return (LType){ .parser_ptr   = parser_ptr,
                   .first_line   = p.first_line,
                   .first_column = p.first_column,
@@ -33,6 +35,7 @@ ltype_from_yyltype(YYLTYPE p, void **parser_ptr)
 #include "types.h"
 }
 
+%define api.pure
 %locations
 %parse-param {Cell **progn} {void **parser_ptr} {LM *lm}
 
@@ -72,7 +75,7 @@ program
   | forms error
     {
       *progn = NIL;
-      yyerror (progn, lm, parser_ptr, "Parse error\n");
+      yyerror (yyloc, progn, lm, parser_ptr, "Parse error\n");
     }
   ;
 

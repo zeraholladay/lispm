@@ -1,6 +1,6 @@
 %option noyywrap
+%option bison-bridge bison-locations
 %option yylineno
-%option bison-locations
 %option noinput
 %option nounput
 
@@ -33,7 +33,7 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     return '.';
                   }
   {NUM}           {
-                    yylval.integer = atoll (yytext);
+                    yylval->integer = atoll (yytext);
                     return INTEGER;
                   }
   {ID}            {
@@ -43,8 +43,8 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     if (!strncasecmp ("QUOTE", yytext, yyleng + 1))
                       return QUOTE;
 
-                    yylval.symbol.len = yyleng;
-                    yylval.symbol.str = str_intern (yytext, yyleng);
+                    yylval->symbol.len = yyleng;
+                    yylval->symbol.str = str_intern (yytext, yyleng);
 
                     // special forms but still a symbol
                     if (!strncasecmp ("DEFINE", yytext, yyleng + 1))
@@ -59,12 +59,12 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     return SYMBOL;
                   }
   [+\-*/><]       {
-                    yylval.symbol.str = str_intern (yytext, yyleng);
-                    yylval.symbol.len = yyleng;
+                    yylval->symbol.str = str_intern (yytext, yyleng);
+                    yylval->symbol.len = yyleng;
                     return SYMBOL;
                   }
   {WS}            { /* ignore */ }
-  {NL}            { /* ignore */ }
+  {NL}            { ++yylineno;  }
   ;[^\n]*         { /* ignore */ }
   .               {
                     return ERROR;
