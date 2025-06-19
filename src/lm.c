@@ -9,6 +9,7 @@
 #include "lm_err.h"
 #include "lm_gc.h"
 #include "palloc.h"
+#include "parser.h"
 #include "prims.h"
 #include "thunks.h"
 #include "types.h"
@@ -175,6 +176,7 @@ ctl_closure_leave:
 ctl_eval:
   {
     Cell *expr = u.eval.expr;
+    parser_print_loc (expr);
 
     if (!expr && !(expr = stk_pop (lm)))
       return false;

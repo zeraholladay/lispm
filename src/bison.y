@@ -20,11 +20,11 @@ void yyerror_handler (const char *s);
 static inline LType
 ltype_from_yyltype(YYLTYPE p, void **parser_ptr)
 {
-    return (LType){ .parser_ptr   = parser_ptr,
-                    .first_line   = p.first_line,
-                    .first_column = p.first_column,
-                    .last_line    = p.last_line,
-                    .last_column  = p.last_column };
+  return (LType){ .parser_ptr   = parser_ptr,
+                  .first_line   = p.first_line,
+                  .first_column = p.first_column,
+                  .last_line    = p.last_line,
+                  .last_column  = p.last_column };
 }
 %}
 

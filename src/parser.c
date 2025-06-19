@@ -226,7 +226,7 @@ parser_print_loc (Cell *c)
   str[str_len] = '\0';
 
   fprintf (stderr,
-           "Error at or around: %s\n"
+           "Location: %s\n"
            "Line: %d\n"
            "File: %s\n",
            str, first_line, fname);

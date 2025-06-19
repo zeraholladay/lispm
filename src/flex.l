@@ -1,5 +1,6 @@
 %option noyywrap
 %option yylineno
+%option bison-locations
 %option noinput
 %option nounput
 
