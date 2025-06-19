@@ -12,9 +12,10 @@
 #endif
 
 int
-repl (LM *lm, Parser *p)
+repl (LM *lm)
 {
-  char input[RL_BUF_SIZ];
+  Cell *progn = NULL;
+  char  input[RL_BUF_SIZ];
 
   rl_init ();
 
@@ -25,13 +26,20 @@ repl (LM *lm, Parser *p)
       if (len < 0)
         break;
 
-      if (!parser_buf (p, lm, input, len))
+      void *bytes = parser_loads (input, len);
+      if (!bytes)
         {
-          perror ("Parse failed");
+          fputs ("Parse failed to load input\n", stderr);
           continue;
         }
 
-      Cell *res = lm_progn (lm, p->progn);
+      if (!parser_parse_bytes (bytes, &progn, lm))
+        {
+          fputs ("Parse failed\n", stderr);
+          continue;
+        }
+
+      Cell *res = lm_progn (lm, progn);
 
       PRINT (res);
     }

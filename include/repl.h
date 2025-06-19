@@ -2,8 +2,7 @@
 #define REPL_H
 
 #include "lm.h"
-#include "parser.h"
 
-int repl (LM *lm, Parser *p);
+int repl (LM *lm);
 
 #endif

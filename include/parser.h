@@ -3,33 +3,14 @@
 
 #include <stdio.h>
 
-#include "list.h"
 #include "lm.h"
 #include "types.h"
 
-typedef enum
-{
-  PARSER_BUF,
-  PARSER_MMAP,
-} ParserEnum;
+void *parser_loads (const char *str, size_t len);
+void *parser_load (const char *fname);
 
-typedef struct parser_entry
-{
-  ParserEnum type;
-  char      *fname;
-  char      *buf;
-  size_t     len;
-} ParserEntry;
+void parser_destroy (void);
 
-typedef struct parser
-{
-  List *entries;
-  Cell *progn;
-} Parser;
-
-Parser *parser_create (void);
-void    parser_destory (Parser *p);
-bool    parser_buf (Parser *p, LM *lm, const char *input, size_t len);
-bool    parser_fname (Parser *p, LM *lm, const char *path);
+bool parser_parse_bytes (void *ptr, Cell **progn, LM *lm);
 
 #endif

@@ -1,5 +1,7 @@
 #ifdef LISPM_MAIN
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "fmt.h"
@@ -33,26 +35,33 @@ run (int argc, char **argv)
   if (!argc)
     run_repl = 1;
 
-  LM     *lm = lm_create ();
-  Parser *p  = parser_create ();
+  LM *lm = lm_create ();
 
   for (int i = 0; i < argc; ++i)
     {
-      char *path = argv[i];
+      Cell *progn = NULL;
+      char *fname = argv[i];
 
-      bool parse_res = parser_fname (p, lm, path);
+      void *bytes = parser_load (fname);
+      if (!bytes)
+        {
+          fprintf (stderr, "Parse failed to load input file: %s\n", fname);
+          continue;
+        }
+
+      bool parse_res = parser_parse_bytes (bytes, &progn, lm);
 
       if (!parse_res)
         {
-          fputs ("Parser failed", stderr);
-          break; // TODO: syntax error
+          fprintf (stderr, "Parse failed on %s\n", fname);
+          return 1;
         }
 
-      lm_progn (lm, p->progn);
+      lm_progn (lm, progn);
     }
 
   if (run_repl)
-    repl (lm, p);
+    repl (lm);
 
   return 0;
 }
@@ -60,6 +69,7 @@ run (int argc, char **argv)
 int
 main (int argc, char **argv)
 {
+  atexit (parser_destroy);
   return run (argc, argv);
 }
 

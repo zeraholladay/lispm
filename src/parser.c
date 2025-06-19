@@ -12,6 +12,38 @@
 #include "types.h"
 #include "xalloc.h"
 
+typedef enum
+{
+  PARSER_BUF,
+  PARSER_MMAP,
+} ParserEnum;
+
+typedef struct node
+{
+  ParserEnum   type;
+  char        *fname;
+  char        *data;
+  size_t       len;
+  struct node *next;
+} Node;
+
+static Node *head = NULL;
+static Node *tail = NULL;
+
+static void
+ll_append (Node *n)
+{
+  n->next = NULL;
+
+  if (tail)
+    tail->next = n;
+  else
+    {
+      head = n;
+      tail = n;
+    }
+}
+
 static char *
 map_file (const char *path, size_t *out_len)
 {
@@ -53,87 +85,75 @@ map_file (const char *path, size_t *out_len)
   return data;
 }
 
-Parser *
-parser_create (void)
+void *
+parser_loads (const char *str, size_t len)
 {
-  Parser *p  = xcalloc (1, sizeof *(p));
-  p->entries = list_create ();
-  return p;
+  Node *n = xmalloc (sizeof *(n));
+
+  n->type  = PARSER_BUF;
+  n->fname = NULL;
+  n->data  = xstrdup (str);
+  n->len   = len;
+
+  ll_append (n);
+
+  return n;
+}
+
+void *
+parser_load (const char *fname)
+{
+  Node  *n = xcalloc (1, sizeof *(n));
+  size_t len;
+
+  char *buf = map_file (fname, &len);
+  if (!buf)
+    return NULL;
+
+  n->type  = PARSER_MMAP;
+  n->fname = xstrdup (fname);
+  n->data  = buf;
+  n->len   = len;
+
+  ll_append (n);
+
+  return n;
 }
 
 void
-parser_destroy (Parser *p)
+parser_destroy (void)
 {
-  if (!p)
-    return;
-
-  List *entries = p->entries;
-
-  for (size_t i = 0; i < entries->count; ++i)
+  for (Node *n = head; n; n = n->next)
     {
-      ParserEntry *e = entries->items[i];
-
-      switch (e->type)
+      switch (n->type)
         {
         case PARSER_BUF:
-          free (e->buf);
+          free (n->data);
           break;
 
         case PARSER_MMAP:
-          munmap (e->buf, e->len);
+          free (n->fname);
+          munmap (n->data, n->len);
           break;
 
         default:
           break;
         }
 
-      free (e);
+      free (n);
     }
 
-  free (entries);
+  head = tail = NULL;
 }
 
 bool
-parser_buf (Parser *p, LM *lm, const char *input, size_t len)
+parser_parse_bytes (void *ptr, Cell **progn, LM *lm)
 {
-  ParserEntry *e = xcalloc (1, sizeof *(e));
+  Node *n = ptr;
 
-  e->type  = PARSER_BUF;
-  e->fname = NULL;
-  e->buf   = xstrdup (input);
-  e->len   = len;
+  YY_BUFFER_STATE yy_buf = yy_scan_bytes (n->data, (int)n->len);
 
-  list_append (p->entries, e);
-
-  yy_scan_string (e->buf);
-
-  int status = yyparse (&p->progn, lm);
-
-  yylex_destroy ();
-
-  return (status == 0);
-}
-
-bool
-parser_fname (Parser *p, LM *lm, const char *path)
-{
-  ParserEntry *e = xcalloc (1, sizeof *(e));
-  size_t       len;
-
-  char *buf = map_file (path, &len);
-  if (!e->buf)
-    return false;
-
-  e->type  = PARSER_MMAP;
-  e->fname = xstrdup (path);
-  e->buf   = buf;
-  e->len   = len;
-
-  list_append (p->entries, e);
-
-  YY_BUFFER_STATE yy_buf = yy_scan_bytes (e->buf, (int)len);
-
-  int status = yyparse (&p->progn, lm);
+  int status = yyparse (progn, lm);
 
   yy_delete_buffer (yy_buf);
 
