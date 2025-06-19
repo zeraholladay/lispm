@@ -23,10 +23,11 @@ typedef struct cell Cell;
 
 typedef struct l_type
 {
-  int first_line;
-  int first_column;
-  int last_line;
-  int last_column;
+  void **parser_ptr;
+  int    first_line;
+  int    first_column;
+  int    last_line;
+  int    last_column;
 } LType;
 
 // Cells

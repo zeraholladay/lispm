@@ -5,6 +5,7 @@
 
 #include "fmt.h"
 #include "lm.h"
+#include "parser.h"
 #include "prims.h"
 #include "thunks.h"
 
@@ -254,8 +255,10 @@ thunk_add (LM *lm, Cell *fn, Cell *arglist)
 
   for (ConsIter iter = cons_iter (arglist); (item = cons_next (&iter));)
     {
-      if (!IS_INST (item, INTEGER))
+      if (!IS_INST (item, INTEGER)) {
+        parser_print_loc (arglist);
         return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "add: not an integer");
+      }
       total->integer += item->integer;
     }
 

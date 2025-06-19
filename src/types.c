@@ -12,7 +12,9 @@ new (LM *lm, TypeEnum type, ...)
   va_start (ap, type);
 
   Cell *c = lm_alloc_cell (lm);
+
   c->type = type;
+  memset (&c->loc, 0, sizeof (c->loc));
 
   switch (type)
     {

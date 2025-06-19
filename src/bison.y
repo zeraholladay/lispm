@@ -7,24 +7,25 @@
 #include "lm.h"
 #include "prims.h"
 
-#define yyerror(n, lm, s)                                                     \
+#define yyerror(progn, parser_ptr, lm, s)                                       \
   do                                                                          \
     {                                                                         \
-      yyerror_handler (lm, s);                                                \
+      yyerror_handler (s);                                                    \
       YYABORT;                                                                \
     }                                                                         \
   while (0)
 
+void yyerror_handler (const char *s);
+
 static inline LType
-ltype_from_yyltype(YYLTYPE p)
+ltype_from_yyltype(YYLTYPE p, void **parser_ptr)
 {
-    return (LType){ .first_line   = p.first_line,
+    return (LType){ .parser_ptr   = parser_ptr,
+                    .first_line   = p.first_line,
                     .first_column = p.first_column,
                     .last_line    = p.last_line,
                     .last_column  = p.last_column };
 }
-
-void yyerror_handler (LM *lm, const char *s);
 %}
 
 %code requires
@@ -33,7 +34,7 @@ void yyerror_handler (LM *lm, const char *s);
 }
 
 %locations
-%parse-param {Cell **progn} {LM *lm}
+%parse-param {Cell **progn} {void **parser_ptr} {LM *lm}
 
 %union
 {
@@ -71,7 +72,7 @@ program
   | forms error
     {
       *progn = NIL;
-      yyerror (progn, lm, "Parse error\n");
+      yyerror (progn, lm, parser_ptr, "Parse error\n");
     }
   ;
 
@@ -79,12 +80,11 @@ forms
   : /* empty */
     {
       $$ = NIL;
-      $$->loc = ltype_from_yyltype (@$);
     }
   | form forms
     {
       $$ = CONS ($1, $2, lm);
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   ;
 
@@ -92,63 +92,63 @@ form
     : '(' LAMBDA param_list forms ')'
       {
         $$ = LIST1 (LAMBDA ($3, $4, lm), lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' define symbol forms ')'
       {
         $$ = CONS ($2, CONS ($3, $4, lm), lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' define '(' symbol symbol_list ')' forms ')'
       {
         Cell *body = LIST1 (LAMBDA ($5, $7, lm), lm);
         $$ = CONS ($2, CONS ($4, body, lm), lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' let forms forms ')'
       {
         $$ = CONS ($2, CONS ($3, $4, lm), lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' set symbol forms ')'
       {
         $$ = CONS ($2, CONS ($3, $4, lm), lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' if_ form form ')'
       {
         $$ = CONS ($2, LIST2 ($3, $4, lm), lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' if_ form form form ')'
       {
         $$ = CONS ($2, CONS ( $3, LIST2 ($4, $5, lm), lm), lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | symbol
       {
         $$ = $1;
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | INTEGER
       {
         $$ = INTEGER ($1, lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '\'' form
       {
         $$ = LIST2 (QUOTE, $2, lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' forms ')'
       {
         $$ = $2;
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' forms '.' form ')'
       {
         $$ = CONS ($2, $4, lm);
-        $$->loc = ltype_from_yyltype (@$);
+        $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     ;
 
@@ -156,12 +156,11 @@ param_list
   : '(' ')'
     {
       $$ = NIL;
-      $$->loc = ltype_from_yyltype (@$);
     }
   | '(' symbol_list ')'
     {
       $$ = $2;
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   ;
 
@@ -169,12 +168,11 @@ symbol_list
   : /* empty */
     {
       $$ = NIL;
-      $$->loc = ltype_from_yyltype (@$);
     }
   | symbol symbol_list
     {
       $$ = CONS ($1, $2, lm);
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   ;
 
@@ -182,12 +180,12 @@ symbol
   : SYMBOL
     {
       $$ = SYMBOL ($1.str, $1.len, lm);
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   | QUOTE
     {
       $$ = QUOTE;
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   ;
 
@@ -195,7 +193,7 @@ define
   : DEFINE
     {
       $$ = SYMBOL ($1.str, $1.len, lm);
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   ;
 
@@ -203,7 +201,7 @@ let
   : LET
     {
       $$ = SYMBOL ($1.str, $1.len, lm);
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   ;
 
@@ -211,7 +209,7 @@ set
   : SET
     {
       $$ = SYMBOL ($1.str, $1.len, lm);
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   ;
 
@@ -219,15 +217,14 @@ if_
   : IF
     {
       $$ = SYMBOL ($1.str, $1.len, lm);
-      $$->loc = ltype_from_yyltype (@$);
+      $$->loc = ltype_from_yyltype (@$, parser_ptr);
     }
   ;
 
 %%
 
 void
-yyerror_handler (LM *lm, const char *s)
+yyerror_handler (const char *s)
 {
-  (void)lm;
   fprintf (stderr, "Syntax error: line %d: %s\n", yylineno, s);
 }

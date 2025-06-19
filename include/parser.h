@@ -13,4 +13,6 @@ void parser_destroy (void);
 
 bool parser_parse_bytes (void *ptr, Cell **progn, LM *lm);
 
+void parser_print_loc (Cell *c);
+
 #endif
