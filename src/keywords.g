@@ -37,7 +37,6 @@ struct Keyword;
 "eval",    &wrapped_thunks[THUNK_EVAL].ptr
 "first",   &wrapped_thunks[THUNK_FIRST].ptr
 "funcall", &wrapped_thunks[THUNK_FUNCALL].ptr
-"gc",      &wrapped_thunks[THUNK_GC].ptr
 "gt",      &wrapped_thunks[THUNK_GT].ptr
 ">",       &wrapped_thunks[THUNK_GT].ptr
 "if",      &wrapped_thunks[THUNK_IF].ptr

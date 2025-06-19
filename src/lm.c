@@ -549,10 +549,6 @@ ctl_lispm:
       case THUNK_LET:
         return ctl_push_state (lm, S (let, .arglist = CAR (arglist)));
 
-      case THUNK_GC:
-        lm_gc (lm); // for testing
-        return stk_push (lm, T);
-
       default:
         break;
       }
@@ -743,6 +739,7 @@ lm_eval (LM *lm)
           lm_reset (lm);
           return NIL;
         }
+        lm_gc (lm);  // very agressive :)
     }
   while (base_ptr <= lm->ctl.sp);
 
