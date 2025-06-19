@@ -8,29 +8,26 @@
 static void
 gc_mark_reachable (Stack *stack, Cell *root)
 {
+  Cell *c;
   stack_push (stack, root);
 
-  while (true)
+  while ((c = stack_pop(stack)))
     {
-      Cell *c = stack_pop (stack);
-      if (!c)
-        break;
-
       if (pool_gc_is_marked (c))
-        return;
+        continue;
 
       pool_gc_mark (c);
 
       switch (c->type)
         {
         case TYPE_CONS:
-          stack_push (stack, CAR (c));
           stack_push (stack, CDR (c));
+          stack_push (stack, CAR (c));
           break;
 
         case TYPE_LAMBDA:
-          stack_push (stack, c->lambda.params);
           stack_push (stack, c->lambda.body);
+          stack_push (stack, c->lambda.params);
           break;
 
         case TYPE_INTEGER:
@@ -94,6 +91,7 @@ gc_state_closure_leave:
 
 gc_state_define:
   {
+    gc_mark_reachable (stack, u.define.sym);
     return;
   }
 
@@ -213,6 +211,7 @@ gc_state_progn:
 
 gc_state_set:
   {
+    gc_mark_reachable (stack, u.set.sym);
     return;
   }
 }
@@ -249,9 +248,13 @@ gc_sweep (Pool *p, void *ptr)
     pool_free (p, c);
 }
 
+#include "stdio.h"
+
 void
 lm_gc (LM *lm)
 {
+  puts ("Mark");
   gc_mark (lm);
+  puts ("Sweep");
   pool_map_hier (lm->pool, gc_sweep);
 }
