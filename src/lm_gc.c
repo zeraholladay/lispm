@@ -248,13 +248,9 @@ gc_sweep (Pool *p, void *ptr)
     pool_free (p, c);
 }
 
-#include "stdio.h"
-
 void
 lm_gc (LM *lm)
 {
-  puts ("Mark");
   gc_mark (lm);
-  puts ("Sweep");
   pool_map_hier (lm->pool, gc_sweep);
 }
