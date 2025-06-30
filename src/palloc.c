@@ -32,8 +32,10 @@ pool_init (size_t count, size_t size)
 void
 pool_destroy (Pool **p)
 {
-  free ((*p)->pool), (*p)->pool = NULL;
-  free (*p), *p                 = NULL;
+  free ((*p)->pool);
+  (*p)->pool = NULL;
+  free (*p);
+  *p = NULL;
 }
 
 void
@@ -125,8 +127,6 @@ pool_gc_is_marked (void *ptr)
       = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
   return wrapper->gc_mark;
 }
-
-#include "fmt.h"
 
 void
 pool_gc_mark (void *ptr)

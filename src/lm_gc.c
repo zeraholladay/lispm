@@ -11,7 +11,7 @@ gc_mark_reachable (Stack *stack, Cell *root)
   Cell *c;
   stack_push (stack, root);
 
-  while ((c = stack_pop(stack)))
+  while ((c = stack_pop (stack)))
     {
       if (pool_gc_is_marked (c))
         continue;
