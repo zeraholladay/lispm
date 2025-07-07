@@ -11,7 +11,7 @@ gc_mark_reachable (Stack *stack, Cell *root)
   Cell *c;
   stack_push (stack, root);
 
-  while ((c = stack_pop(stack)))
+  while ((c = stack_pop (stack)))
     {
       if (pool_gc_is_marked (c))
         continue;
@@ -248,13 +248,9 @@ gc_sweep (Pool *p, void *ptr)
     pool_free (p, c);
 }
 
-#include "stdio.h"
-
 void
 lm_gc (LM *lm)
 {
-  puts ("Mark");
   gc_mark (lm);
-  puts ("Sweep");
   pool_map_hier (lm->pool, gc_sweep);
 }
