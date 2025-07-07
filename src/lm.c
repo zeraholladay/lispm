@@ -727,9 +727,8 @@ ctl_map_acc:
 static Cell *
 lm_eval (LM *lm)
 {
-  size_t last_sp      = lm->ctl.sp;
-  const size_t DELTA_SP = 256;  // only GC if stack grew by >= 256
-
+  const size_t DELTA_SP = 256;  // temp: only GC if stack grew by >= 256
+  size_t last_sp  = lm->ctl.sp;
   size_t base_ptr = lm->ctl.sp;
   State  state;
 
