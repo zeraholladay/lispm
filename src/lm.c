@@ -301,6 +301,34 @@ ctl_funcall:
           break;
         }
 
+    if (IS_INST (fn, CONTINUATION))
+      {
+        // Expect exactly one argument
+        size_t argc = length (arglist);
+        if (argc != 1)
+          return lm_err_bool (lm, argc < 1 ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG,
+                              "continuation");
+
+        Cell *value = CAR (arglist);
+
+        // Unwind dump and environment frames to the captured state
+        size_t target_env_sp = fn->continuation.env_sp;
+        size_t target_dmp_sp = fn->continuation.dmp_sp;
+
+        while (lm->dmp.sp > target_dmp_sp)
+          if (!dump_pop (lm))
+            return false;
+
+        while (lm->env.sp > target_env_sp)
+          if (!leave_frame (lm))
+            return false;
+
+        lm->stk.sp = fn->continuation.stk_sp;
+        lm->ctl.sp = fn->continuation.ctl_sp;
+
+        return stk_push (lm, value);
+      }
+
     if (IS_INST (fn, LAMBDA))
       return ctl_push_states (lm,
                               (State[]){
@@ -539,6 +567,25 @@ ctl_lispm:
 
       case THUNK_IF:
         return ctl_push_state (lm, S (if_, .form = arglist));
+
+      case THUNK_CALLCC:
+        {
+          // Capture current continuation and pass it to the provided function
+          // Save current context on dump so continuation can return here
+          if (!dump_push (lm))
+            return false;
+
+          Cell *cont
+              = CONTINUATION (lm->stk.sp, lm->env.sp, lm->ctl.sp, lm->dmp.sp, lm);
+          Cell *fn_expr = CAR (arglist);
+          return ctl_push_states (
+              lm,
+              (State[]){
+                  S (eval, .expr = fn_expr),
+                  S (funcall, .fn = NULL, .arglist = LIST1 (cont, lm)),
+              },
+              2);
+        }
 
       case THUNK_AND:
         return ctl_push_state (lm, S (and, .arglist = arglist));

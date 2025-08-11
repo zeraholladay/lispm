@@ -40,6 +40,8 @@ struct Keyword;
 "gt",      &wrapped_thunks[THUNK_GT].ptr
 ">",       &wrapped_thunks[THUNK_GT].ptr
 "if",      &wrapped_thunks[THUNK_IF].ptr
+"call/cc", &wrapped_thunks[THUNK_CALLCC].ptr
+"call-with-current-continuation", &wrapped_thunks[THUNK_CALLCC].ptr
 "last",    &wrapped_thunks[THUNK_LAST].ptr
 "length",  &wrapped_thunks[THUNK_LENGTH].ptr
 "let",     &wrapped_thunks[THUNK_LET].ptr

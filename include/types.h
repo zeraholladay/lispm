@@ -15,6 +15,8 @@
 #define STRING(str, lm)          (new (lm, TYPE_STRING, str))
 #define CONS(car, cdr, lm)       (new (lm, TYPE_CONS, car, cdr))
 #define LAMBDA(params, body, lm) (new (lm, TYPE_LAMBDA, params, body))
+#define CONTINUATION(stk, env, ctl, dmp, lm) \
+  (new (lm, TYPE_CONTINUATION, stk, env, ctl, dmp))
 
 // forward decls
 typedef struct cell Cell;
@@ -29,6 +31,7 @@ typedef enum
   TYPE_CONS,    // cons cells
   TYPE_THUNK,   // thunk fn
   TYPE_LAMBDA,  // user-defined fn
+  TYPE_CONTINUATION, // captured continuation
   TYPE_UNKNOWN, // unknown ptr
   _TYPE_END     // sentinel for end
 } TypeEnum;
@@ -61,6 +64,14 @@ typedef struct
   Cell *body;
 } Lambda;
 
+typedef struct
+{
+  size_t stk_sp;
+  size_t env_sp;
+  size_t ctl_sp;
+  size_t dmp_sp;
+} Continuation;
+
 struct cell
 {
   TypeEnum type;
@@ -75,6 +86,7 @@ struct cell
     // Function-like values
     ThunkEnum thunk;
     Lambda    lambda;
+    Continuation continuation;
   };
 };
 

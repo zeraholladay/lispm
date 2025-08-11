@@ -16,6 +16,12 @@ new (LM *lm, TypeEnum type, ...)
 
   switch (type)
     {
+    case TYPE_CONTINUATION:
+      c->continuation.stk_sp = va_arg (ap, size_t);
+      c->continuation.env_sp = va_arg (ap, size_t);
+      c->continuation.ctl_sp = va_arg (ap, size_t);
+      c->continuation.dmp_sp = va_arg (ap, size_t);
+      break;
     case TYPE_LAMBDA:
       c->lambda.params = va_arg (ap, Cell *);
       c->lambda.body   = va_arg (ap, Cell *);
