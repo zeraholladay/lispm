@@ -727,8 +727,6 @@ ctl_map_acc:
 static Cell *
 lm_eval (LM *lm)
 {
-  const size_t DELTA_SP = 256;  // temp: only GC if stack grew by >= 256
-  size_t last_sp  = lm->ctl.sp;
   size_t base_ptr = lm->ctl.sp;
   State  state;
 
@@ -740,11 +738,6 @@ lm_eval (LM *lm)
         {
           lm_reset (lm);
           return NIL;
-        }
-
-        if (lm->ctl.sp - last_sp >= DELTA_SP) {
-            lm_gc(lm);
-            last_sp = lm->ctl.sp;
         }
     }
   while (base_ptr <= lm->ctl.sp);
@@ -786,6 +779,24 @@ lm_destroy (LM *lm)
 Cell *
 lm_alloc_cell (LM *lm)
 {
+  // Try to allocate from any existing pool in the hierarchy first
+  for (Pool *cur = lm->pool; cur; cur = cur->next)
+    {
+      if (cur->free_list)
+        return pool_xalloc (cur);
+    }
+
+  // No free cells anywhere: run GC
+  lm_gc (lm);
+
+  // Retry allocation after GC
+  for (Pool *cur = lm->pool; cur; cur = cur->next)
+    {
+      if (cur->free_list)
+        return pool_xalloc (cur);
+    }
+
+  // Still nothing free: grow the pool hierarchy
   return pool_xalloc_hier (&lm->pool);
 }
 

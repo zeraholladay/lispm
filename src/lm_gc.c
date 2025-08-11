@@ -6,6 +6,14 @@
 #include "stack.h"
 
 static void
+gc_unmark_live_cb (Pool *p, void *ptr)
+{
+  (void)p;
+  if (!pool_gc_is_free (ptr))
+    pool_gc_unmark (ptr);
+}
+
+static void
 gc_mark_reachable (Stack *stack, Cell *root)
 {
   Cell *c;
@@ -251,6 +259,12 @@ gc_sweep (Pool *p, void *ptr)
 void
 lm_gc (LM *lm)
 {
+  // Unmark all live (non-free) cells to prepare for a fresh mark phase
+  pool_map_hier (lm->pool, gc_unmark_live_cb);
+
   gc_mark (lm);
   pool_map_hier (lm->pool, gc_sweep);
+
+  // Optionally clear marks again to keep invariant for next cycle
+  pool_map_hier (lm->pool, gc_unmark_live_cb);
 }
