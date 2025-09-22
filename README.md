@@ -75,6 +75,7 @@ Use `Ctrl+D` (EOF) to exit.
 * **NIL** — the empty list / false
 * **Symbols** — identifiers, e.g. `foo`
 * **Integers** — signed numbers, e.g. `42`, `-7`
+* **Floats** - signed floating points, e.g. `-42.0`
 * **Primitive functions** — built in C
 * **Lambda** — user-defined functions
 * **List** — linked cons cells (`Cell`)
@@ -204,6 +205,7 @@ NIL    ; ⇒ NIL (false)
 T      ; ⇒ T   (true)
 'foo   ; ⇒ foo (symbol)
 42     ; ⇒ 42  (integer)
+42.0   ; ⇒ -42.001 (float)
 ```
 
 ### `quote`
