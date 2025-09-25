@@ -21,6 +21,7 @@ static void appendf (StrBuf *str_sb, const char *fmt, ...);
 static void fmt_nil (StrBuf *, Cell *);
 static void fmt_symbol (StrBuf *, Cell *);
 static void fmt_integer (StrBuf *, Cell *);
+static void fmt_float (StrBuf *, Cell *);
 static void fmt_string (StrBuf *, Cell *);
 static void fmt_cons (StrBuf *, Cell *);
 static void fmt_thunk (StrBuf *, Cell *);
@@ -29,9 +30,10 @@ static void fmt_unknown (StrBuf *, Cell *);
 
 static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
   [TYPE_NIL] = fmt_nil,         [TYPE_SYMBOL] = fmt_symbol,
-  [TYPE_INTEGER] = fmt_integer, [TYPE_STRING] = fmt_string,
-  [TYPE_CONS] = fmt_cons,       [TYPE_THUNK] = fmt_thunk,
-  [TYPE_LAMBDA] = fmt_lambda,   [TYPE_UNKNOWN] = fmt_unknown,
+  [TYPE_INTEGER] = fmt_integer, [TYPE_FLOAT] = fmt_float,
+  [TYPE_STRING] = fmt_string,   [TYPE_CONS] = fmt_cons,
+  [TYPE_THUNK] = fmt_thunk,     [TYPE_LAMBDA] = fmt_lambda,
+  [TYPE_UNKNOWN] = fmt_unknown,
 };
 
 static void
@@ -98,6 +100,12 @@ void
 fmt_integer (StrBuf *sb, Cell *n)
 {
   appendf (sb, "%lld", n->integer);
+}
+
+void
+fmt_float (StrBuf *sb, Cell *n)
+{
+  appendf (sb, "%llf", n->_float);
 }
 
 void

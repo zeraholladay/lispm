@@ -14,6 +14,7 @@
 NL       \r?\n
 WS       [ \t]+
 NUM      -?[0-9]+
+FLOAT    -?[0-9]+\.[0-9]+
 ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
 
 %%
@@ -34,6 +35,10 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
   {NUM}           {
                     yylval.integer = atoll (yytext);
                     return INTEGER;
+                  }
+  {FLOAT}         {
+                    yylval._float = atof (yytext);
+                    return FLOAT;
                   }
   {ID}            {
                     // special types: not symbols

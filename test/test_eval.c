@@ -46,6 +46,12 @@ START_TEST (test_literal_expressions)
   eval_res = run_eval_progn ("-42");
   ck_assert (eval_res->integer == -42);
 
+  eval_res = run_eval_progn ("42.0");
+  ck_assert (eval_res->_float == 42.0);
+
+  eval_res = run_eval_progn ("-42.0");
+  ck_assert (eval_res->_float == -42.0);
+
   eval_res = run_eval_progn ("t");
   ck_assert_ptr_eq (eval_res, T);
 

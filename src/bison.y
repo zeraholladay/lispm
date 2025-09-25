@@ -27,6 +27,7 @@ void yyerror_handler (LM *lm, const char *s);
 %union
 {
   Integer integer;
+  Float _float;
   Cell *cell;
   struct {
     const char *str;
@@ -36,6 +37,7 @@ void yyerror_handler (LM *lm, const char *s);
 
 %token ERROR LAMBDA QUOTE
 %token <integer> INTEGER
+%token <_float> FLOAT
 %token <symbol>  IF DEFINE LET SET SYMBOL
 
 %type <cell>
@@ -112,6 +114,10 @@ form
     | INTEGER
       {
         $$ = INTEGER ($1, lm);
+      }
+    | FLOAT
+      {
+        $$ = FLOAT ($1, lm);
       }
     | '\'' form
       {

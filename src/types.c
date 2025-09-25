@@ -25,6 +25,10 @@ new (LM *lm, TypeEnum type, ...)
       c->integer = va_arg (ap, Integer);
       break;
 
+    case TYPE_FLOAT:
+      c->_float = va_arg (ap, Float);
+      break;
+
     case TYPE_CONS:
       c->cons.car = va_arg (ap, Cell *);
       c->cons.cdr = va_arg (ap, Cell *);

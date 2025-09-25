@@ -11,6 +11,7 @@
 #define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 
 #define INTEGER(integer, lm)     (new (lm, TYPE_INTEGER, integer))
+#define FLOAT(_float, lm)        (new (lm, TYPE_FLOAT, _float))
 #define SYMBOL(str, len, lm)     (new (lm, TYPE_SYMBOL, str, len))
 #define STRING(str, lm)          (new (lm, TYPE_STRING, str))
 #define CONS(car, cdr, lm)       (new (lm, TYPE_CONS, car, cdr))
@@ -24,6 +25,7 @@ typedef enum
 {
   TYPE_NIL,     // special constant
   TYPE_INTEGER, // literal number
+  TYPE_FLOAT,   // floating point number
   TYPE_SYMBOL,  // identifiers
   TYPE_STRING,  // literal string
   TYPE_CONS,    // cons cells
@@ -34,6 +36,7 @@ typedef enum
 } TypeEnum;
 
 typedef long long Integer;
+typedef double    Float;
 
 typedef struct
 {
@@ -68,6 +71,7 @@ struct cell
   {
     // Literal values
     Integer integer;
+    Float   _float;
     char   *string;
     Symbol  symbol;
     // Composite structures
