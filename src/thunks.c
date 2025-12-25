@@ -5,6 +5,7 @@
 
 #include "fmt.h"
 #include "lm.h"
+#include "parser.h"
 #include "prims.h"
 #include "thunks.h"
 

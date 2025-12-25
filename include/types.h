@@ -20,6 +20,16 @@
 // forward decls
 typedef struct cell Cell;
 
+// Parse location
+typedef struct l_type
+{
+  void **parser_ptr;
+  int    first_line;
+  int    first_column;
+  int    last_line;
+  int    last_column;
+} LType;
+
 // Cells
 typedef enum
 {
@@ -80,6 +90,7 @@ struct cell
     ThunkEnum thunk;
     Lambda    lambda;
   };
+  LType loc;
 };
 
 // cons iter

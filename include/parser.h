@@ -6,7 +6,13 @@
 #include "lm.h"
 #include "types.h"
 
-bool parser_buf (const char *input, Cell **ast_head, LM *lm);
-bool parser_stream (FILE *instrm, Cell **ast_head, LM *lm);
+void *parser_loads (const char *str, size_t len);
+void *parser_load (const char *fname);
+
+void parser_destroy (void);
+
+bool parser_parse_bytes (void *ptr, Cell **progn, LM *lm);
+
+void parser_print_loc (Cell *c);
 
 #endif

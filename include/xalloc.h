@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifndef SCRATCH_STACK_LIMIT
 #define SCRATCH_STACK_LIMIT 4096
@@ -40,6 +41,15 @@ xrealloc (void *ptr, size_t size)
   if (!ptr)
     return oom_handler_die (NULL, OOM_LOCATION);
   return ptr;
+}
+
+static inline char *
+xstrdup (const char *s)
+{
+  char *str = strdup (s);
+  if (!str)
+    return oom_handler_die (NULL, OOM_LOCATION);
+  return str;
 }
 
 typedef struct

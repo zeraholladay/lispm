@@ -1,4 +1,5 @@
 %option noyywrap
+%option bison-bridge bison-locations
 %option yylineno
 %option noinput
 %option nounput
@@ -9,6 +10,18 @@
 
 #include "bison.h"
 #include "str_intern.h"
+
+#define YY_USER_ACTION                            \
+    yylloc->first_line = yylloc->last_line;       \
+    yylloc->first_column = yylloc->last_column;   \
+    for (int i = 0; yytext[i] != '\0'; i++) {     \
+        if (yytext[i] == '\n') {                  \
+            yylloc->last_line++;                  \
+            yylloc->last_column = 1;              \
+        } else {                                  \
+            yylloc->last_column++;                \
+        }                                         \
+    }
 %}
 
 NL       \r?\n
@@ -33,7 +46,7 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     return '.';
                   }
   {NUM}           {
-                    yylval.integer = atoll (yytext);
+                    yylval->integer = atoll (yytext);
                     return INTEGER;
                   }
   {FLOAT}         {
@@ -47,8 +60,8 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     if (!strncasecmp ("QUOTE", yytext, yyleng + 1))
                       return QUOTE;
 
-                    yylval.symbol.len = yyleng;
-                    yylval.symbol.str = str_intern (yytext, yyleng);
+                    yylval->symbol.len = yyleng;
+                    yylval->symbol.str = str_intern (yytext, yyleng);
 
                     // special forms but still a symbol
                     if (!strncasecmp ("DEFINE", yytext, yyleng + 1))
@@ -63,12 +76,12 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     return SYMBOL;
                   }
   [+\-*/><]       {
-                    yylval.symbol.str = str_intern (yytext, yyleng);
-                    yylval.symbol.len = yyleng;
+                    yylval->symbol.str = str_intern (yytext, yyleng);
+                    yylval->symbol.len = yyleng;
                     return SYMBOL;
                   }
   {WS}            { /* ignore */ }
-  {NL}            { /* ignore */ }
+  {NL}            { /* handled by YY_USER_ACTION */ }
   ;[^\n]*         { /* ignore */ }
   .               {
                     return ERROR;

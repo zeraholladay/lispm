@@ -22,12 +22,18 @@ static void
 teardown (void)
 {
   lm_destroy (lm);
+  parser_destroy ();
 }
 
 static Cell *
 run_eval_progn (const char *input)
 {
-  ck_assert (parser_buf (input, &progn, lm));
+  size_t len = strlen (input);
+
+  void *bytes = parser_loads (input, len);
+  ck_assert (bytes);
+
+  ck_assert (parser_parse_bytes (bytes, &progn, lm));
   return lm_progn (lm, progn);
 }
 

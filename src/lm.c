@@ -9,6 +9,7 @@
 #include "lm_err.h"
 #include "lm_gc.h"
 #include "palloc.h"
+#include "parser.h"
 #include "prims.h"
 #include "thunks.h"
 #include "types.h"

@@ -26,9 +26,16 @@ repl (LM *lm)
       if (len < 0)
         break;
 
-      if (!parser_buf (input, &progn, lm))
+      void *bytes = parser_loads (input, len);
+      if (!bytes)
         {
-          perror ("Parse failed");
+          fputs ("Parse failed to load input\n", stderr);
+          continue;
+        }
+
+      if (!parser_parse_bytes (bytes, &progn, lm))
+        {
+          fputs ("Parse failed\n", stderr);
           continue;
         }
 
