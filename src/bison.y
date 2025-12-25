@@ -20,8 +20,6 @@ void yyerror_handler (const char *s);
 static inline LType
 ltype_from_yyltype(YYLTYPE p, void **parser_ptr)
 {
-  printf("first %d\nlast %d\n", p.first_line, p.last_line);
-
   return (LType){ .parser_ptr   = parser_ptr,
                   .first_line   = p.first_line,
                   .first_column = p.first_column,
@@ -94,7 +92,9 @@ forms
 form
     : '(' LAMBDA param_list forms ')'
       {
-        $$ = LIST1 (LAMBDA ($3, $4, lm), lm);
+        Cell *lambda = LAMBDA ($3, $4, lm);
+        lambda->loc = ltype_from_yyltype (@$, parser_ptr);
+        $$ = LIST1 (lambda, lm);
         $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }
     | '(' define symbol forms ')'
@@ -104,7 +104,10 @@ form
       }
     | '(' define '(' symbol symbol_list ')' forms ')'
       {
-        Cell *body = LIST1 (LAMBDA ($5, $7, lm), lm);
+        Cell *lambda = LAMBDA ($5, $7, lm);
+        lambda->loc = ltype_from_yyltype (@$, parser_ptr);
+        Cell *body = LIST1 (lambda, lm);
+        body->loc = ltype_from_yyltype (@$, parser_ptr);
         $$ = CONS ($2, CONS ($4, body, lm), lm);
         $$->loc = ltype_from_yyltype (@$, parser_ptr);
       }

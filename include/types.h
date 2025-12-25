@@ -20,7 +20,6 @@
 typedef struct cell Cell;
 
 // Parse location
-
 typedef struct l_type
 {
   void **parser_ptr;
