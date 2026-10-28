@@ -129,7 +129,16 @@ form
       }
     | '(' forms '.' form ')'
       {
-        $$ = CONS ($2, $4, lm);  // FIXME
+        if (NILP ($2))
+          $$ = $4;
+        else
+          {
+            Cell *tail = $2;
+            while (!NILP (CDR (tail)))
+              tail = CDR (tail);
+            RPLACD (tail, $4);
+            $$ = $2;
+          }
       }
     ;
 

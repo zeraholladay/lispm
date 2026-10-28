@@ -19,6 +19,7 @@ new (LM *lm, TypeEnum type, ...)
     case TYPE_LAMBDA:
       c->lambda.params = va_arg (ap, Cell *);
       c->lambda.body   = va_arg (ap, Cell *);
+      c->lambda.env    = NIL;
       break;
 
     case TYPE_INTEGER:

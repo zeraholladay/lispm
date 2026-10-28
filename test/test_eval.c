@@ -5,6 +5,8 @@
 
 #include "fmt.h"
 #include "lm.h"
+#include "lm_gc.h"
+#include "palloc.h"
 #include "parser.h"
 #include "prims.h"
 #include "repl.h"
@@ -87,6 +89,11 @@ START_TEST (test_quote)
   ck_assert (!NILP (cdr));
   ck_assert_str_eq (car->symbol.str, "foo");
   ck_assert_str_eq (CAR (cdr)->symbol.str, "bar");
+
+  eval_res = run_eval_progn ("'(a b . c)");
+  ck_assert_str_eq (CAR (eval_res)->symbol.str, "a");
+  ck_assert_str_eq (CADR (eval_res)->symbol.str, "b");
+  ck_assert_str_eq (CDDR (eval_res)->symbol.str, "c");
 }
 END_TEST
 
@@ -262,6 +269,9 @@ START_TEST (test_lambda)
   eval_res = run_eval_progn ("(define foo 'bar)"
                              "((lambda () foo))");
   ck_assert_str_eq (eval_res->symbol.str, "bar");
+
+  eval_res = run_eval_progn ("((let ((x 7)) (lambda () x)))");
+  ck_assert_int_eq (eval_res->integer, 7);
 }
 END_TEST
 
@@ -509,6 +519,12 @@ START_TEST (test_map_edge_cases)
   ck_assert_int_eq (CADR (r)->integer, 22);
   ck_assert_ptr_eq (CDDR (r), NIL);
 
+  r = run_eval_progn ("(map + 1)");
+  ck_assert_ptr_eq (r, NIL);
+
+  r = run_eval_progn ("(map (lambda (x) x) 'a)");
+  ck_assert_ptr_eq (r, NIL);
+
   // apply map via apply
   // r = run_eval_progn ("(apply map '( + (1 2 3) (4 5 6)))");
   // ck_assert_int_eq (CADR (r)->integer, 7);
@@ -529,6 +545,12 @@ START_TEST (test_error_arity)
   // cons with one arg → error
   r = run_eval_progn ("(cons 'a)");
   ck_assert (IS_INST (r, NIL));
+
+  r = run_eval_progn ("(define x 1 2)");
+  ck_assert_ptr_eq (r, NIL);
+
+  r = run_eval_progn ("(set! x 1 2)");
+  ck_assert_ptr_eq (r, NIL);
 }
 END_TEST
 
@@ -540,6 +562,43 @@ START_TEST (test_nested_let_lexical_scope)
                      "x";
   Cell       *r    = run_eval_progn (prog);
   ck_assert_int_eq (r->integer, 100);
+}
+END_TEST
+
+START_TEST (test_invalid_let_bindings)
+{
+  Cell *r = run_eval_progn ("(let ((x)) x)");
+  ck_assert_ptr_eq (r, NIL);
+
+  r = run_eval_progn ("(let ((x 1 2)) x)");
+  ck_assert_ptr_eq (r, NIL);
+}
+END_TEST
+
+START_TEST (test_parser_errors)
+{
+  Cell *ast = NULL;
+
+  ck_assert (!parser_buf ("(", &ast, lm));
+  ck_assert (!parser_buf (")", &ast, lm));
+  ck_assert (!parser_buf ("@", &ast, lm));
+}
+END_TEST
+
+START_TEST (test_gc_reclaims_unreachable_cells)
+{
+  Cell *live = run_eval_progn ("(define x 42)");
+  lm_gc (lm);
+  ck_assert (!pool_gc_is_free (live));
+
+  run_eval_progn ("(set! x 1)");
+  lm_gc (lm);
+  ck_assert (pool_gc_is_free (live));
+
+  Cell *floating = run_eval_progn ("(define y 42.0)");
+  lm_gc (lm);
+  ck_assert (!pool_gc_is_free (floating));
+  ck_assert_float_eq (floating->_float, 42.0);
 }
 END_TEST
 
@@ -594,6 +653,9 @@ eval_suite (void)
   tcase_add_test (tc, test_map_edge_cases);
   tcase_add_test (tc, test_error_arity);
   tcase_add_test (tc, test_nested_let_lexical_scope);
+  tcase_add_test (tc, test_invalid_let_bindings);
+  tcase_add_test (tc, test_parser_errors);
+  tcase_add_test (tc, test_gc_reclaims_unreachable_cells);
   tcase_add_test (tc, test_quote_edge);
   // tcase_add_test (tc, test_string_literals);
 

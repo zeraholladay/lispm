@@ -64,45 +64,22 @@ rl_init (void)
 int
 rl_readline (char *full_input, size_t n)
 {
-  size_t len  = 0;
-  char  *line = NULL;
+  char *line = readline ("> ");
 
-  full_input[0] = '\0';
+  if (!line)
+    return -1;
 
-  do
+  size_t len = strlen (line);
+  if (len >= n)
     {
-      if (line)
-        {
-          free (line);
-          line = NULL;
-        }
-
-      line = readline (len == 0 ? "> " : "... ");
-
-      if (!line)
-        return -1;
-
-      size_t line_len = strlen (line);
-
-      if (len + line_len + 2 >= n)
-        {
-          free (line);
-          return -1;
-        }
-
-      if (len > 0)
-        {
-          full_input[len++] = '\n';
-        }
-
-      strcpy (&full_input[len], line);
-      len += line_len;
+      free (line);
+      return -1;
     }
-  while (len == 0 || full_input[len - 1] != '\n');
 
-  if (full_input[0])
+  strcpy (full_input, line);
+
+  if (len > 0)
     {
-      full_input[--len] = '\0'; // delete last newline
       add_history (full_input);
     }
 

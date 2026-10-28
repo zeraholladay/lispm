@@ -62,6 +62,7 @@ typedef struct
 {
   Cell *params;
   Cell *body;
+  Cell *env;
 } Lambda;
 
 struct cell

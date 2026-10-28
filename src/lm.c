@@ -91,6 +91,37 @@ ctl_push_states (LM *lm, const State sts[], size_t n)
   return true;
 }
 
+static Cell *
+lambda_capture (LM *lm, Cell *lambda)
+{
+  Cell *env  = NIL;
+  Cell *tail = NIL;
+
+  for (size_t i = 0; i < lm->env.sp; ++i)
+    {
+      DictIter    iter = dict_iter (lm->env.dict[i]);
+      DictEntity *entity;
+
+      while ((entity = dict_items (&iter)))
+        {
+          Cell *sym  = SYMBOL (entity->key, entity->len, lm);
+          Cell *pair = CONS (sym, entity->val, lm);
+          Cell *node = LIST1 (pair, lm);
+
+          if (NILP (env))
+            env = node;
+          else
+            RPLACD (tail, node);
+
+          tail = node;
+        }
+    }
+
+  Cell *closure = LAMBDA (lambda->lambda.params, lambda->lambda.body, lm);
+  closure->lambda.env = env;
+  return closure;
+}
+
 static bool
 dump_push (LM *lm)
 {
@@ -202,7 +233,7 @@ ctl_eval:
 
         // Lambda is an AST-type.
         if (IS_INST (car, LAMBDA))
-          return stk_push (lm, car);
+          return stk_push (lm, lambda_capture (lm, car));
 
         return ctl_push_state (lm, S (eval_apply, .fn = car, .arglist = cdr));
       }
@@ -335,7 +366,19 @@ ctl_lambda:
         return lm_err_bool (lm, err, "lambda");
       }
 
-    Cell *pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
+    Cell *pairs = lambda->env;
+
+    while (!NILP (pairs))
+      {
+        Cell *pair = CAR (pairs);
+
+        if (!lm_env_define (lm, CAR (pair), CDR (pair)))
+          return false;
+
+        pairs = CDR (pairs);
+      }
+
+    pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
 
     while (!NILP (pairs))
       {
@@ -362,7 +405,7 @@ ctl_let:
       {
         Cell *pair = CAR (pairs);
 
-        if (!CONSP (pair))
+        if (!CONSP (pair) || !CONSP (CDR (pair)) || !NILP (CDDR (pair)))
           return lm_err_bool (lm, ERR_INVALID_ARG, "let: binding not a list");
 
         rev_vars  = CONS (CAR (pair), rev_vars, lm);
@@ -379,7 +422,8 @@ ctl_let:
         (State[]){
             S (evlis, .acc = NIL, .arglist = exprs),
             S (closure_enter),
-            S (lambda, .fn = LAMBDA (vars, progn, lm), .arglist = NULL),
+            S (lambda, .fn = lambda_capture (lm, LAMBDA (vars, progn, lm)),
+               .arglist = NULL),
             S (closure_leave),
         },
         4);
@@ -393,7 +437,8 @@ ctl_define:
     if (!cdr)
       return false;
 
-    // TODO: validate pop & check cdr len
+    if (!CONSP (cdr) || !NILP (CDR (cdr)))
+      return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "define");
 
     if (!lm_env_define (lm, sym, CAR (cdr)))
       return false;
@@ -409,7 +454,8 @@ ctl_set:
     if (!cdr)
       return false;
 
-    // TODO: check cdr len
+    if (!CONSP (cdr) || !NILP (CDR (cdr)))
+      return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "set!");
 
     if (!lm_env_set (lm, sym, CAR (cdr)))
       return false;
@@ -506,6 +552,9 @@ ctl_lispm:
             3);
 
       case THUNK_DEFINE:
+        if (!CONSP (arglist) || !CONSP (CDR (arglist))
+            || !NILP (CDDR (arglist)))
+          return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "define");
         return ctl_push_states (
             lm,
             (State[]){
@@ -515,6 +564,9 @@ ctl_lispm:
             2);
 
       case THUNK_SET:
+        if (!CONSP (arglist) || !CONSP (CDR (arglist))
+            || !NILP (CDDR (arglist)))
+          return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "set!");
         return ctl_push_states (
             lm,
             (State[]){
@@ -675,6 +727,10 @@ ctl_map:
 
     if (!arglist && !(arglist = stk_pop (lm)))
       return false;
+
+    for (Cell *lists = arglist; !NILP (lists); lists = CDR (lists))
+      if (!LISTP (CAR (lists)))
+        return lm_err_bool (lm, ERR_ARG_TYPE_MISMATCH, "map: not a list");
 
     Cell *ziplst = zip (lm, arglist);
 

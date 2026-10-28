@@ -28,9 +28,11 @@ gc_mark_reachable (Stack *stack, Cell *root)
         case TYPE_LAMBDA:
           stack_push (stack, c->lambda.body);
           stack_push (stack, c->lambda.params);
+          stack_push (stack, c->lambda.env);
           break;
 
         case TYPE_INTEGER:
+        case TYPE_FLOAT:
         case TYPE_STRING:
         case TYPE_SYMBOL:
         case TYPE_NIL:
@@ -248,9 +250,17 @@ gc_sweep (Pool *p, void *ptr)
     pool_free (p, c);
 }
 
+static void
+gc_unmark (Pool *p, void *ptr)
+{
+  (void)p;
+  pool_gc_unmark (ptr);
+}
+
 void
 lm_gc (LM *lm)
 {
+  pool_map_hier (lm->pool, gc_unmark);
   gc_mark (lm);
   pool_map_hier (lm->pool, gc_sweep);
 }
