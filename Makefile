@@ -118,5 +118,4 @@ bin:
 # clean
 .PHONY: clean
 clean:
-	-@rm -rf $(FLEX_C) $(BISON_C) $(BISON_H) $(GPERF_C) $(BIN)/* $(GEN)/*
-	-@rmdir $(BIN) $(GEN)
+	@rm -rf $(BIN) $(GEN)

@@ -81,6 +81,11 @@ START_TEST (test_intern_boundaries)
 
   size_t len   = STR_INTERN_BUMP_SIZE * 2;
   char  *large = malloc (len + 1);
+  if (!large)
+    {
+      ck_abort_msg ("Unable to allocate the large-symbol test buffer");
+      return;
+    }
   memset (large, 'z', len);
   large[len] = '\0';
   saved      = str_intern (large, len);
