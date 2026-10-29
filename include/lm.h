@@ -64,6 +64,9 @@ typedef struct lm
   struct
   {
     size_t sp;
+    // Peak pending-state count for the latest lm_progn call. Tail recursion
+    // should leave this bounded as the number of iterations increases.
+    size_t high_water;
     State  states[LISPM_CTL_MAX];
   } ctl;
   Pool *pool;

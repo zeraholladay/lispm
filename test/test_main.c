@@ -19,6 +19,7 @@ extern Suite *env_suite (void);
 extern Suite *eval_suite (void);
 extern Suite *eval_math_suite (void);
 extern Suite *eval_bool_suite (void);
+extern Suite *tail_call_suite (void);
 
 int
 main (void)
@@ -40,6 +41,7 @@ main (void)
   srunner_add_suite (sr, eval_suite ());
   srunner_add_suite (sr, eval_math_suite ());
   srunner_add_suite (sr, eval_bool_suite ());
+  srunner_add_suite (sr, tail_call_suite ());
 
   srunner_run_all (sr, CK_NORMAL);
   int failed = srunner_ntests_failed (sr);

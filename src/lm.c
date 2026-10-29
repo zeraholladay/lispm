@@ -57,12 +57,17 @@ ctl_push_state (LM *lm, State st)
     return lm_err_null (lm, ERR_OVERFLOW, "ctl_push_state");
 
   lm->ctl.states[lm->ctl.sp++] = st;
+  // Record peak depth, not just the empty stack seen after a call returns.
+  // Tests compare this value for short and long tail-recursive runs.
+  if (lm->ctl.sp > lm->ctl.high_water)
+    lm->ctl.high_water = lm->ctl.sp;
   return true;
 }
 
 static inline bool
 ctl_push_states (LM *lm, const State sts[], size_t n)
 {
+  // The control stack is LIFO: push in reverse so sts[0] executes first.
   while (n-- > 0)
     {
       if (!ctl_push_state (lm, sts[n]))
@@ -113,6 +118,8 @@ lm_eval_switch (LM *lm, StateEnum s, Union u)
 
 ctl_closure_enter:
   {
+    // Tail calls reuse a return continuation, not the caller's bindings.
+    // A fresh frame lets closures keep observing the old frame unchanged.
     assert (IS_INST (u.closure_enter.fn->lambda.env, ENV));
     lm->env.current = ENV (u.closure_enter.fn->lambda.env, lm);
     return true;
@@ -120,6 +127,8 @@ ctl_closure_enter:
 
 ctl_closure_leave:
   {
+    // This is a return continuation: restore the environment of the code
+    // that will resume next. GC owns the departed frame's lifetime.
     lm->env.current = u.closure_leave.env;
     return true;
   }
@@ -271,13 +280,32 @@ ctl_funcall:
         }
 
     if (IS_INST (fn, LAMBDA))
-      return ctl_push_states (lm,
-                              (State[]){
-                                  S (closure_enter, .fn = fn),
-                                  S (lambda, .fn = fn, .arglist = arglist),
-                                  S (closure_leave, .env = lm->env.current),
-                              },
-                              3);
+      {
+        // Tail position is encoded by the next continuation. If it is a
+        // closure_leave, the current function has no work left after this
+        // call. Any older caller's work remains BELOW that return state.
+        //
+        // For f tail-calling g, execution order is:
+        //   enter g -> run g -> existing return to f's caller
+        // rather than:
+        //   enter g -> run g -> return to f -> return to f's caller
+        //
+        // Calls in arguments, predicates, or non-final body expressions
+        // have other continuation states on top, so they keep their return.
+        bool tail = lm->ctl.sp > 0
+                    && lm->ctl.states[lm->ctl.sp - 1].s == s_closure_leave;
+        if (!tail
+            && !ctl_push_state (lm, S (closure_leave, .env = lm->env.current)))
+          return false;
+
+        // Leave the existing return in place for a tail call. Both cases
+        // enter a fresh frame, then bind arguments and evaluate the body.
+        return ctl_push_states (
+            lm,
+            (State[]){ S (closure_enter, .fn = fn),
+                       S (lambda, .fn = fn, .arglist = arglist) },
+            2);
+      }
 
     return lm_err_bool (lm, ERR_NOT_A_FN, "funcall");
   }
@@ -348,14 +376,16 @@ ctl_let:
     Cell *exprs   = reverse_inplace (rev_exprs);
     Cell *closure = lambda_capture (lm, LAMBDA (vars, progn, lm));
 
-    return ctl_push_states (lm,
-                            (State[]){
-                                S (evlis, .acc = NIL, .arglist = exprs),
-                                S (closure_enter, .fn = closure),
-                                S (lambda, .fn = closure, .arglist = NULL),
-                                S (closure_leave, .env = lm->env.current),
-                            },
-                            4);
+    // Treat (let ((x init) ...) body ...) as a synthetic lambda call.
+    // evlis evaluates the initializers before any new frame is entered;
+    // its result is popped by funcall because .arglist is NULL here.
+    // Going through funcall lets a tail-position let reuse the same return
+    // continuation as any other call, rather than adding a restore state.
+    return ctl_push_states (
+        lm,
+        (State[]){ S (evlis, .acc = NIL, .arglist = exprs),
+                   S (funcall, .fn = closure, .arglist = NULL) },
+        2);
   }
 
 ctl_define:
@@ -424,6 +454,13 @@ ctl_progn:
 
     if (NILP (arglist))
       return stk_push (lm, res);
+
+    // Earlier expressions need progn_eval to discard their result and
+    // continue. The last expression's result IS the sequence's result, so
+    // evaluate it without leaving a sequencing continuation on the stack.
+    // This exposes the enclosing return state to any call in that expression.
+    if (NILP (CDR (arglist)))
+      return ctl_push_state (lm, S (eval, .expr = CAR (arglist)));
 
     return ctl_push_states (
         lm,
@@ -610,6 +647,11 @@ ctl_and:
     if (NILP (arglist))
       return stk_push (lm, T);
 
+    // No truth test is needed after the last operand: and returns its value
+    // unchanged. Omitting and_cont here preserves the enclosing tail position.
+    if (NILP (CDR (arglist)))
+      return ctl_push_state (lm, S (eval, .expr = CAR (arglist)));
+
     return ctl_push_states (lm,
                             (State[]){
                                 S (eval, .expr = CAR (arglist)),
@@ -634,12 +676,8 @@ ctl_and_cont:
     if (NILP (cdr))
       return stk_push (lm, res);
 
-    return ctl_push_states (lm,
-                            (State[]){
-                                S (eval, .expr = CAR (cdr)),
-                                S (and_cont, .arglist = cdr),
-                            },
-                            2);
+    // Re-enter and so its last-operand case can drop the truth-test state.
+    return ctl_push_state (lm, S (and, .arglist = cdr));
   }
 
 ctl_or:
@@ -648,6 +686,11 @@ ctl_or:
 
     if (NILP (arglist))
       return stk_push (lm, NIL);
+
+    // Like and, or returns its final operand unchanged. Earlier operands
+    // still need or_cont to short-circuit on the first non-NIL result.
+    if (NILP (CDR (arglist)))
+      return ctl_push_state (lm, S (eval, .expr = CAR (arglist)));
 
     return ctl_push_states (lm,
                             (State[]){
@@ -673,12 +716,8 @@ ctl_or_cont:
     if (NILP (cdr))
       return stk_push (lm, res);
 
-    return ctl_push_states (lm,
-                            (State[]){
-                                S (eval, .expr = CAR (cdr)),
-                                S (or_cont, .arglist = cdr),
-                            },
-                            2);
+    // Re-enter or so the last operand is evaluated without an or_cont.
+    return ctl_push_state (lm, S (or, .arglist = cdr));
   }
 
 ctl_map:
@@ -752,8 +791,11 @@ lm_eval (LM *lm)
 
   do
     {
+      // A primitive can push NIL and set err_bool while its VM step itself
+      // succeeds. Check again AFTER the step: a tail-position primitive may
+      // be the final step, with no later continuation to notice the error.
       if (lm->err_bool || !ctl_pop (lm, &state)
-          || !lm_eval_switch (lm, state.s, state.u))
+          || !lm_eval_switch (lm, state.s, state.u) || lm->err_bool)
         {
           lm_reset (lm);
           return NIL;
@@ -813,6 +855,8 @@ lm_alloc_cell (LM *lm)
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
+  // Measure each evaluation separately, including its initial progn state.
+  lm->ctl.high_water = lm->ctl.sp;
   if (!ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
     {
       lm_reset (lm);
