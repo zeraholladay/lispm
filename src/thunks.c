@@ -1,3 +1,5 @@
+#include <limits.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -177,175 +179,245 @@ thunk_not (LM *lm, Cell *fn, Cell *arglist)
   return CAR (arglist) == NIL ? T : NIL;
 }
 
-// math fns
+typedef enum
+{
+  NUM_ADD,
+  NUM_SUB,
+  NUM_MUL,
+  NUM_DIV,
+} NumericOp;
+
+typedef struct
+{
+  bool    is_float;
+  Integer integer;
+  Float   _float;
+} Number;
+
+static bool
+number_from_cell (LM *lm, Cell *fn, Cell *cell, Number *number)
+{
+  if (IS_INST (cell, INTEGER))
+    {
+      *number = (Number){ .integer = cell->integer };
+      return true;
+    }
+
+  if (IS_INST (cell, FLOAT))
+    {
+      *number = (Number){ .is_float = true, ._float = cell->_float };
+      return true;
+    }
+
+  lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "%s: not a number",
+              thunk_get_name (fn));
+  return false;
+}
+
+static Float
+number_as_float (Number number)
+{
+  return number.is_float ? number._float : (Float)number.integer;
+}
+
+static Cell *
+number_to_cell (LM *lm, Number number)
+{
+  return number.is_float ? FLOAT (number._float, lm)
+                         : INTEGER (number.integer, lm);
+}
+
+static bool
+number_apply (LM *lm, Cell *fn, Number *total, Number item, NumericOp op)
+{
+  if (total->is_float || item.is_float)
+    {
+      Float lhs = number_as_float (*total);
+      Float rhs = number_as_float (item);
+
+      if (op == NUM_DIV && rhs == 0.0)
+        {
+          lm_err_nil (lm, ERR_DIVISION_BY_0, "%s: argument is zero",
+                      thunk_get_name (fn));
+          return false;
+        }
+
+      total->is_float = true;
+      switch (op)
+        {
+        case NUM_ADD:
+          total->_float = lhs + rhs;
+          break;
+        case NUM_SUB:
+          total->_float = lhs - rhs;
+          break;
+        case NUM_MUL:
+          total->_float = lhs * rhs;
+          break;
+        case NUM_DIV:
+          total->_float = lhs / rhs;
+          break;
+        }
+
+      if (!isfinite (total->_float))
+        {
+          lm_err_nil (lm, ERR_OVERFLOW, "%s", thunk_get_name (fn));
+          return false;
+        }
+
+      return true;
+    }
+
+  bool overflow = false;
+  switch (op)
+    {
+    case NUM_ADD:
+      overflow = __builtin_add_overflow (total->integer, item.integer,
+                                         &total->integer);
+      break;
+    case NUM_SUB:
+      overflow = __builtin_sub_overflow (total->integer, item.integer,
+                                         &total->integer);
+      break;
+    case NUM_MUL:
+      overflow = __builtin_mul_overflow (total->integer, item.integer,
+                                         &total->integer);
+      break;
+    case NUM_DIV:
+      if (item.integer == 0)
+        {
+          lm_err_nil (lm, ERR_DIVISION_BY_0, "%s: argument is zero",
+                      thunk_get_name (fn));
+          return false;
+        }
+      overflow = total->integer == LLONG_MIN && item.integer == -1;
+      if (!overflow)
+        total->integer /= item.integer;
+      break;
+    }
+
+  if (overflow)
+    {
+      lm_err_nil (lm, ERR_OVERFLOW, "%s", thunk_get_name (fn));
+      return false;
+    }
+
+  return true;
+}
+
+static Cell *
+thunk_arithmetic (LM *lm, Cell *fn, Cell *arglist, NumericOp op)
+{
+  Number total = { .integer = (op == NUM_MUL) ? 1 : 0 };
+
+  if ((op == NUM_SUB || op == NUM_DIV) && NILP (arglist))
+    return lm_err_nil (lm, ERR_MISSING_ARG, "%s", thunk_get_name (fn));
+
+  ConsIter iter = cons_iter (arglist);
+  if (op == NUM_SUB || op == NUM_DIV)
+    {
+      if (!number_from_cell (lm, fn, cons_next (&iter), &total))
+        return NIL;
+
+      if (op == NUM_SUB && NILP (iter.cur))
+        {
+          if (total.is_float)
+            total._float = -total._float;
+          else if (__builtin_sub_overflow ((Integer)0, total.integer,
+                                           &total.integer))
+            return lm_err_nil (lm, ERR_OVERFLOW, "%s", thunk_get_name (fn));
+          return number_to_cell (lm, total);
+        }
+    }
+
+  for (Cell *item; (item = cons_next (&iter));)
+    {
+      Number number;
+      if (!number_from_cell (lm, fn, item, &number)
+          || !number_apply (lm, fn, &total, number, op))
+        return NIL;
+    }
+
+  return number_to_cell (lm, total);
+}
+
+static Cell *
+thunk_compare (LM *lm, Cell *fn, Cell *arglist,
+               bool (*compare) (Number, Number))
+{
+  if (NILP (arglist))
+    return lm_err_nil (lm, ERR_MISSING_ARG, "%s", thunk_get_name (fn));
+
+  ConsIter iter = cons_iter (arglist);
+  Number   prev;
+  if (!number_from_cell (lm, fn, cons_next (&iter), &prev))
+    return NIL;
+
+  for (Cell *item; (item = cons_next (&iter));)
+    {
+      Number next;
+      if (!number_from_cell (lm, fn, item, &next))
+        return NIL;
+
+      if (!compare (prev, next))
+        return NIL;
+
+      prev = next;
+    }
+
+  return T;
+}
+
+static bool
+number_gt (Number lhs, Number rhs)
+{
+  return (lhs.is_float || rhs.is_float)
+             ? number_as_float (lhs) > number_as_float (rhs)
+             : lhs.integer > rhs.integer;
+}
+
+static bool
+number_lt (Number lhs, Number rhs)
+{
+  return (lhs.is_float || rhs.is_float)
+             ? number_as_float (lhs) < number_as_float (rhs)
+             : lhs.integer < rhs.integer;
+}
 
 Cell *
 thunk_gt (LM *lm, Cell *fn, Cell *arglist)
 {
-  (void)lm;
-  (void)fn;
-
-  if (arglist == NIL)
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "lt: not a list");
-
-  ConsIter iter = cons_iter (arglist);
-  Cell    *item = cons_next (&iter);
-
-  if (!IS_INST (item, INTEGER))
-    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: not an integer");
-
-  Cell *prev = INTEGER (item->integer, lm);
-  Cell *next = cons_next (&iter);
-
-  if (!next)
-    return T;
-  do
-    {
-      if (!IS_INST (next, INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: not an integer");
-      if (prev->integer <= next->integer)
-        return NIL;
-    }
-  while ((next = cons_next (&iter)));
-
-  return T;
+  return thunk_compare (lm, fn, arglist, number_gt);
 }
 
 Cell *
 thunk_lt (LM *lm, Cell *fn, Cell *arglist)
 {
-  (void)lm;
-  (void)fn;
-
-  if (arglist == NIL)
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "lt: not a list");
-
-  ConsIter iter = cons_iter (arglist);
-  Cell    *item = cons_next (&iter);
-
-  if (!IS_INST (item, INTEGER))
-    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: not an integer");
-
-  Cell *prev = INTEGER (item->integer, lm);
-  Cell *next = cons_next (&iter);
-
-  if (!next)
-    return T;
-  do
-    {
-      if (!IS_INST (next, INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "lt: not an integer");
-      if (prev->integer >= next->integer)
-        return NIL;
-    }
-  while ((next = cons_next (&iter)));
-
-  return T;
+  return thunk_compare (lm, fn, arglist, number_lt);
 }
 
-// TODO: check for over/underflow someday
 Cell *
 thunk_add (LM *lm, Cell *fn, Cell *arglist)
 {
-  (void)fn;
-
-  Cell *total = INTEGER (0, lm);
-  Cell *item;
-
-  for (ConsIter iter = cons_iter (arglist); (item = cons_next (&iter));)
-    {
-      if (!IS_INST (item, INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "add: not an integer");
-      total->integer += item->integer;
-    }
-
-  return total;
+  return thunk_arithmetic (lm, fn, arglist, NUM_ADD);
 }
 
 Cell *
 thunk_sub (LM *lm, Cell *fn, Cell *arglist)
 {
-  (void)fn;
-
-  if (arglist == NIL)
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "sub: not a list");
-
-  ConsIter iter = cons_iter (arglist);
-  Cell    *item = cons_next (&iter);
-
-  if (!IS_INST (item, INTEGER))
-    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "sub: not an integer");
-
-  Cell *res = INTEGER (item->integer, lm);
-  Cell *cdr = cons_next (&iter);
-
-  if (!cdr)
-    {
-      res->integer *= -1; // negate if only one arg
-      return res;
-    }
-  do
-    {
-      if (!IS_INST (cdr, INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "sub: not an integer");
-      res->integer -= cdr->integer;
-    }
-  while ((cdr = cons_next (&iter)));
-
-  return res;
+  return thunk_arithmetic (lm, fn, arglist, NUM_SUB);
 }
 
 Cell *
 thunk_mul (LM *lm, Cell *fn, Cell *arglist)
 {
-  (void)fn;
-
-  Cell *total = INTEGER (1, lm);
-  Cell *item;
-
-  for (ConsIter iter = cons_iter (arglist); (item = cons_next (&iter));)
-    {
-      if (!IS_INST (item, INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "mul: not an integer");
-      total->integer *= item->integer;
-    }
-
-  return total;
+  return thunk_arithmetic (lm, fn, arglist, NUM_MUL);
 }
 
 Cell *
 thunk_div (LM *lm, Cell *fn, Cell *arglist)
 {
-  (void)fn;
-
-  if (arglist == NIL)
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "div: not a list");
-
-  ConsIter iter = cons_iter (arglist);
-  Cell    *item = cons_next (&iter);
-
-  if (!IS_INST (item, INTEGER))
-    return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "div: not an integer");
-
-  Cell *res = INTEGER (item->integer, lm);
-  Cell *cdr = cons_next (&iter);
-
-  if (!cdr)
-    {
-      res->integer /= 1;
-      return res;
-    }
-  do
-    {
-      if (!IS_INST (cdr, INTEGER))
-        return lm_err_nil (lm, ERR_ARG_TYPE_MISMATCH, "div: not an integer");
-      if (cdr->integer == 0)
-        return lm_err_nil (lm, ERR_DIVISION_BY_0, "div: argument is zero");
-      res->integer /= cdr->integer;
-    }
-  while ((cdr = cons_next (&iter)));
-
-  return res;
+  return thunk_arithmetic (lm, fn, arglist, NUM_DIV);
 }
 
 static const Thunk thunk_table[_THUNK_END] = {
