@@ -33,7 +33,7 @@ static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
   [TYPE_INTEGER] = fmt_integer, [TYPE_FLOAT] = fmt_float,
   [TYPE_STRING] = fmt_string,   [TYPE_CONS] = fmt_cons,
   [TYPE_THUNK] = fmt_thunk,     [TYPE_LAMBDA] = fmt_lambda,
-  [TYPE_UNKNOWN] = fmt_unknown,
+  [TYPE_UNKNOWN] = fmt_unknown, [TYPE_ENV] = fmt_unknown,
 };
 
 static void
@@ -105,7 +105,7 @@ fmt_integer (StrBuf *sb, Cell *n)
 void
 fmt_float (StrBuf *sb, Cell *n)
 {
-  appendf (sb, "%llf", n->_float);
+  appendf (sb, "%f", n->_float);
 }
 
 void
@@ -130,17 +130,14 @@ fmt_cons (StrBuf *sb, Cell *n)
           char *s = format (car);
           appendf (sb, "%s", s);
           free (s);
-          if (CAR (cdr))
+          if (CONSP (cdr))
             appendf (sb, " ");
         }
     }
 
-  if (sb->str[sb->used - 1] == ' ')
-    sb->used--;
-
   if (!NILP (cur))
     {
-      appendf (sb, ".");
+      appendf (sb, " . ");
       char *s = format (cur);
       appendf (sb, "%s", s);
       free (s);
@@ -170,7 +167,7 @@ fmt_lambda (StrBuf *sb, Cell *n)
 void
 fmt_unknown (StrBuf *sb, Cell *n)
 {
-  appendf (sb, "#<UNKNOWN %X>", n);
+  appendf (sb, "#<UNKNOWN %p>", (void *)n);
 }
 
 char *

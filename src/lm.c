@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -40,27 +41,6 @@ stk_push (LM *lm, Cell *val)
 }
 
 static inline bool
-enter_frame (LM *lm)
-{
-  if (lm->env.sp >= LISPM_ENV_MAX)
-    return lm_err_bool (lm, ERR_OVERFLOW, "enter_frame");
-
-  lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
-  return true;
-}
-
-static inline bool
-leave_frame (LM *lm)
-{
-  if (lm->env.sp == 0)
-    return lm_err_bool (lm, ERR_UNDERFLOW, "leave_frame");
-
-  lm->env.sp--;
-  dict_destroy (lm->env.dict[lm->env.sp]);
-  return true;
-}
-
-static inline bool
 ctl_pop (LM *lm, State *out)
 {
   if (lm->ctl.sp == 0)
@@ -77,12 +57,17 @@ ctl_push_state (LM *lm, State st)
     return lm_err_null (lm, ERR_OVERFLOW, "ctl_push_state");
 
   lm->ctl.states[lm->ctl.sp++] = st;
+  // Record peak depth, not just the empty stack seen after a call returns.
+  // Tests compare this value for short and long tail-recursive runs.
+  if (lm->ctl.sp > lm->ctl.high_water)
+    lm->ctl.high_water = lm->ctl.sp;
   return true;
 }
 
 static inline bool
 ctl_push_states (LM *lm, const State sts[], size_t n)
 {
+  // The control stack is LIFO: push in reverse so sts[0] executes first.
   while (n-- > 0)
     {
       if (!ctl_push_state (lm, sts[n]))
@@ -91,37 +76,12 @@ ctl_push_states (LM *lm, const State sts[], size_t n)
   return true;
 }
 
-static bool
-dump_push (LM *lm)
+static Cell *
+lambda_capture (LM *lm, Cell *lambda)
 {
-  if ((lm)->dmp.sp >= LISPM_DMP_MAX)
-    return false;
-
-  lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
-                                          .env_sp = lm->env.sp,
-                                          .ctl_sp = lm->ctl.sp };
-  if (!enter_frame (lm))
-    return false;
-
-  return true;
-}
-
-static bool
-dump_pop (LM *lm)
-{
-  if (lm->dmp.sp == 0)
-    return false;
-
-  Dump dump = lm->dmp.dumps[--lm->dmp.sp];
-
-  lm->stk.sp = dump.stk_sp;
-  lm->env.sp = dump.env_sp;
-  lm->ctl.sp = dump.ctl_sp;
-
-  if (!leave_frame (lm))
-    return false;
-
-  return true;
+  Cell *closure = LAMBDA (lambda->lambda.params, lambda->lambda.body, lm);
+  closure->lambda.env = lm->env.current;
+  return closure;
 }
 
 static void
@@ -130,20 +90,14 @@ lm_reset (LM *lm)
   fprintf (stderr,
            "Registers:\n"
            "  stk: %zu\n"
-           "  env: %zu\n"
-           "  ctl: %zu\n"
-           "  dmp: %zu\n",
-           lm->stk.sp, lm->env.sp, lm->ctl.sp, lm->dmp.sp);
+           "  env: %p\n"
+           "  ctl: %zu\n",
+           lm->stk.sp, (void *)lm->env.current, lm->ctl.sp);
 
-  // Destroy every frame except the reserved global at index 0
-  for (size_t i = 1; i < lm->env.sp; ++i)
-    dict_destroy (lm->env.dict[i]);
-
-  // Reset stack pointers
-  lm->stk.sp = 0;
-  lm->env.sp = 1; // save global env
-  lm->ctl.sp = 0;
-  lm->dmp.sp = 0;
+  // Reset stack pointers and restore the permanent global frame.
+  lm->stk.sp      = 0;
+  lm->env.current = lm->env.global;
+  lm->ctl.sp      = 0;
 
   lm->err_bool = false;
 }
@@ -164,12 +118,19 @@ lm_eval_switch (LM *lm, StateEnum s, Union u)
 
 ctl_closure_enter:
   {
-    return enter_frame (lm);
+    // Tail calls reuse a return continuation, not the caller's bindings.
+    // A fresh frame lets closures keep observing the old frame unchanged.
+    assert (IS_INST (u.closure_enter.fn->lambda.env, ENV));
+    lm->env.current = ENV (u.closure_enter.fn->lambda.env, lm);
+    return true;
   }
 
 ctl_closure_leave:
   {
-    return leave_frame (lm);
+    // This is a return continuation: restore the environment of the code
+    // that will resume next. GC owns the departed frame's lifetime.
+    lm->env.current = u.closure_leave.env;
+    return true;
   }
 
 ctl_eval:
@@ -183,6 +144,11 @@ ctl_eval:
     if (IS_INST (expr, SYMBOL))
       return stk_push (lm, lm_env_lookup (lm, expr));
 
+    // Named definitions contain a bare lambda AST; anonymous lambdas are
+    // wrapped.
+    if (IS_INST (expr, LAMBDA) && NILP (expr->lambda.env))
+      return stk_push (lm, lambda_capture (lm, expr));
+
     // Literals
     if (!LISTP (expr))
       return stk_push (lm, expr);
@@ -193,16 +159,24 @@ ctl_eval:
         if (NILP (expr))
           return stk_push (lm, NIL);
 
+        if (!proper_list_p (expr))
+          return lm_err_bool (lm, ERR_INVALID_ARG, "eval: improper call form");
+
         Cell *car = CAR (expr);
         Cell *cdr = CDR (expr);
 
         // quote is a special symbol.
         if (car == QUOTE)
-          return stk_push (lm, CAR (cdr));
+          {
+            if (length (cdr) != 1)
+              return lm_err_bool (lm, ERR_INVALID_ARG_LEN,
+                                  "quote: expected one argument");
+            return stk_push (lm, CAR (cdr));
+          }
 
         // Lambda is an AST-type.
         if (IS_INST (car, LAMBDA))
-          return stk_push (lm, car);
+          return stk_push (lm, lambda_capture (lm, car));
 
         return ctl_push_state (lm, S (eval_apply, .fn = car, .arglist = cdr));
       }
@@ -289,6 +263,10 @@ ctl_funcall:
     if (!arglist && !(arglist = stk_pop (lm)))
       return false;
 
+    if (!proper_list_p (arglist))
+      return lm_err_bool (lm, ERR_INVALID_ARG,
+                          "funcall: improper argument list");
+
     if (IS_INST (fn, THUNK))
       switch (fn->thunk)
         {
@@ -302,13 +280,32 @@ ctl_funcall:
         }
 
     if (IS_INST (fn, LAMBDA))
-      return ctl_push_states (lm,
-                              (State[]){
-                                  S (closure_enter),
-                                  S (lambda, .fn = fn, .arglist = arglist),
-                                  S (closure_leave),
-                              },
-                              3);
+      {
+        // Tail position is encoded by the next continuation. If it is a
+        // closure_leave, the current function has no work left after this
+        // call. Any older caller's work remains BELOW that return state.
+        //
+        // For f tail-calling g, execution order is:
+        //   enter g -> run g -> existing return to f's caller
+        // rather than:
+        //   enter g -> run g -> return to f -> return to f's caller
+        //
+        // Calls in arguments, predicates, or non-final body expressions
+        // have other continuation states on top, so they keep their return.
+        bool tail = lm->ctl.sp > 0
+                    && lm->ctl.states[lm->ctl.sp - 1].s == s_closure_leave;
+        if (!tail
+            && !ctl_push_state (lm, S (closure_leave, .env = lm->env.current)))
+          return false;
+
+        // Leave the existing return in place for a tail call. Both cases
+        // enter a fresh frame, then bind arguments and evaluate the body.
+        return ctl_push_states (
+            lm,
+            (State[]){ S (closure_enter, .fn = fn),
+                       S (lambda, .fn = fn, .arglist = arglist) },
+            2);
+      }
 
     return lm_err_bool (lm, ERR_NOT_A_FN, "funcall");
   }
@@ -355,6 +352,9 @@ ctl_let:
     Cell *progn = CDR (u.let.arglist);
     Cell *pairs = CAR (u.let.arglist);
 
+    if (!proper_list_p (pairs))
+      return lm_err_bool (lm, ERR_INVALID_ARG, "let: improper binding list");
+
     Cell *rev_vars  = NIL;
     Cell *rev_exprs = NIL;
 
@@ -362,7 +362,8 @@ ctl_let:
       {
         Cell *pair = CAR (pairs);
 
-        if (!CONSP (pair))
+        if (!proper_list_p (pair) || length (pair) != 2
+            || !IS_INST (CAR (pair), SYMBOL))
           return lm_err_bool (lm, ERR_INVALID_ARG, "let: binding not a list");
 
         rev_vars  = CONS (CAR (pair), rev_vars, lm);
@@ -371,18 +372,20 @@ ctl_let:
         pairs = CDR (pairs);
       }
 
-    Cell *vars  = reverse_inplace (rev_vars);
-    Cell *exprs = reverse_inplace (rev_exprs);
+    Cell *vars    = reverse_inplace (rev_vars);
+    Cell *exprs   = reverse_inplace (rev_exprs);
+    Cell *closure = lambda_capture (lm, LAMBDA (vars, progn, lm));
 
+    // Treat (let ((x init) ...) body ...) as a synthetic lambda call.
+    // evlis evaluates the initializers before any new frame is entered;
+    // its result is popped by funcall because .arglist is NULL here.
+    // Going through funcall lets a tail-position let reuse the same return
+    // continuation as any other call, rather than adding a restore state.
     return ctl_push_states (
         lm,
-        (State[]){
-            S (evlis, .acc = NIL, .arglist = exprs),
-            S (closure_enter),
-            S (lambda, .fn = LAMBDA (vars, progn, lm), .arglist = NULL),
-            S (closure_leave),
-        },
-        4);
+        (State[]){ S (evlis, .acc = NIL, .arglist = exprs),
+                   S (funcall, .fn = closure, .arglist = NULL) },
+        2);
   }
 
 ctl_define:
@@ -393,7 +396,8 @@ ctl_define:
     if (!cdr)
       return false;
 
-    // TODO: validate pop & check cdr len
+    if (!CONSP (cdr) || !NILP (CDR (cdr)))
+      return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "define");
 
     if (!lm_env_define (lm, sym, CAR (cdr)))
       return false;
@@ -409,7 +413,8 @@ ctl_set:
     if (!cdr)
       return false;
 
-    // TODO: check cdr len
+    if (!CONSP (cdr) || !NILP (CDR (cdr)))
+      return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "set!");
 
     if (!lm_env_set (lm, sym, CAR (cdr)))
       return false;
@@ -428,13 +433,13 @@ ctl_apply:
     if (!arglist && !(arglist = stk_pop (lm)))
       return false;
 
-    if (!LISTP (arglist))
+    if (!proper_list_p (arglist) || NILP (arglist))
       return lm_err_bool (lm, ERR_MISSING_ARG, "apply: not a list.");
 
     Cell *fixed     = butlast (lm, arglist);
     Cell *tail_list = CAR (last (lm, arglist));
 
-    if (!LISTP (tail_list))
+    if (!proper_list_p (tail_list))
       return lm_err_bool (lm, ERR_MISSING_ARG, "apply: last not a list.");
 
     Cell *all = append_inplace (fixed, tail_list);
@@ -449,6 +454,13 @@ ctl_progn:
 
     if (NILP (arglist))
       return stk_push (lm, res);
+
+    // Earlier expressions need progn_eval to discard their result and
+    // continue. The last expression's result IS the sequence's result, so
+    // evaluate it without leaving a sequencing continuation on the stack.
+    // This exposes the enclosing return state to any call in that expression.
+    if (NILP (CDR (arglist)))
+      return ctl_push_state (lm, S (eval, .expr = CAR (arglist)));
 
     return ctl_push_states (
         lm,
@@ -472,6 +484,41 @@ ctl_lispm:
   {
     Cell *fn      = u.lispm.fn;
     Cell *arglist = u.lispm.arglist;
+
+    if (!proper_list_p (arglist))
+      return lm_err_bool (lm, ERR_INVALID_ARG,
+                          "special form: improper arguments");
+    size_t received = length (arglist);
+    size_t minimum  = 0;
+    size_t maximum  = (size_t)-1;
+    switch (fn->thunk)
+      {
+      case THUNK_DEFINE:
+      case THUNK_SET:
+        minimum = maximum = 2;
+        break;
+      case THUNK_EVAL:
+        minimum = maximum = 1;
+        break;
+      case THUNK_IF:
+        minimum = 2;
+        maximum = 3;
+        break;
+      case THUNK_LET:
+      case THUNK_MAP:
+      case THUNK_APPLY:
+        minimum = 2;
+        break;
+      case THUNK_FUNCALL:
+        minimum = 1;
+        break;
+      default:
+        break;
+      }
+    if (received < minimum || received > maximum)
+      return lm_err_bool (
+          lm, received < minimum ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG, "%s",
+          thunk_get_name (fn));
 
     switch (fn->thunk)
       {
@@ -506,6 +553,9 @@ ctl_lispm:
             3);
 
       case THUNK_DEFINE:
+        if (!CONSP (arglist) || !CONSP (CDR (arglist))
+            || !NILP (CDDR (arglist)))
+          return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "define");
         return ctl_push_states (
             lm,
             (State[]){
@@ -515,6 +565,9 @@ ctl_lispm:
             2);
 
       case THUNK_SET:
+        if (!CONSP (arglist) || !CONSP (CDR (arglist))
+            || !NILP (CDDR (arglist)))
+          return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "set!");
         return ctl_push_states (
             lm,
             (State[]){
@@ -547,7 +600,7 @@ ctl_lispm:
         return ctl_push_state (lm, S (or, .arglist = arglist));
 
       case THUNK_LET:
-        return ctl_push_state (lm, S (let, .arglist = CAR (arglist)));
+        return ctl_push_state (lm, S (let, .arglist = arglist));
 
       default:
         break;
@@ -594,6 +647,11 @@ ctl_and:
     if (NILP (arglist))
       return stk_push (lm, T);
 
+    // No truth test is needed after the last operand: and returns its value
+    // unchanged. Omitting and_cont here preserves the enclosing tail position.
+    if (NILP (CDR (arglist)))
+      return ctl_push_state (lm, S (eval, .expr = CAR (arglist)));
+
     return ctl_push_states (lm,
                             (State[]){
                                 S (eval, .expr = CAR (arglist)),
@@ -618,12 +676,8 @@ ctl_and_cont:
     if (NILP (cdr))
       return stk_push (lm, res);
 
-    return ctl_push_states (lm,
-                            (State[]){
-                                S (eval, .expr = CAR (cdr)),
-                                S (and_cont, .arglist = cdr),
-                            },
-                            2);
+    // Re-enter and so its last-operand case can drop the truth-test state.
+    return ctl_push_state (lm, S (and, .arglist = cdr));
   }
 
 ctl_or:
@@ -632,6 +686,11 @@ ctl_or:
 
     if (NILP (arglist))
       return stk_push (lm, NIL);
+
+    // Like and, or returns its final operand unchanged. Earlier operands
+    // still need or_cont to short-circuit on the first non-NIL result.
+    if (NILP (CDR (arglist)))
+      return ctl_push_state (lm, S (eval, .expr = CAR (arglist)));
 
     return ctl_push_states (lm,
                             (State[]){
@@ -657,12 +716,8 @@ ctl_or_cont:
     if (NILP (cdr))
       return stk_push (lm, res);
 
-    return ctl_push_states (lm,
-                            (State[]){
-                                S (eval, .expr = CAR (cdr)),
-                                S (or_cont, .arglist = cdr),
-                            },
-                            2);
+    // Re-enter or so the last operand is evaluated without an or_cont.
+    return ctl_push_state (lm, S (or, .arglist = cdr));
   }
 
 ctl_map:
@@ -675,6 +730,10 @@ ctl_map:
 
     if (!arglist && !(arglist = stk_pop (lm)))
       return false;
+
+    for (Cell *lists = arglist; !NILP (lists); lists = CDR (lists))
+      if (!proper_list_p (CAR (lists)))
+        return lm_err_bool (lm, ERR_ARG_TYPE_MISMATCH, "map: not a list");
 
     Cell *ziplst = zip (lm, arglist);
 
@@ -723,35 +782,37 @@ ctl_map_acc:
   }
 }
 
-// clang-format off
 static Cell *
 lm_eval (LM *lm)
 {
-  const size_t DELTA_SP = 256;  // temp: only GC if stack grew by >= 256
-  size_t last_sp  = lm->ctl.sp;
+  size_t steps    = 0;
   size_t base_ptr = lm->ctl.sp;
   State  state;
 
   do
     {
-      if (lm->err_bool 
-          || !ctl_pop (lm, &state)
-          || !lm_eval_switch (lm, state.s, state.u))
+      // A primitive can push NIL and set err_bool while its VM step itself
+      // succeeds. Check again AFTER the step: a tail-position primitive may
+      // be the final step, with no later continuation to notice the error.
+      if (lm->err_bool || !ctl_pop (lm, &state)
+          || !lm_eval_switch (lm, state.s, state.u) || lm->err_bool)
         {
           lm_reset (lm);
           return NIL;
         }
 
-        if (lm->ctl.sp - last_sp >= DELTA_SP) {
-            lm_gc(lm);
-            last_sp = lm->ctl.sp;
+      // Collect only between VM steps, after temporary values have been
+      // rooted.
+      if (++steps >= 256)
+        {
+          lm_gc (lm);
+          steps = 0;
         }
     }
   while (base_ptr <= lm->ctl.sp);
 
   return stk_pop (lm);
 }
-// clang-format on
 
 LM *
 lm_create (void)
@@ -762,24 +823,26 @@ lm_create (void)
   // Zeros out stack pointers
   LM *lm = xcalloc (1, sizeof *(lm));
 
-  // Create global frame
-  lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
-
   // Allocate pool
-  lm->pool = pool_init (LM_CAP_PER_POOL, sizeof (Cell));
+  lm->pool       = pool_init (LM_CAP_PER_POOL, sizeof (Cell));
+  lm->env.global = lm->env.current = ENV (NULL, lm);
 
   return lm;
+}
+
+static void
+dispose_allocated_cell (Pool *pool, void *ptr)
+{
+  (void)pool;
+  if (!pool_gc_is_free (ptr))
+    cell_dispose (ptr);
 }
 
 void
 lm_destroy (LM *lm)
 {
-  pool_destroy (&lm->pool);
-
-  // Destory the whole environment
-  for (size_t i = 0; i < lm->env.sp; ++i)
-    dict_destroy (lm->env.dict[i]);
-
+  pool_map_hier (lm->pool, dispose_allocated_cell);
+  pool_destroy_hier (&lm->pool);
   free (lm);
 }
 
@@ -792,6 +855,8 @@ lm_alloc_cell (LM *lm)
 Cell *
 lm_progn (LM *lm, Cell *progn)
 {
+  // Measure each evaluation separately, including its initial progn state.
+  lm->ctl.high_water = lm->ctl.sp;
   if (!ctl_push_state (lm, S (progn, .res = NIL, .arglist = progn)))
     {
       lm_reset (lm);

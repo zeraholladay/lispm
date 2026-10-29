@@ -46,6 +46,12 @@ START_TEST (test_gt)
 
   eval_res = run_eval_progn ("(gt 3 3)");
   ck_assert (NILP (eval_res));
+
+  eval_res = run_eval_progn ("(gt 3.5 3 2.5)");
+  ck_assert_ptr_eq (eval_res, T);
+
+  eval_res = run_eval_progn ("(gt)");
+  ck_assert_ptr_eq (eval_res, NIL);
 }
 END_TEST
 
@@ -64,6 +70,9 @@ START_TEST (test_lt)
 
   eval_res = run_eval_progn ("(lt 4 4)");
   ck_assert (NILP (eval_res));
+
+  eval_res = run_eval_progn ("(lt 1 1.5 2.0)");
+  ck_assert_ptr_eq (eval_res, T);
 }
 END_TEST
 
@@ -82,6 +91,13 @@ START_TEST (test_add)
 
   eval_res = run_eval_progn ("(add 0 -3 7)");
   ck_assert_int_eq (eval_res->integer, 4);
+
+  eval_res = run_eval_progn ("(add 1 2.5)");
+  ck_assert (IS_INST (eval_res, FLOAT));
+  ck_assert_float_eq (eval_res->_float, 3.5);
+
+  eval_res = run_eval_progn ("(add 9223372036854775807 1)");
+  ck_assert_ptr_eq (eval_res, NIL);
 }
 END_TEST
 
@@ -97,6 +113,10 @@ START_TEST (test_sub)
 
   eval_res = run_eval_progn ("(sub 2 5)");
   ck_assert_int_eq (eval_res->integer, -3);
+
+  eval_res = run_eval_progn ("(sub 5.0 1 1.5)");
+  ck_assert (IS_INST (eval_res, FLOAT));
+  ck_assert_float_eq (eval_res->_float, 2.5);
 }
 END_TEST
 
@@ -112,6 +132,10 @@ START_TEST (test_mul)
 
   eval_res = run_eval_progn ("(mul 0 10 5)");
   ck_assert_int_eq (eval_res->integer, 0);
+
+  eval_res = run_eval_progn ("(mul 2 2.5)");
+  ck_assert (IS_INST (eval_res, FLOAT));
+  ck_assert_float_eq (eval_res->_float, 5.0);
 }
 END_TEST
 
@@ -127,6 +151,19 @@ START_TEST (test_div)
 
   eval_res = run_eval_progn ("(div 10 0)");
   ck_assert (IS_INST (eval_res, NIL));
+
+  eval_res = run_eval_progn ("(div 5 2)");
+  ck_assert_int_eq (eval_res->integer, 2);
+
+  eval_res = run_eval_progn ("(div 5 2.0)");
+  ck_assert (IS_INST (eval_res, FLOAT));
+  ck_assert_float_eq (eval_res->_float, 2.5);
+
+  eval_res = run_eval_progn ("(div 1.0 0.0)");
+  ck_assert_ptr_eq (eval_res, NIL);
+
+  eval_res = run_eval_progn ("(div 1 'a)");
+  ck_assert_ptr_eq (eval_res, NIL);
 }
 END_TEST
 

@@ -3,6 +3,7 @@
 #include "lm_err.h"
 #include "prims.h"
 #include "types.h"
+#include <assert.h>
 
 static int
 lm_env_update_guard (Cell *x)
@@ -26,8 +27,8 @@ lm_env_define (LM *lm, Cell *car, Cell *cdr)
       return lm_err_bool (lm, code, "define");
     }
 
-  return (lm->env.sp >= 1)
-             ? dict_insert (lm->env.dict[lm->env.sp - 1], car->symbol.str, cdr)
+  return lm->env.current
+             ? dict_insert (lm->env.current->env.dict, car->symbol.str, cdr)
              : false;
 }
 
@@ -41,9 +42,9 @@ lm_env_set (LM *lm, Cell *car, Cell *cdr)
       return lm_err_bool (lm, code, "set!");
     }
 
-  for (size_t i = lm->env.sp; i >= 1; --i)
-    if (dict_has_key (lm->env.dict[i - 1], car->symbol.str))
-      return dict_insert (lm->env.dict[i - 1], car->symbol.str, cdr);
+  for (Cell *frame = lm->env.current; frame; frame = frame->env.parent)
+    if (dict_has_key (frame->env.dict, car->symbol.str))
+      return dict_insert (frame->env.dict, car->symbol.str, cdr);
 
   return lm_err_bool (lm, ERR_SYM_NOT_FOUND, car->symbol.str);
 }
@@ -55,9 +56,10 @@ lm_env_lookup (LM *lm, Cell *sym)
   if (res)
     return res;
 
-  for (size_t i = lm->env.sp; i >= 1; --i)
+  for (Cell *frame = lm->env.current; frame; frame = frame->env.parent)
     {
-      DictEntity *entity = dict_lookup (lm->env.dict[i - 1], sym->symbol.str);
+      assert (IS_INST (frame, ENV));
+      DictEntity *entity = dict_lookup (frame->env.dict, sym->symbol.str);
       if (entity)
         return entity->val;
     }

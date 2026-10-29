@@ -26,6 +26,35 @@ START_TEST (test_palloc)
 }
 END_TEST
 
+static size_t visited;
+
+static void
+visit_slot (Pool *pool, void *ptr)
+{
+  ++visited;
+  if (!pool_gc_is_free (ptr))
+    pool_free (pool, ptr);
+}
+
+START_TEST (test_single_slot_pool)
+{
+  ck_assert_ptr_null (pool_init (0, sizeof (Cell)));
+  Pool *pool = pool_init (1, sizeof (Cell));
+  Cell *slot = pool_xalloc (pool);
+  ck_assert (!pool_gc_is_free (slot));
+  pool_gc_mark (slot);
+  visited = 0;
+  pool_map (pool, visit_slot);
+  ck_assert_int_eq (visited, 1);
+  ck_assert (pool_gc_is_free (slot));
+  ck_assert (!pool_gc_is_marked (slot));
+  ck_assert_ptr_eq (pool_xalloc (pool), slot);
+  pool_reset_all (pool);
+  ck_assert (pool_gc_is_free (slot));
+  pool_destroy (&pool);
+}
+END_TEST
+
 START_TEST (test_palloc_hier)
 {
   size_t count = 42;
@@ -54,6 +83,7 @@ palloc_suite (void)
   TCase *tc_core = tcase_create ("Core");
   tcase_add_exit_test (tc_core, test_palloc, 1);
   tcase_add_test (tc_core, test_palloc_hier);
+  tcase_add_test (tc_core, test_single_slot_pool);
   suite_add_tcase (s, tc_core);
   return s;
 }

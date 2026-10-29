@@ -14,5 +14,6 @@
 #endif
 
 const char *str_intern (const char *s, size_t s_len);
+void        str_intern_destroy (void);
 
 #endif

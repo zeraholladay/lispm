@@ -18,7 +18,7 @@ static const char *err_msg[] = {
   [ERR_NULL_ARG]          = "Argument cannot be null",
   [ERR_ARG_NOT_ITER]      = "Argument is not iterable when expected",
   [ERR_DIVISION_BY_0]     = "Division by zero",
-  [ERR_OVERFLOW]          = "Stack or control‐stack overflow",
+  [ERR_OVERFLOW]          = "Overflow",
   [ERR_UNDERFLOW]         = "Stack or control‐stack underflow",
 };
 

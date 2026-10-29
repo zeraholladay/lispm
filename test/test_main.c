@@ -14,10 +14,12 @@ extern Suite *list_suite (void);
 extern Suite *dict_suite (void);
 extern Suite *str_save_suite (void);
 extern Suite *palloc_suite (void);
+extern Suite *readline_suite (void);
 extern Suite *env_suite (void);
 extern Suite *eval_suite (void);
 extern Suite *eval_math_suite (void);
 extern Suite *eval_bool_suite (void);
+extern Suite *tail_call_suite (void);
 
 int
 main (void)
@@ -35,9 +37,11 @@ main (void)
   srunner_add_suite (sr, dict_suite ());
   srunner_add_suite (sr, str_save_suite ());
   srunner_add_suite (sr, palloc_suite ());
+  srunner_add_suite (sr, readline_suite ());
   srunner_add_suite (sr, eval_suite ());
   srunner_add_suite (sr, eval_math_suite ());
   srunner_add_suite (sr, eval_bool_suite ());
+  srunner_add_suite (sr, tail_call_suite ());
 
   srunner_run_all (sr, CK_NORMAL);
   int failed = srunner_ntests_failed (sr);

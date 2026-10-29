@@ -222,6 +222,29 @@ START_TEST (test_uuid_fuzz)
   dict_destroy (local_dict);
 }
 
+START_TEST (test_long_keys_and_delete_churn)
+{
+  char first[514], second[514];
+  memset (first, 'a', sizeof (first) - 1);
+  first[sizeof (first) - 1] = '\0';
+  memcpy (second, first, sizeof (first));
+  second[512] = 'b';
+  dict_insert (dict, first, &vals_int[0]);
+  dict_insert (dict, second, &vals_int[1]);
+  ck_assert_ptr_eq (dict_lookup (dict, first)->val, &vals_int[0]);
+  ck_assert_ptr_eq (dict_lookup (dict, second)->val, &vals_int[1]);
+  for (size_t i = 0; i < 1000; ++i)
+    {
+      dict_insert (dict, "churn", &vals_int[2]);
+      dict_del (dict, "churn");
+      ck_assert_ptr_null (dict_lookup (dict, "churn"));
+    }
+  ck_assert_int_eq (dict->list->count, 2);
+  ck_assert_ptr_eq (dict_lookup (dict, first)->val, &vals_int[0]);
+  ck_assert_ptr_eq (dict_lookup (dict, second)->val, &vals_int[1]);
+}
+END_TEST
+
 Suite *
 dict_suite (void)
 {
@@ -236,6 +259,7 @@ dict_suite (void)
   tcase_add_test (tc, test_initialization);
   tcase_add_test (tc, test_initialization_va_list);
   tcase_add_test (tc, test_uuid_fuzz);
+  tcase_add_test (tc, test_long_keys_and_delete_churn);
   suite_add_tcase (s, tc);
   return s;
 }

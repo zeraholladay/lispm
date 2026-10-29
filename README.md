@@ -180,6 +180,25 @@ Creates an anonymous function closing over the current environment.
 (add2 3 4) ; ⇒ 7
 ```
 
+Calls in tail position reuse the current return continuation, so tail recursion
+does not grow the VM control stack. This includes mutual recursion and calls
+through `apply` and `funcall`. Tail position includes the last body expression,
+the selected `if` branch, and the final expression of `progn`, `let`, `and`, or
+`or` when the enclosing form is itself in tail position.
+
+```lisp
+(define (countdown n acc)
+  (if (eq n 0)
+      acc
+      (countdown (- n 1) (+ acc 1))))
+
+(countdown 30000 0) ; ⇒ 30000, with bounded control-stack usage
+```
+
+Callees receive fresh lexical frames, preserving bindings captured by escaped
+closures. Non-tail recursion still retains its pending work and uses control
+stack space.
+
 ### `progn`
 
 ```lisp

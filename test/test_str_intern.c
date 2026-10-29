@@ -1,4 +1,5 @@
 #include <check.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "rb_tree.h"
@@ -71,12 +72,47 @@ START_TEST (test_str_intern)
 }
 END_TEST
 
+START_TEST (test_intern_boundaries)
+{
+  char        slice[] = { 'a', 'b', 'c' };
+  const char *saved   = str_intern (slice, sizeof (slice));
+  ck_assert_str_eq (saved, "abc");
+  ck_assert_ptr_eq (saved, str_intern ("abc", 3));
+
+  size_t len   = STR_INTERN_BUMP_SIZE * 2;
+  char  *large = malloc (len + 1);
+  if (!large)
+    {
+      ck_abort_msg ("Unable to allocate the large-symbol test buffer");
+      return;
+    }
+  memset (large, 'z', len);
+  large[len] = '\0';
+  saved      = str_intern (large, len);
+  ck_assert_str_eq (saved, large);
+  ck_assert_ptr_eq (saved, str_intern (large, len));
+  free (large);
+
+  for (size_t i = 0; i < STR_INTERN_POOL_CAPACITY + 10; ++i)
+    {
+      char key[64];
+      snprintf (key, sizeof (key), "unique_%zu", i);
+      const char *value = str_intern (key, strlen (key));
+      ck_assert_str_eq (value, key);
+      ck_assert_ptr_eq (value, str_intern (key, strlen (key)));
+    }
+  str_intern_destroy ();
+  ck_assert_str_eq (str_intern ("reset", 5), "reset");
+}
+END_TEST
+
 Suite *
 str_save_suite (void)
 {
   Suite *s       = suite_create ("String Intern");
   TCase *tc_core = tcase_create ("Core");
   tcase_add_test (tc_core, test_str_intern);
+  tcase_add_test (tc_core, test_intern_boundaries);
   suite_add_tcase (s, tc_core);
   return s;
 }

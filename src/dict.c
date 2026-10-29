@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "dict.h"
 #include "safe_str.h"
 
@@ -6,9 +8,10 @@
 #define EMPTY     -1
 #define TOMBSTONE -2
 
-#define HASH(str)           ((size_t)djb2 (key))
-#define LIST_IDX(d_ptr, i)  ((DictEntity *)((d_ptr)->list->items[i]))
-#define STR_EQ(s1, s2, len) (!safe_strncmp_minlen (s1, s2, len + 1))
+#define HASH(str)          ((size_t)djb2 (str))
+#define LIST_IDX(d_ptr, i) ((DictEntity *)((d_ptr)->list->items[i]))
+#define STR_EQ(entity, str, str_len)                                          \
+  ((entity)->len == (str_len) && memcmp ((entity)->key, (str), (str_len)) == 0)
 
 static size_t
 get_bins_idx (Dict *dict, size_t hash_key, const char *key, size_t len)
@@ -31,15 +34,14 @@ get_bins_idx (Dict *dict, size_t hash_key, const char *key, size_t len)
           if (first_tombstone == -1)
             first_tombstone = bin_idx;
         }
-      else if (STR_EQ (key, LIST_IDX (dict, bin_val)->key, len))
+      else if (STR_EQ (LIST_IDX (dict, bin_val), key, len))
         return bin_idx;
 
       bin_idx = (bin_idx + 1) & (dict->capacity - 1);
     }
   while (bin_idx != start_bin_idx);
 
-  // TODO & FIXME: all bins are occupied or all bins are tombstones: resize
-  return first_tombstone >= 0 ? (size_t)first_tombstone : start_bin_idx;
+  return first_tombstone >= 0 ? (size_t)first_tombstone : dict->capacity;
 }
 
 static int *
@@ -135,33 +137,42 @@ dict_destroy (Dict *dict)
   for (size_t i = 0; i < list->count; ++i)
     free (list->items[i]);
 
+  list_destroy (list);
+  free (dict->bins);
   free (dict);
 }
 
 void
 dict_del (Dict *dict, const char *key)
 {
-  size_t len      = safe_strnlen (key, DICT_STR_MAX_LEN);
+  size_t len      = strlen (key);
   size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
-  int    bin_val  = dict->bins[bins_idx];
+  if (bins_idx == dict->capacity)
+    return;
+  int bin_val = dict->bins[bins_idx];
 
   if (bin_val >= 0)
     {
-      dict->count--;
+      free (LIST_IDX (dict, bin_val));
       dict->bins[bins_idx] = TOMBSTONE;
+      size_t last          = --dict->list->count;
+      if ((size_t)bin_val != last)
+        {
+          DictEntity *moved = LIST_IDX (dict, last);
+          size_t      moved_bin
+              = get_bins_idx (dict, moved->hash_key, moved->key, moved->len);
+          dict->list->items[bin_val] = moved;
+          dict->bins[moved_bin]      = bin_val;
+        }
+      dict->list->items[last] = NULL;
+      --dict->count;
     }
 }
 
 bool
 dict_has_key (Dict *dict, const char *key)
 {
-  size_t len      = safe_strnlen (key, DICT_STR_MAX_LEN);
-  size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
-  int    bin_val  = dict->bins[bins_idx];
-
-  if (bin_val >= 0)
-    return true;
-  return false;
+  return dict_lookup (dict, key) != NULL;
 }
 
 bool
@@ -171,8 +182,14 @@ dict_insert (Dict *dict, const char *key, void *val)
     xgrow_bins (dict);
 
   size_t hash_key = HASH (key);
-  size_t len      = safe_strnlen (key, DICT_STR_MAX_LEN);
+  size_t len      = strlen (key);
   size_t bin_idx  = get_bins_idx (dict, hash_key, key, len);
+
+  if (bin_idx == dict->capacity)
+    {
+      xgrow_bins (dict);
+      bin_idx = get_bins_idx (dict, hash_key, key, len);
+    }
 
   int bin_val = dict->bins[bin_idx];
 
@@ -200,9 +217,11 @@ dict_insert (Dict *dict, const char *key, void *val)
 DictEntity *
 dict_lookup (Dict *dict, const char *key)
 {
-  size_t len      = safe_strnlen (key, DICT_STR_MAX_LEN);
+  size_t len      = strlen (key);
   size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
-  int    bin_val  = dict->bins[bins_idx];
+  if (bins_idx == dict->capacity)
+    return NULL;
+  int bin_val = dict->bins[bins_idx];
 
   if (bin_val >= 0)
     return LIST_IDX (dict, bin_val);

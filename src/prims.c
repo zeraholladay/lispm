@@ -31,9 +31,31 @@ PrimWrapper wrapper_quote = {
 
 // sequence operations
 
+bool
+proper_list_p (Cell *list)
+{
+  Cell *slow = list;
+  Cell *fast = list;
+  while (CONSP (fast))
+    {
+      fast = CDR (fast);
+      if (NILP (fast))
+        return true;
+      if (!CONSP (fast))
+        return false;
+      fast = CDR (fast);
+      slow = CDR (slow);
+      if (fast == slow)
+        return false;
+    }
+  return NILP (fast);
+}
+
 Cell *
 append_inplace (Cell *lst1, Cell *lst2)
 {
+  if (!proper_list_p (lst1))
+    return NIL;
   if (lst1 == NIL)
     return lst2;
 
@@ -50,6 +72,8 @@ append_inplace (Cell *lst1, Cell *lst2)
 Cell *
 append_list (LM *lm, Cell *lst1, Cell *lst2)
 {
+  if (!proper_list_p (lst1))
+    return lm_err_nil (lm, ERR_INVALID_ARG, "append: improper list");
   if (NILP (lst1))
     return lst2;
 
@@ -80,6 +104,8 @@ append_list (LM *lm, Cell *lst1, Cell *lst2)
 Cell *
 butlast (LM *lm, Cell *lst)
 {
+  if (!proper_list_p (lst))
+    return lm_err_nil (lm, ERR_INVALID_ARG, "butlast: improper list");
   Cell *rev = reverse_inplace (lst);
   Cell *btl = reverse (lm, CDR (rev));
   reverse_inplace (rev);
@@ -89,6 +115,8 @@ butlast (LM *lm, Cell *lst)
 Cell *
 last (LM *lm, Cell *lst)
 {
+  if (!proper_list_p (lst))
+    return lm_err_nil (lm, ERR_INVALID_ARG, "last: improper list");
   Cell *rev  = reverse_inplace (lst);
   Cell *last = CAR (rev);
   reverse_inplace (rev);
@@ -98,7 +126,7 @@ last (LM *lm, Cell *lst)
 size_t
 length (Cell *lst)
 {
-  if (!CONSP (lst))
+  if (!proper_list_p (lst) || !CONSP (lst))
     return 0;
 
   size_t i = 1;
@@ -112,6 +140,8 @@ length (Cell *lst)
 Cell *
 nth (size_t idx, Cell *lst)
 {
+  if (!proper_list_p (lst))
+    return NIL;
   for (size_t i = 0; i < idx; ++i)
     {
       if (lst == NIL)
@@ -125,6 +155,8 @@ nth (size_t idx, Cell *lst)
 Cell *
 reverse (LM *lm, Cell *lst)
 {
+  if (!proper_list_p (lst))
+    return lm_err_nil (lm, ERR_INVALID_ARG, "reverse: improper list");
   Cell *result = NIL;
 
   for (Cell *l = lst; l != NIL; l = CDR (l))
@@ -136,6 +168,8 @@ reverse (LM *lm, Cell *lst)
 Cell *
 reverse_inplace (Cell *lst)
 {
+  if (!proper_list_p (lst))
+    return NIL;
   Cell *prev = NIL;
   Cell *cur  = lst;
 
@@ -153,6 +187,11 @@ reverse_inplace (Cell *lst)
 Cell *
 zip (LM *lm, Cell *lsts)
 {
+  if (!proper_list_p (lsts))
+    return lm_err_nil (lm, ERR_INVALID_ARG, "zip: improper list");
+  for (Cell *p = lsts; CONSP (p); p = CDR (p))
+    if (!proper_list_p (CAR (p)))
+      return lm_err_nil (lm, ERR_INVALID_ARG, "zip: improper input list");
   scratch_t s;
 
   size_t len = length (lsts);
