@@ -10,6 +10,9 @@
 ;;; with define or change them with set!. The native core supplies arithmetic,
 ;;; pairs, application, type predicates, numeric =, and error; this file builds
 ;;; the higher-level library from those pieces.
+;;; Like other ordinary bindings, these names are case-sensitive. Use lowercase
+;;; not, length, reverse, nth, last, and butlast, even though their former native
+;;; keyword registrations also accepted uppercase/mixed-case spellings.
 ;;;
 ;;; Dialect conventions to keep in mind:
 ;;;   * NIL is both false and the empty list. Every other value is true,
@@ -25,6 +28,13 @@
 
 ;;; Small predicates and numeric conveniences
 ;;; ---------------------------------------
+
+;; not only tests falsehood; it does not negate a number. Only NIL is false,
+;; so (not 0) and (not '(a)) are both NIL, while (not NIL) is T.
+;; Define it before list?, whose shape-checking walker uses it. Using the native
+;; eq directly avoids a bootstrap dependency on any other prelude procedure.
+(define (not value)
+  (eq value NIL))
 
 ;; null? is true only of the empty list. In particular, (null? '(NIL)) is NIL:
 ;; a nonempty list containing NIL is still a pair, not an empty list.
@@ -174,6 +184,69 @@
         initial
         (f (car remaining) (walk (cdr remaining)))))
   (walk xs))
+
+;;; Basic list operations, implemented in Scheme rather than native thunks
+;;; --------------------------------------------------------------------
+;; The VM still has internal C list utilities for its own argument/control
+;; bookkeeping. These LANGUAGE-LEVEL procedures are ordinary Scheme lambdas.
+;; Their arities are enforced by lambda application, and the existing list
+;; validator rejects atoms, improper lists, and cycles before traversal begins.
+
+;; length counts one per element, ignoring the contents of the elements.
+;; fold-left validates the input once and supplies tail-recursive traversal.
+;; In particular, NIL has length 0 but a list containing NIL has length 1.
+(define (length xs)
+  (fold-left (lambda (count value) (+ count 1)) 0 xs))
+
+;; reverse makes a fresh list spine by consing each element onto the front of
+;; the accumulator. The element objects themselves are shared, not deep-copied.
+;; This never mutates xs, even temporarily, and returns NIL for an empty list.
+(define (reverse xs)
+  (fold-left (lambda (reversed value) (cons value reversed)) NIL xs))
+
+;; nth is ZERO-based: (nth 0 '(a b)) is a. Preserve the earlier convention of
+;; returning NIL for a negative or out-of-range integer index. A non-integer
+;; index is an error, even 1.0; the whole list is validated even if the index
+;; would otherwise let us stop early. The selected element is returned as-is.
+(define (nth index xs)
+  (if (not (integer? index))
+      (error 'expected-integer-index)
+      T)
+  (_prelude-require-list xs)
+  (define (walk remaining position)
+    (if (null? remaining)
+        NIL
+        (if (= position 0)
+            (car remaining)
+            (walk (cdr remaining) (- position 1)))))
+  (if (< index 0)
+      NIL
+      (walk xs index)))
+
+;; last returns a NEW ONE-ELEMENT LIST, not the final element or original tail.
+;; Keep this dialect's historical empty-list behavior too: (last NIL) => (NIL).
+;; The walker carries the most recently visited element, initially NIL. At the
+;; end it wraps that value in a list, preserving object identity of the value.
+(define (last xs)
+  (_prelude-require-list xs)
+  (define (walk remaining value)
+    (if (null? remaining)
+        (list value)
+        (walk (cdr remaining) (car remaining))))
+  (walk xs NIL))
+
+;; butlast copies all elements except the final one. Empty and singleton inputs
+;; both produce NIL. We accumulate in reverse order, then call reverse once to
+;; restore the order. The input is validated once and reverse validates the
+;; newly built copy; neither rechecks each suffix, so total work stays linear.
+;; Like reverse, it shares elements but never changes the input's list spine.
+(define (butlast xs)
+  (_prelude-require-list xs)
+  (define (walk remaining reversed)
+    (if (or (null? remaining) (null? (cdr remaining)))
+        (reverse reversed)
+        (walk (cdr remaining) (cons (car remaining) reversed))))
+  (walk xs NIL))
 
 ;;; Selecting, searching, and visiting
 ;;; ---------------------------------

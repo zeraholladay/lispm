@@ -39,15 +39,6 @@ thunk_append (LM *lm, Cell *fn, Cell *arglist)
 }
 
 Cell *
-thunk_butlast (LM *lm, Cell *fn, Cell *arglist)
-{
-  if (!proper_list_p (CAR (arglist)))
-    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
-
-  return butlast (lm, CAR (arglist));
-}
-
-Cell *
 thunk_cons (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)fn;
@@ -77,40 +68,6 @@ thunk_cdr (LM *lm, Cell *fn, Cell *arglist)
 }
 
 Cell *
-thunk_last (LM *lm, Cell *fn, Cell *arglist)
-{
-  if (!proper_list_p (CAR (arglist)))
-    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
-
-  return last (lm, CAR (arglist));
-}
-
-Cell *
-thunk_length (LM *lm, Cell *fn, Cell *arglist)
-{
-  if (!proper_list_p (CAR (arglist)))
-    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
-
-  return INTEGER (length (CAR (arglist)), lm);
-}
-
-Cell *
-thunk_nth (LM *lm, Cell *fn, Cell *arglist)
-{
-  (void)lm;
-
-  if (!IS_INST (arglist, CONS) || !IS_INST (CAR (arglist), INTEGER)
-      || !proper_list_p (CAR (CDR (arglist))))
-    return lm_err_nil (lm, ERR_ARG_NOT_ITER, "%s i arglist",
-                       thunk_get_name (fn));
-
-  size_t idx  = (size_t)CAR (arglist)->integer;
-  Cell  *list = CAR (CDR (arglist));
-
-  return nth (idx, list);
-}
-
-Cell *
 thunk_print (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)lm;
@@ -118,15 +75,6 @@ thunk_print (LM *lm, Cell *fn, Cell *arglist)
 
   PRINT (CAR (arglist));
   return T;
-}
-
-Cell *
-thunk_reverse (LM *lm, Cell *fn, Cell *arglist)
-{
-  if (!proper_list_p (CAR (arglist)))
-    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
-
-  return reverse (lm, CAR (arglist));
 }
 
 Cell *
@@ -171,14 +119,6 @@ thunk_eq (LM *lm, Cell *fn, Cell *arglist)
       return lm_err_nil (lm, ERR_INTERNAL, "null thunk");
       ;
     }
-}
-
-Cell *
-thunk_not (LM *lm, Cell *fn, Cell *arglist)
-{
-  (void)lm;
-  (void)fn;
-  return CAR (arglist) == NIL ? T : NIL;
 }
 
 // These predicates expose runtime type information that Scheme code cannot

@@ -371,7 +371,7 @@ START_TEST (test_butlast)
 {
   Cell *eval_res = NULL;
 
-  eval_res = run_eval_progn ("(apply + (BUTLAST '(1 2 3 4)))");
+  eval_res = run_eval_progn ("(apply + (butlast '(1 2 3 4)))");
   ck_assert (eval_res->integer == 6);
 }
 END_TEST

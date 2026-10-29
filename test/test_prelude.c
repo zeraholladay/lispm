@@ -1,4 +1,5 @@
 #include <check.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -49,6 +50,113 @@ START_TEST (test_loaded_and_redefinable)
   expect ("(define (identity value) 99) (identity 42)", "99");
   expect ("(set! identity (lambda (value) value)) (identity 42)", "42");
   ck_assert_ptr_eq (lm->env.current, lm->env.global);
+}
+END_TEST
+
+START_TEST (test_migrated_procedures_are_normal_bindings)
+{
+  const char *names[]
+      = { "not", "length", "reverse", "nth", "last", "butlast" };
+  lm_gc (lm);
+  for (size_t i = 0; i < sizeof (names) / sizeof (*names); ++i)
+    {
+      ck_assert_msg (IS_INST (evaluate (names[i]), LAMBDA),
+                     "%s should be a Scheme procedure", names[i]);
+      char source[256];
+      snprintf (source, sizeof (source),
+                "(define saved-procedure %s)"
+                "(set! %s (lambda () 42)) (%s)",
+                names[i], names[i], names[i]);
+      expect (source, "42");
+      snprintf (source, sizeof (source), "(set! %s saved-procedure)",
+                names[i]);
+      ck_assert (IS_INST (evaluate (source), LAMBDA));
+    }
+  // Internal VM application must not depend on redefinable library helpers.
+  expect ("(set! last (lambda (xs) 99)) (apply + '(1 2 3))", "6");
+  expect ("(define (length xs) 99) (length NIL)", "99");
+}
+END_TEST
+
+START_TEST (test_migrated_sequence_contracts)
+{
+  expect ("(list (not NIL) (not T) (not 0) (not 0.0) (not '(a)))",
+          "(t nil nil nil nil)");
+  expect ("(list (length NIL) (length '(a)) (length '(() a (b c))))",
+          "(0 1 3)");
+  expect ("(list (reverse NIL) (reverse '(a)) (reverse '(a b c)))",
+          "(nil (a) (c b a))");
+  expect ("(list (nth 0 '(a b c)) (nth 2 '(a b c)) (nth 3 '(a b c))"
+          " (nth -1 '(a)) (nth 0 NIL)"
+          " (nth -9223372036854775808 '(a))"
+          " (nth 9223372036854775807 '(a)))",
+          "(a c nil nil nil nil nil)");
+  expect ("(list (last NIL) (last '(a)) (last '(a b c)))", "((nil) (a) (c))");
+  expect ("(list (butlast NIL) (butlast '(a)) (butlast '(a b c)))",
+          "(nil nil (a b))");
+  expect ("(map length '(() (a) (a b)))", "(0 1 2)");
+  expect ("(apply nth '(1 (a b c)))", "b");
+  expect ("(funcall reverse '(a b c))", "(c b a)");
+}
+END_TEST
+
+START_TEST (test_migrated_sequence_identity_and_nonmutation)
+{
+  evaluate ("(define element (list 1))"
+            "(define xs (list element 2 3))"
+            "(define original-tail (cdr xs))");
+  expect ("(reverse xs)", "(3 2 (1))");
+  expect ("(last xs)", "(3)");
+  expect ("(butlast xs)", "((1) 2)");
+  expect ("(list (equal? xs '((1) 2 3)) (eq (cdr xs) original-tail)"
+          " (eq (nth 0 xs) element) (eq (car (butlast xs)) element))",
+          "(t t t t)");
+  expect ("(let ((single (list element)))"
+          " (list (eq (reverse single) single) (eq (last single) single)"
+          "       (eq (car (last single)) element)))",
+          "(nil nil t)");
+}
+END_TEST
+
+START_TEST (test_migrated_sequence_validation)
+{
+  const char *invalid[] = { "(not)",
+                            "(not 1 2)",
+                            "(length)",
+                            "(length NIL NIL)",
+                            "(reverse)",
+                            "(reverse NIL NIL)",
+                            "(nth 0)",
+                            "(nth 0 NIL NIL)",
+                            "(last)",
+                            "(last NIL NIL)",
+                            "(butlast)",
+                            "(butlast NIL NIL)",
+                            "(length '(a . b))",
+                            "(reverse 'a)",
+                            "(nth 0 '(a . b))",
+                            "(nth -1 '(a . b))",
+                            "(nth 1.0 '(a b))",
+                            "(nth 'a NIL)",
+                            "(last '(a . b))",
+                            "(butlast 42)" };
+  for (size_t i = 0; i < sizeof (invalid) / sizeof (*invalid); ++i)
+    {
+      char source[256];
+      snprintf (source, sizeof (source),
+                "(define touched 0) %s (set! touched 1)", invalid[i]);
+      expect (source, "nil");
+      // These must be actual errors, not merely successful NIL results.
+      expect ("touched", "0");
+    }
+  Cell *cycle = evaluate ("(define cycle (list 1))");
+  RPLACD (cycle, cycle);
+  const char *cyclic[]
+      = { "(length cycle)", "(reverse cycle)", "(nth 0 cycle)", "(last cycle)",
+          "(butlast cycle)" };
+  for (size_t i = 0; i < sizeof (cyclic) / sizeof (*cyclic); ++i)
+    expect (cyclic[i], "nil");
+  expect ("(+ 20 22)", "42");
 }
 END_TEST
 
@@ -231,6 +339,16 @@ START_TEST (test_long_list_tail_traversal)
   ck_assert_uint_lt (lm->ctl.high_water, 128);
   expect ("(find (lambda (x) (= x 5000)) xs)", "5000");
   ck_assert_uint_lt (lm->ctl.high_water, 128);
+  expect ("(length xs)", "5000");
+  ck_assert_uint_lt (lm->ctl.high_water, 128);
+  expect ("(car (reverse xs))", "5000");
+  ck_assert_uint_lt (lm->ctl.high_water, 128);
+  expect ("(nth 4999 xs)", "5000");
+  ck_assert_uint_lt (lm->ctl.high_water, 128);
+  expect ("(last xs)", "(5000)");
+  ck_assert_uint_lt (lm->ctl.high_water, 128);
+  expect ("(length (butlast xs))", "4999");
+  ck_assert_uint_lt (lm->ctl.high_water, 128);
 }
 END_TEST
 
@@ -242,6 +360,10 @@ prelude_suite (void)
   tcase_add_checked_fixture (tc, setup, teardown);
   tcase_set_timeout (tc, 30);
   tcase_add_test (tc, test_loaded_and_redefinable);
+  tcase_add_test (tc, test_migrated_procedures_are_normal_bindings);
+  tcase_add_test (tc, test_migrated_sequence_contracts);
+  tcase_add_test (tc, test_migrated_sequence_identity_and_nonmutation);
+  tcase_add_test (tc, test_migrated_sequence_validation);
   tcase_add_test (tc, test_native_foundations);
   tcase_add_test (tc, test_predicates_and_numeric_helpers);
   tcase_add_test (tc, test_accessors);

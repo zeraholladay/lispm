@@ -85,9 +85,10 @@ Edit the Scheme file and run `make all` to rebuild the embedded version.
 
 The prelude provides:
 
-- Predicates: `null?`, `zero?`, `positive?`, `negative?`, `list?`, `equal?`
+- Predicates: `not`, `null?`, `zero?`, `positive?`, `negative?`, `list?`, `equal?`
 - Numeric helpers: binary `<=`, `>=`, and `abs`
 - Accessors: `caar`, `cadr`, `cdar`, `cddr`, `caddr`
+- List operations: `length`, `reverse`, `nth`, `last`, `butlast`
 - Traversal: `fold-left`, `fold-right`, `filter`, `find`, `any?`, `every?`, `for-each`
 - Lookup: `memq`, `assq`
 - Higher-order helpers: `identity`, `constantly`, `compose`
@@ -97,6 +98,14 @@ These are ordinary, redefinable bindings. The native foundations are `pair?`,
 Numeric `=` accepts one or more arguments, supports integer/float comparisons,
 and preserves exact integer distinctions in mixed comparisons. It is separate
 from `eq`'s type-sensitive and object-identity behavior.
+
+Prelude names are case-sensitive. The former native procedures `not`, `length`,
+`reverse`, `nth`, `last`, and `butlast` now use these ordinary binding rules;
+write their names in lowercase. The VM retains internal C list utilities for
+argument counting and application, separate from the Scheme-visible procedures.
+`nth` is zero-based and returns NIL for negative or out-of-range integer indexes.
+`last` returns a fresh one-element list, including `(NIL)` for an empty input;
+`butlast` returns NIL for empty and singleton inputs.
 
 ```lisp
 (cadr '(10 20 30))                   ; => 20

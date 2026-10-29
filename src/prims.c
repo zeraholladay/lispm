@@ -29,7 +29,9 @@ PrimWrapper wrapper_quote = {
   .ptr       = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("quote") },
 };
 
-// sequence operations
+// Internal sequence operations used by the VM (including arity checks and
+// apply). Language-level names such as length/reverse are defined in Scheme;
+// the evaluator cannot use those to implement its own call bookkeeping.
 
 bool
 proper_list_p (Cell *list)
