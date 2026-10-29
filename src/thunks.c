@@ -23,22 +23,6 @@ typedef struct
 // thunks
 
 Cell *
-thunk_append (LM *lm, Cell *fn, Cell *arglist)
-{
-  for (Cell *p = arglist; CONSP (p); p = CDR (p))
-    if (!proper_list_p (CAR (p)))
-      return lm_err_nil (lm, ERR_INVALID_ARG, "%s: improper list",
-                         thunk_get_name (fn));
-
-  Cell *result = CAR (arglist);
-
-  for (Cell *cdr = CDR (arglist); !NILP (cdr); cdr = CDR (cdr))
-    result = append_list (lm, result, CAR (cdr));
-
-  return result;
-}
-
-Cell *
 thunk_cons (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)fn;

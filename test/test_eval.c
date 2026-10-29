@@ -525,9 +525,9 @@ START_TEST (test_map_edge_cases)
   r = run_eval_progn ("(map (lambda (x) x) 'a)");
   ck_assert_ptr_eq (r, NIL);
 
-  // apply map via apply
-  // r = run_eval_progn ("(apply map '( + (1 2 3) (4 5 6)))");
-  // ck_assert_int_eq (CADR (r)->integer, 7);
+  // map is now a Scheme procedure, so apply can invoke it normally.
+  r = run_eval_progn ("(apply map (list + '(1 2 3) '(4 5 6)))");
+  ck_assert_int_eq (CADR (r)->integer, 7);
 }
 
 END_TEST

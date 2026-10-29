@@ -180,29 +180,6 @@ gc_state_lispm:
     return;
   }
 
-gc_state_map_acc:
-  {
-    gc_mark_reachable (stack, u.map_acc.fn);
-    gc_mark_reachable (stack, u.map_acc.acc);
-    gc_mark_reachable (stack, u.map_acc.ziplist);
-    return;
-  }
-
-gc_state_map_cont:
-  {
-    gc_mark_reachable (stack, u.map_cont.fn);
-    gc_mark_reachable (stack, u.map_cont.acc);
-    gc_mark_reachable (stack, u.map_cont.ziplist);
-    return;
-  }
-
-gc_state_map:
-  {
-    gc_mark_reachable (stack, u.map.fn);
-    gc_mark_reachable (stack, u.map.arglist);
-    return;
-  }
-
 gc_state_or_cont:
   {
     gc_mark_reachable (stack, u.or_cont.arglist);

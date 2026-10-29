@@ -55,8 +55,8 @@ END_TEST
 
 START_TEST (test_migrated_procedures_are_normal_bindings)
 {
-  const char *names[]
-      = { "not", "length", "reverse", "nth", "last", "butlast" };
+  const char *names[] = { "not",     "length", "reverse", "nth", "last",
+                          "butlast", "list",   "append",  "map" };
   lm_gc (lm);
   for (size_t i = 0; i < sizeof (names) / sizeof (*names); ++i)
     {
@@ -352,6 +352,108 @@ START_TEST (test_long_list_tail_traversal)
 }
 END_TEST
 
+START_TEST (test_variadic_list_values)
+{
+  expect ("(list)", "nil");
+  expect ("(list 1 'a NIL '(b c))", "(1 a nil (b c))");
+  expect ("(let ((element '(a b))) (eq (car (list element)) element))", "t");
+  expect ("(apply list '(1 2 3))", "(1 2 3)");
+  expect ("(funcall list 1 2 3)", "(1 2 3)");
+  expect ("(let ((xs '(1 2 3))) (eq (apply list xs) xs))", "t");
+}
+END_TEST
+
+START_TEST (test_variadic_append_sharing)
+{
+  expect ("(append)", "nil");
+  expect ("(append NIL)", "nil");
+  expect ("(append '(1 2) NIL '(3) '(4 5))", "(1 2 3 4 5)");
+  expect ("(let ((xs '(1 2))) (eq (append xs) xs))", "t");
+  expect ("(let ((xs '(1 2))) (eq (append NIL NIL xs) xs))", "t");
+  expect ("(let ((prefix '(1 2)) (tail '(3 4)))"
+          " (let ((joined (append prefix tail)))"
+          "   (list (equal? joined '(1 2 3 4)) (equal? prefix '(1 2))"
+          "         (eq (cddr joined) tail) (eq joined prefix))))",
+          "(t t t nil)");
+  expect ("(let ((xs '(1 2))) (list (equal? (append xs NIL) xs)"
+          "                               (eq (append xs NIL) xs)))",
+          "(t nil)");
+  expect ("(apply append '((1 2) (3 4)))", "(1 2 3 4)");
+}
+END_TEST
+
+START_TEST (test_variadic_map_and_indirect_calls)
+{
+  expect ("(map + '(1 2 3) '(10 20))", "(11 22)");
+  expect ("(map list '(a b) '(1 2) '(x y z))", "((a 1 x) (b 2 y))");
+  expect ("(map list '(a b) '(1))", "((a 1))");
+  expect ("(map list NIL '(1))", "nil");
+  expect ("(map list '(1) NIL)", "nil");
+  expect ("(apply map (list + '(1 2 3) '(4 5 6)))", "(5 7 9)");
+  expect ("(funcall map + '(1 2) '(10 20))", "(11 22)");
+  expect ("(define seen NIL)"
+          "(map (lambda (a b) (set! seen (cons a seen)) (- a b))"
+          " '(10 20) '(1 2))",
+          "(9 18)");
+  expect ("seen", "(20 10)");
+  expect ("(let ((element '(a b)))"
+          " (let ((xs (list element)))"
+          "   (let ((ys (map identity xs)))"
+          "     (list (eq (car ys) element) (eq xs ys) (equal? xs ys)))))",
+          "(t nil t)");
+}
+END_TEST
+
+START_TEST (test_variadic_list_argument_errors)
+{
+  const char *invalid[] = { "(append '(1) 2)",
+                            "(append NIL '(1 . 2))",
+                            "(append 'a)",
+                            "(map)",
+                            "(map +)",
+                            "(map 42 NIL)",
+                            "(map + NIL '(a . b))",
+                            "(map + 'a)",
+                            "(map (lambda (x y) x) '(1))" };
+  for (size_t i = 0; i < sizeof (invalid) / sizeof (*invalid); ++i)
+    {
+      char source[256];
+      snprintf (source, sizeof (source),
+                "(define touched 0) %s (set! touched 1)", invalid[i]);
+      expect (source, "nil");
+      expect ("touched", "0");
+    }
+  expect ("(define visits 0)"
+          "(map (lambda (a b) (set! visits (+ visits 1)) a) NIL '(a . b))",
+          "nil");
+  expect ("visits", "0");
+  Cell *cycle = evaluate ("(define cycle (list 1))");
+  RPLACD (cycle, cycle);
+  expect ("(append NIL cycle)", "nil");
+  expect ("(map list NIL cycle)", "nil");
+}
+END_TEST
+
+START_TEST (test_variadic_traversal_control_bounds)
+{
+  evaluate ("(define (columns n acc)"
+            " (if (= n 0) acc (columns (- n 1) (cons '(1) acc))))"
+            "(define inputs (columns 5000 NIL))");
+  // The number of input lists must not become recursive C/VM stack depth.
+  expect ("(car (apply map + inputs))", "5000");
+  ck_assert_uint_lt (lm->ctl.high_water, 128);
+  expect ("(length (apply append inputs))", "5000");
+  ck_assert_uint_lt (lm->ctl.high_water, 128);
+  evaluate ("(define (build n acc)"
+            " (if (= n 0) acc (build (- n 1) (cons n acc))))"
+            "(define xs (build 1000 NIL))"
+            "(define summed (map + xs xs))");
+  ck_assert_uint_lt (lm->ctl.high_water, 128);
+  expect ("(list (length summed) (car summed) (last summed))",
+          "(1000 2 (2000))");
+}
+END_TEST
+
 Suite *
 prelude_suite (void)
 {
@@ -375,6 +477,11 @@ prelude_suite (void)
   tcase_add_test (tc, test_higher_order_closures);
   tcase_add_test (tc, test_invalid_arguments_and_error_abort);
   tcase_add_test (tc, test_long_list_tail_traversal);
+  tcase_add_test (tc, test_variadic_list_values);
+  tcase_add_test (tc, test_variadic_append_sharing);
+  tcase_add_test (tc, test_variadic_map_and_indirect_calls);
+  tcase_add_test (tc, test_variadic_list_argument_errors);
+  tcase_add_test (tc, test_variadic_traversal_control_bounds);
   suite_add_tcase (suite, tc);
   return suite;
 }

@@ -11,16 +11,19 @@
 ;;; pairs, application, type predicates, numeric =, and error; this file builds
 ;;; the higher-level library from those pieces.
 ;;; Like other ordinary bindings, these names are case-sensitive. Use lowercase
-;;; not, length, reverse, nth, last, and butlast, even though their former native
-;;; keyword registrations also accepted uppercase/mixed-case spellings.
+;;; not, length, reverse, nth, last, butlast, list, append, and map, even though
+;;; their former native registrations accepted uppercase/mixed-case spellings.
 ;;;
 ;;; Dialect conventions to keep in mind:
 ;;;   * NIL is both false and the empty list. Every other value is true,
 ;;;     including the number 0. Predicates here deliberately return T or NIL.
 ;;;     Inside quoted data, write () for an empty-list element: '(a () c).
 ;;;     The name NIL is normally resolved by evaluation; 'NIL is a symbol.
-;;;   * Lambda parameters are fixed-arity. compose and constantly below are
-;;;     unary helpers, not the variadic versions found in some other Lisps.
+;;;   * Lambda parameters can be fixed (x y), dotted (x . extras), or a bare
+;;;     symbol args that receives all arguments. Named define uses the same
+;;;     dotted syntax, e.g. (define (collect . args) args). Names must be
+;;;     distinct and cannot be protected native names such as first or rest.
+;;;     compose and constantly intentionally remain unary helpers below.
 ;;;   * The reader has no string literals yet. error accepts a quoted symbol
 ;;;     (or other value), so we use symbols such as 'expected-proper-list.
 ;;;   * A tail call returns another call's result directly. Those calls use
@@ -28,6 +31,13 @@
 
 ;;; Small predicates and numeric conveniences
 ;;; ---------------------------------------
+
+;; list demonstrates the smallest variadic procedure: no arguments are
+;; required, and the binder puts all evaluated values into values in order.
+;; This also handles (list) => NIL, and works through apply and funcall.
+;; There is no recursive call or dependency on any other prelude procedure.
+(define (list . values)
+  values)
 
 ;; not only tests falsehood; it does not negate a number. Only NIL is false,
 ;; so (not 0) and (not '(a)) are both NIL, while (not NIL) is T.
@@ -52,8 +62,8 @@
 (define (negative? value)
   (< value 0))
 
-;; These inclusive comparisons take exactly two arguments. The native < and
-;; > also accept chains, but rest parameters are not part of this dialect yet.
+;; These inclusive comparisons intentionally take exactly two arguments.
+;; The native < and > also accept chains; those are a separate interface.
 (define (<= left right)
   (or (< left right) (= left right)))
 
@@ -321,6 +331,66 @@
         T
         (progn (f (car remaining)) (walk (cdr remaining)))))
   (walk xs))
+
+;;; Variadic list operations
+;;; ------------------------
+
+;; append accepts zero or more PROPER lists; unlike some Scheme dialects, an
+;; improper final argument is not allowed. All inputs are validated before
+;; combining them. Zero arguments return NIL; one argument is returned as-is.
+;;
+;; Copy the elements of all but the final list into a reversed accumulator,
+;; then cons them onto the final list. This preserves the old sharing contract:
+;; the result has a fresh prefix but shares the last argument's list spine.
+;; For example, (append '(a b) tail) ends with the very same tail object.
+;;
+;; Each input is traversed a constant number of times. The left folds and the
+;; collect call are tail-recursive, so neither long lists nor many input lists
+;; require linear control-stack space. No input list is mutated.
+(define (append . lists)
+  (for-each _prelude-require-list lists)
+  (define (prepend-reversed reversed tail)
+    (fold-left (lambda (acc value) (cons value acc)) tail reversed))
+  (define (collect pending reversed)
+    (if (null? (cdr pending))
+        (prepend-reversed reversed (car pending))
+        (collect (cdr pending)
+                 (fold-left (lambda (acc value) (cons value acc))
+                            reversed (car pending)))))
+  (if (null? lists)
+      NIL
+      (collect lists NIL)))
+
+;; map requires a procedure and AT LEAST ONE proper input list. The dotted
+;; more-lists parameter captures any additional lists. We validate every list
+;; before invoking f, even if some other list is empty, so malformed inputs do
+;; not disappear behind shortest-list truncation.
+;;
+;; At each iteration, collect car from each input in argument order, apply f
+;; to those VALUES, then continue with the cdr of every input. Stop as soon as
+;; any input is empty. Calls to f occur left to right, once per result element.
+;;
+;; collect uses a left fold plus reverse instead of recursively building a
+;; column on the return stack. walk likewise accumulates reversed results.
+;; This keeps control-stack usage bounded as either input length or the number
+;; of input lists grows. The input spines are never modified.
+;;
+;;   (map + '(1 2 3) '(10 20)) => (11 22)
+;;   (apply map (list list '(a b) '(1 2))) => ((a 1) (b 2))
+(define (map f first-list . more-lists)
+  (_prelude-require-procedure f)
+  (define inputs (cons first-list more-lists))
+  (for-each _prelude-require-list inputs)
+  (define (collect getter columns)
+    (reverse (fold-left (lambda (acc xs) (cons (getter xs) acc))
+                        NIL columns)))
+  (define (walk columns reversed)
+    (if (any? null? columns)
+        (reverse reversed)
+        (let ((arguments (collect car columns))
+              (remaining (collect cdr columns)))
+          (walk remaining (cons (apply f arguments) reversed)))))
+  (walk inputs NIL))
 
 ;;; Lookup in lists and association lists
 ;;; ------------------------------------

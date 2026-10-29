@@ -4,6 +4,7 @@
 
 #include "bison.h"
 #include "flex.h"
+#include "keywords.h"
 #include "prims.h"
 
 #define yyerror(n, lm, s)                                                     \
@@ -15,6 +16,7 @@
   while (0)
 
 void yyerror_handler (LM *lm, const char *s);
+static bool valid_formals (Cell *params);
 %}
 
 %code requires
@@ -51,7 +53,7 @@ void yyerror_handler (LM *lm, const char *s);
   let
   set
   symbol
-  symbol_list
+  formal_tail
   param_list
 %%
 
@@ -82,14 +84,18 @@ forms
 form
     : '(' LAMBDA param_list forms ')'
       {
+        if (!valid_formals ($3))
+          yyerror (progn, lm, "Lambda parameters must be distinct, non-reserved symbols");
         $$ = LIST1 (LAMBDA ($3, $4, lm), lm);
       }
     | '(' define symbol forms ')'
       {
         $$ = CONS ($2, CONS ($3, $4, lm), lm);
       }
-    | '(' define '(' symbol symbol_list ')' forms ')'
+    | '(' define '(' symbol formal_tail ')' forms ')'
       {
+        if (!valid_formals ($5))
+          yyerror (progn, lm, "Function parameters must be distinct, non-reserved symbols");
         Cell *body = LIST1 (LAMBDA ($5, $7, lm), lm);
         $$ = CONS ($2, CONS ($4, body, lm), lm);
       }
@@ -146,24 +152,35 @@ form
     ;
 
 param_list
-  : '(' ')'
+  : symbol
+    {
+      // A bare symbol receives every argument, including an empty list.
+      $$ = $1;
+    }
+  | '(' ')'
     {
       $$ = NIL;
     }
-  | '(' symbol_list ')'
+  | '(' symbol formal_tail ')'
     {
-      $$ = $2;
+      // Requiring a first symbol here rejects the malformed (. rest) form.
+      $$ = CONS ($2, $3, lm);
     }
   ;
 
-symbol_list
+formal_tail
   : /* empty */
     {
       $$ = NIL;
     }
-  | symbol symbol_list
+  | symbol formal_tail
     {
       $$ = CONS ($1, $2, lm);
+    }
+  | '.' symbol
+    {
+      // A symbol tail represents the rest binding, not a required parameter.
+      $$ = $2;
     }
   ;
 
@@ -207,6 +224,30 @@ if_
   ;
 
 %%
+
+static bool
+valid_formals (Cell *params)
+{
+  // Validate at definition time, even if the function is never called. The
+  // grammar enforces the shape; this checks both fixed and rest names against
+  // reserved words and against each other, without rejecting lexical shadowing.
+  Dict *seen = dict_create (NULL, 0);
+  bool valid = true;
+  for (Cell *p = params; !NILP (p); p = CONSP (p) ? CDR (p) : NIL)
+    {
+      Cell *name = CONSP (p) ? CAR (p) : p;
+      if (!IS_INST (name, SYMBOL)
+          || keyword_lookup (name->symbol.str, name->symbol.len)
+          || dict_has_key (seen, name->symbol.str))
+        {
+          valid = false;
+          break;
+        }
+      dict_insert (seen, name->symbol.str, name);
+    }
+  dict_destroy (seen);
+  return valid;
+}
 
 void
 yyerror_handler (LM *lm, const char *s)

@@ -88,8 +88,8 @@ The prelude provides:
 - Predicates: `not`, `null?`, `zero?`, `positive?`, `negative?`, `list?`, `equal?`
 - Numeric helpers: binary `<=`, `>=`, and `abs`
 - Accessors: `caar`, `cadr`, `cdar`, `cddr`, `caddr`
-- List operations: `length`, `reverse`, `nth`, `last`, `butlast`
-- Traversal: `fold-left`, `fold-right`, `filter`, `find`, `any?`, `every?`, `for-each`
+- List operations: `list`, `append`, `length`, `reverse`, `nth`, `last`, `butlast`
+- Traversal: `map`, `fold-left`, `fold-right`, `filter`, `find`, `any?`, `every?`, `for-each`
 - Lookup: `memq`, `assq`
 - Higher-order helpers: `identity`, `constantly`, `compose`
 
@@ -100,12 +100,18 @@ and preserves exact integer distinctions in mixed comparisons. It is separate
 from `eq`'s type-sensitive and object-identity behavior.
 
 Prelude names are case-sensitive. The former native procedures `not`, `length`,
-`reverse`, `nth`, `last`, and `butlast` now use these ordinary binding rules;
+`reverse`, `nth`, `last`, `butlast`, `list`, `append`, and `map` now use these ordinary binding rules;
 write their names in lowercase. The VM retains internal C list utilities for
 argument counting and application, separate from the Scheme-visible procedures.
 `nth` is zero-based and returns NIL for negative or out-of-range integer indexes.
 `last` returns a fresh one-element list, including `(NIL)` for an empty input;
 `butlast` returns NIL for empty and singleton inputs.
+
+`list` accepts any number of values. `append` accepts zero or more proper lists,
+copies their prefixes, and shares the last list's spine; improper final tails
+are rejected. `map` requires a procedure and at least one proper list, invokes
+the procedure left to right, and stops at the shortest list. These procedures
+work through `apply` and `funcall` as ordinary Scheme lambdas.
 
 ```lisp
 (cadr '(10 20 30))                   ; => 20
@@ -230,6 +236,33 @@ Bindings must be two‐element lists `(name init-expr)`.
 ```
 
 Creates an anonymous function closing over the current environment.
+
+Parameters can have three shapes:
+
+```lisp
+(lambda (x y) body)          ; exactly two arguments
+(lambda args body)          ; all arguments collected in args (possibly NIL)
+(lambda (head . extras) body) ; one required argument, extras receives the rest
+```
+
+The same syntax is supported by named definitions:
+
+```lisp
+(define (collect . args) args)
+(collect)                   ; => NIL
+(collect 1 2 3)             ; => (1 2 3)
+
+(define (tag head . extras) (cons head extras))
+(tag 'a)                    ; => (a)
+(tag 'a 1 2)                ; => (a 1 2)
+```
+
+Required arguments must be present; fixed-arity functions still reject extras.
+Rest arguments retain their evaluated values in order. In an `apply` call the
+rest binding can share the supplied argument-list suffix. Parameter names must
+be distinct, including the rest name, and cannot use protected native names
+such as `first` or `rest`. Malformed or duplicate parameters are rejected when
+the definition is parsed, even if the function is never called.
 
 ```lisp
 (define add2 (lambda (x y) (+ x y))) ; or (define (add2 xy) (+ x y))

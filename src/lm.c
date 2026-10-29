@@ -269,16 +269,7 @@ ctl_funcall:
                           "funcall: improper argument list");
 
     if (IS_INST (fn, THUNK))
-      switch (fn->thunk)
-        {
-        case THUNK_LIST:
-          return stk_push (lm, arglist);
-          break;
-
-        default:
-          return stk_push (lm, thunker (lm, fn, arglist));
-          break;
-        }
+      return stk_push (lm, thunker (lm, fn, arglist));
 
     if (IS_INST (fn, LAMBDA))
       {
@@ -323,27 +314,33 @@ ctl_lambda:
       return false;
 
     Lambda *lambda = &fn->lambda;
+    Cell   *params = lambda->params;
 
-    size_t expected = length (lambda->params);
-    size_t received = length (arglist);
-
-    if (expected != received)
+    // Each cons in the formal specification names a required argument.
+    // Walk the argument list directly instead of requiring equal lengths or
+    // allocating a zipped list of bindings. funcall already checked its shape.
+    while (CONSP (params))
       {
-        Err err = (received < expected) ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG;
-        return lm_err_bool (lm, err, "lambda");
-      }
-
-    Cell *pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
-
-    while (!NILP (pairs))
-      {
-        Cell *pair = CAR (pairs);
-
-        if (!lm_env_define (lm, (CAR (pair)), CADR (pair)))
+        if (NILP (arglist))
+          return lm_err_bool (lm, ERR_MISSING_ARG, "lambda");
+        if (!lm_env_define (lm, CAR (params), CAR (arglist)))
           return false;
-
-        pairs = CDR (pairs);
+        params  = CDR (params);
+        arglist = CDR (arglist);
       }
+
+    // A final symbol captures all remaining values; for a rest-only lambda
+    // it captures the whole list. Binding NIL is valid when no values remain.
+    // The suffix becomes an environment root, so escaped closures retain it.
+    if (IS_INST (params, SYMBOL))
+      {
+        if (!lm_env_define (lm, params, arglist))
+          return false;
+      }
+    else if (!NILP (params))
+      return lm_err_bool (lm, ERR_INVALID_ARG, "lambda: invalid parameters");
+    else if (!NILP (arglist))
+      return lm_err_bool (lm, ERR_UNEXPECTED_ARG, "lambda");
 
     return ctl_push_state (lm, S (progn, .res = NIL, .arglist = lambda->body));
   }
@@ -506,7 +503,6 @@ ctl_lispm:
         maximum = 3;
         break;
       case THUNK_LET:
-      case THUNK_MAP:
       case THUNK_APPLY:
         minimum = 2;
         break;
@@ -543,16 +539,6 @@ ctl_lispm:
             },
             3);
 
-      case THUNK_MAP:
-        return ctl_push_states (
-            lm,
-            (State[]){
-                S (evlis, .acc = NIL, .arglist = CDR (arglist)),
-                S (eval, .expr = CAR (arglist)),
-                S (map, .fn = NULL, .arglist = NULL),
-            },
-            3);
-
       case THUNK_DEFINE:
         if (!CONSP (arglist) || !CONSP (CDR (arglist))
             || !NILP (CDDR (arglist)))
@@ -584,9 +570,6 @@ ctl_lispm:
                                     S (eval, .expr = NULL),
                                 },
                                 2);
-
-      case THUNK_LIST:
-        return ctl_push_state (lm, S (evlis, .acc = NIL, .arglist = arglist));
 
       case THUNK_PROGN:
         return ctl_push_state (lm, S (progn, .res = NIL, .arglist = arglist));
@@ -719,67 +702,6 @@ ctl_or_cont:
 
     // Re-enter or so the last operand is evaluated without an or_cont.
     return ctl_push_state (lm, S (or, .arglist = cdr));
-  }
-
-ctl_map:
-  {
-    Cell *fn      = u.map.fn;
-    Cell *arglist = u.map.arglist;
-
-    if (!fn && !(fn = stk_pop (lm)))
-      return false;
-
-    if (!arglist && !(arglist = stk_pop (lm)))
-      return false;
-
-    for (Cell *lists = arglist; !NILP (lists); lists = CDR (lists))
-      if (!proper_list_p (CAR (lists)))
-        return lm_err_bool (lm, ERR_ARG_TYPE_MISMATCH, "map: not a list");
-
-    Cell *ziplst = zip (lm, arglist);
-
-    return ctl_push_state (
-        lm, S (map_cont, .fn = fn, .acc = NIL, .ziplist = ziplst));
-  }
-
-ctl_map_cont:
-  {
-    Cell *fn     = u.map_cont.fn;
-    Cell *acc    = u.map_cont.acc;
-    Cell *zipped = u.map_cont.ziplist;
-
-    if (NILP (zipped))
-      {
-        Cell *res = reverse_inplace (acc);
-        return stk_push (lm, res);
-      }
-
-    Cell *car = CAR (zipped);
-    Cell *cdr = CDR (zipped);
-
-    return ctl_push_states (
-        lm,
-        (State[]){
-            S (funcall, .fn = fn, .arglist = car),
-            S (map_acc, .fn = fn, .acc = acc, .ziplist = cdr),
-        },
-        2);
-  }
-
-ctl_map_acc:
-  {
-    Cell *fn     = u.map_acc.fn;
-    Cell *acc    = u.map_acc.acc;
-    Cell *zipped = u.map_acc.ziplist;
-
-    Cell *res = stk_pop (lm);
-    if (!res)
-      return false;
-
-    Cell *acc2 = CONS (res, acc, lm);
-
-    return ctl_push_state (
-        lm, S (map_cont, .fn = fn, .acc = acc2, .ziplist = zipped));
   }
 }
 

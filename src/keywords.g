@@ -26,7 +26,6 @@ struct Keyword;
 "quote",   QUOTE
 "'",       QUOTE
 "and",     &wrapped_thunks[THUNK_AND].ptr
-"append",  &wrapped_thunks[THUNK_APPEND].ptr
 "apply",   &wrapped_thunks[THUNK_APPLY].ptr
 "car",     &wrapped_thunks[THUNK_CAR].ptr
 "cdr",     &wrapped_thunks[THUNK_CDR].ptr
@@ -49,8 +48,6 @@ struct Keyword;
 "let",     &wrapped_thunks[THUNK_LET].ptr
 "lt",      &wrapped_thunks[THUNK_LT].ptr
 "<",       &wrapped_thunks[THUNK_LT].ptr
-"map",     &wrapped_thunks[THUNK_MAP].ptr
-"list",    &wrapped_thunks[THUNK_LIST].ptr
 "or",      &wrapped_thunks[THUNK_OR].ptr
 "print",   &wrapped_thunks[THUNK_PRINT].ptr
 "progn",   &wrapped_thunks[THUNK_PROGN].ptr
