@@ -20,6 +20,7 @@ static const char *err_msg[] = {
   [ERR_DIVISION_BY_0]     = "Division by zero",
   [ERR_OVERFLOW]          = "Overflow",
   [ERR_UNDERFLOW]         = "Stack or control‐stack underflow",
+  [ERR_USER]              = "User error",
 };
 
 static void

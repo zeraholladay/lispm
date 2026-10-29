@@ -22,6 +22,7 @@ typedef enum
   ERR_DIVISION_BY_0,     // Division by 0
   ERR_OVERFLOW,          // Overflow (e.g., push to full stack)
   ERR_UNDERFLOW,         // Underflow (e.g., pop from empty stack)
+  ERR_USER,              // Explicitly raised by the Scheme error procedure
 } Err;
 
 bool  lm_err_bool (LM *lm, Err code, const char *fmt, ...);

@@ -38,6 +38,7 @@ endif
 FLEX := flex
 BISON := bison
 GPERF := gperf
+XXD := xxd
 
 FLEX_SRC := $(SRC)/flex.l
 BISON_SRC := $(SRC)/bison.y
@@ -48,6 +49,8 @@ FLEX_H := $(GEN)/flex.h
 BISON_C := $(GEN)/bison.c
 BISON_H := $(GEN)/bison.h
 GPERF_C := $(GEN)/keywords.c
+PRELUDE_SRC := lib/prelude.scm
+PRELUDE_DATA := $(GEN)/prelude.inc
 
 SRC_CFILES := $(wildcard $(SRC)/*.c) $(FLEX_C) $(BISON_C) $(GPERF_C)
 SRC_CFILES_ALL := $(sort $(SRC_CFILES))
@@ -68,7 +71,7 @@ $(BIN)/%.o: $(SRC)/%.c | bin
 
 # gen
 .PHONY: gen
-gen: $(BISON_C) $(FLEX_C) $(GPERF_C)
+gen: $(BISON_C) $(FLEX_C) $(GPERF_C) $(PRELUDE_DATA)
 
 $(BISON_C): $(BISON_SRC) | bin
 	$(BISON) $(BISON_FLAGS) -o $(BISON_C) --defines=$(BISON_H) $(BISON_SRC)
@@ -78,6 +81,12 @@ $(FLEX_C): $(FLEX_SRC) $(BISON_H) | bin
 
 $(GPERF_C): $(GPERF_SCR) $(BISON_H) | bin
 	$(GPERF) $(GPERF_SCR) --output-file=$(GPERF_C)
+
+$(PRELUDE_DATA): $(PRELUDE_SRC) | bin
+	$(XXD) -i < $< > $@
+	@printf ', 0\n' >> $@
+
+$(BIN)/prelude.o: $(PRELUDE_DATA)
 
 # test/
 TEST_SRC := test
@@ -113,7 +122,7 @@ lint: clean
 # bin/
 .PHONY: bin
 bin:
-	-@mkdir $(BIN) $(GEN)
+	@mkdir -p $(BIN) $(GEN)
 
 # clean
 .PHONY: clean

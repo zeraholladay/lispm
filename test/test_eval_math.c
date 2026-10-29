@@ -1,4 +1,7 @@
 #include <check.h>
+#include <float.h>
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -167,6 +170,113 @@ START_TEST (test_div)
 }
 END_TEST
 
+START_TEST (test_integer_literal_boundaries)
+{
+  char literal[64];
+  snprintf (literal, sizeof (literal), "%lld", LLONG_MAX);
+  Cell *value = run_eval_progn (literal);
+  ck_assert (IS_INST (value, INTEGER));
+  ck_assert_int_eq (value->integer, LLONG_MAX);
+
+  snprintf (literal, sizeof (literal), "%lld", LLONG_MIN);
+  value = run_eval_progn (literal);
+  ck_assert (IS_INST (value, INTEGER));
+  ck_assert_int_eq (value->integer, LLONG_MIN);
+  ck_assert_int_eq (run_eval_progn ("-0")->integer, 0);
+}
+END_TEST
+
+START_TEST (test_integer_literal_overflow)
+{
+  const char *invalid[]
+      = { "9223372036854775808", "-9223372036854775809",
+          "'9223372036854775808", "(+ 1 9223372036854775808)",
+          "42 -9223372036854775809" };
+  for (size_t i = 0; i < sizeof (invalid) / sizeof (*invalid); ++i)
+    {
+      Cell *ast = T;
+      ck_assert_msg (!parser_buf (invalid[i], &ast, lm),
+                     "Should reject numeric input: %s", invalid[i]);
+      ck_assert_ptr_eq (ast, NIL);
+    }
+
+  char huge[512];
+  memset (huge, '9', sizeof (huge) - 1);
+  huge[sizeof (huge) - 1] = '\0';
+  Cell *ast               = T;
+  ck_assert (!parser_buf (huge, &ast, lm));
+  ck_assert_ptr_eq (ast, NIL);
+  // Conversion errors must not poison a subsequent parse/evaluation.
+  ck_assert_int_eq (run_eval_progn ("42")->integer, 42);
+}
+END_TEST
+
+START_TEST (test_float_literal_boundaries)
+{
+  // The reader accepts decimal notation, so print exact fixed-point values
+  // instead of exponent notation. 1074 places suffice for a binary64 value.
+  char        literal[1200];
+  const Float values[] = { DBL_MAX, -DBL_MAX, DBL_MIN, -DBL_MIN };
+  for (size_t i = 0; i < sizeof (values) / sizeof (*values); ++i)
+    {
+      int places = fabs (values[i]) < 1.0 ? 1074 : 1;
+      int len
+          = snprintf (literal, sizeof (literal), "%.*f", places, values[i]);
+      ck_assert_int_gt (len, 0);
+      ck_assert_uint_lt ((size_t)len, sizeof (literal));
+      Cell *value = run_eval_progn (literal);
+      ck_assert (IS_INST (value, FLOAT));
+      ck_assert (isfinite (value->_float));
+      ck_assert (value->_float == values[i]);
+    }
+  Cell *zero = run_eval_progn ("-0.0");
+  ck_assert (IS_INST (zero, FLOAT));
+  ck_assert (zero->_float == 0.0);
+  ck_assert (signbit (zero->_float));
+}
+END_TEST
+
+START_TEST (test_float_literal_range_errors)
+{
+  char overflow[512];
+  memset (overflow, '9', 400);
+  memcpy (overflow + 400, ".0", 3);
+
+  char underflow[512] = "0.";
+  memset (underflow + 2, '0', 400);
+  memcpy (underflow + 402, "1", 2);
+
+  const char *invalid[] = { overflow, underflow };
+  for (size_t i = 0; i < sizeof (invalid) / sizeof (*invalid); ++i)
+    {
+      for (int negative = 0; negative <= 1; ++negative)
+        {
+          char literal[513];
+          snprintf (literal, sizeof (literal), "%s%s", negative ? "-" : "",
+                    invalid[i]);
+          Cell *ast = T;
+          ck_assert (!parser_buf (literal, &ast, lm));
+          ck_assert_ptr_eq (ast, NIL);
+          ck_assert (run_eval_progn ("1.5")->_float == 1.5);
+        }
+    }
+}
+END_TEST
+
+START_TEST (test_numeric_range_errors_in_streams)
+{
+  FILE *input = tmpfile ();
+  ck_assert_ptr_nonnull (input);
+  fputs ("(define x 1) 9223372036854775808", input);
+  rewind (input);
+  Cell *ast = T;
+  ck_assert (!parser_stream (input, &ast, lm));
+  ck_assert_ptr_eq (ast, NIL);
+  fclose (input);
+  ck_assert_int_eq (run_eval_progn ("(+ 20 22)")->integer, 42);
+}
+END_TEST
+
 Suite *
 eval_math_suite (void)
 {
@@ -181,6 +291,11 @@ eval_math_suite (void)
   tcase_add_test (tc, test_sub);
   tcase_add_test (tc, test_mul);
   tcase_add_test (tc, test_div);
+  tcase_add_test (tc, test_integer_literal_boundaries);
+  tcase_add_test (tc, test_integer_literal_overflow);
+  tcase_add_test (tc, test_float_literal_boundaries);
+  tcase_add_test (tc, test_float_literal_range_errors);
+  tcase_add_test (tc, test_numeric_range_errors_in_streams);
 
   suite_add_tcase (s, tc);
   return s;

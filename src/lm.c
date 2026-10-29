@@ -10,6 +10,7 @@
 #include "lm_err.h"
 #include "lm_gc.h"
 #include "palloc.h"
+#include "prelude.h"
 #include "prims.h"
 #include "thunks.h"
 #include "types.h"
@@ -826,6 +827,13 @@ lm_create (void)
   // Allocate pool
   lm->pool       = pool_init (LM_CAP_PER_POOL, sizeof (Cell));
   lm->env.global = lm->env.current = ENV (NULL, lm);
+
+  if (!prelude_load (lm))
+    {
+      fputs ("Failed to load the Scheme prelude\n", stderr);
+      lm_destroy (lm);
+      return NULL;
+    }
 
   return lm;
 }

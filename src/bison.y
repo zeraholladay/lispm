@@ -28,6 +28,7 @@ void yyerror_handler (LM *lm, const char *s);
 {
   Integer integer;
   Float _float;
+  const char *error;
   Cell *cell;
   struct {
     const char *str;
@@ -38,6 +39,7 @@ void yyerror_handler (LM *lm, const char *s);
 %token ERROR LAMBDA QUOTE
 %token <integer> INTEGER
 %token <_float> FLOAT
+%token <error> NUMERIC_ERROR
 %token <symbol>  IF DEFINE LET SET SYMBOL
 
 %type <cell>
@@ -118,6 +120,11 @@ form
     | FLOAT
       {
         $$ = FLOAT ($1, lm);
+      }
+    | NUMERIC_ERROR
+      {
+        // Abort parsing before an out-of-range value can enter the AST.
+        yyerror (progn, lm, $1);
       }
     | '\'' form
       {

@@ -73,6 +73,8 @@ typedef struct lm
   bool  err_bool;
 } LM;
 
+// Creates a VM and loads the embedded Scheme prelude; NULL on bootstrap
+// failure.
 LM  *lm_create (void);
 void lm_destroy (LM *lm);
 

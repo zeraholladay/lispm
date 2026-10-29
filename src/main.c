@@ -34,7 +34,9 @@ run (int argc, char **argv)
   if (!argc)
     run_repl = 1;
 
-  LM *lm     = lm_create ();
+  LM *lm = lm_create ();
+  if (!lm)
+    return 1;
   int status = 0;
 
   for (int i = 0; i < argc; ++i)

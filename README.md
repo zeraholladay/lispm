@@ -8,6 +8,7 @@ A simple Scheme-dialect.
 
 - [Quickstart](#quickstart)
 - [REPL Usage](#repl-usage)
+- [Scheme Prelude](#scheme-prelude)
 - [Types](#types)
 - [Special Forms](#special-forms)
 - [Primitives](#primitives)
@@ -30,6 +31,10 @@ A simple Scheme-dialect.
 ---
 
 ## Quickstart
+
+Build dependencies: a C compiler, Make, Flex, Bison, gperf, `xxd`, Readline,
+and `pkg-config`. The test suite also requires the Check C testing framework.
+On macOS, run `source .env.sh` to select the Homebrew tools before building.
 
 Build:
 
@@ -70,6 +75,44 @@ Use `Ctrl+D` (EOF) to exit.
 
 ---
 
+## Scheme Prelude
+
+[`lib/prelude.scm`](lib/prelude.scm) is an extensively commented standard library
+written in Scheme. The build embeds it in the executable using `xxd`; every
+`lm_create()` evaluates it before returning, so its functions are available in
+the REPL, program files, and C API without depending on the working directory.
+Edit the Scheme file and run `make all` to rebuild the embedded version.
+
+The prelude provides:
+
+- Predicates: `null?`, `zero?`, `positive?`, `negative?`, `list?`, `equal?`
+- Numeric helpers: binary `<=`, `>=`, and `abs`
+- Accessors: `caar`, `cadr`, `cdar`, `cddr`, `caddr`
+- Traversal: `fold-left`, `fold-right`, `filter`, `find`, `any?`, `every?`, `for-each`
+- Lookup: `memq`, `assq`
+- Higher-order helpers: `identity`, `constantly`, `compose`
+
+These are ordinary, redefinable bindings. The native foundations are `pair?`,
+`number?`, `integer?`, `symbol?`, `procedure?`, numeric `=`, and `(error value)`.
+Numeric `=` accepts one or more arguments, supports integer/float comparisons,
+and preserves exact integer distinctions in mixed comparisons. It is separate
+from `eq`'s type-sensitive and object-identity behavior.
+
+```lisp
+(cadr '(10 20 30))                   ; => 20
+(fold-left + 0 '(1 2 3 4))          ; => 10
+(filter positive? '(-2 0 3 4))      ; => (3 4)
+((compose abs (lambda (x) (- x 10))) 3) ; => 7
+```
+
+List traversals validate proper lists; the prelude explains empty-list results,
+short-circuiting, callback order, and tail-recursion behavior next to each
+definition. `find` returns the matching element or NIL, `memq` returns a matching
+original suffix, and `assq` returns a matching association pair. `for-each`
+returns T. `constantly` and the function returned by `compose` are unary.
+
+---
+
 ## Types
 
 * **NIL** — the empty list / false
@@ -79,6 +122,10 @@ Use `Ctrl+D` (EOF) to exit.
 * **Primitive functions** — built in C
 * **Lambda** — user-defined functions
 * **List** — linked cons cells (`Cell`)
+
+Numeric literals are range-checked while reading. Integers must fit a signed
+`long long`; floats must convert to a finite `double` without a range error.
+Overflow and floating-point underflow reported by the converter are parse errors.
 
 ---
 

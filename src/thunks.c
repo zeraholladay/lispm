@@ -181,6 +181,49 @@ thunk_not (LM *lm, Cell *fn, Cell *arglist)
   return CAR (arglist) == NIL ? T : NIL;
 }
 
+// These predicates expose runtime type information that Scheme code cannot
+// safely discover by probing a value with car/cdr or arithmetic operations.
+Cell *
+thunk_type_predicate (LM *lm, Cell *fn, Cell *arglist)
+{
+  (void)lm;
+  Cell *value  = CAR (arglist);
+  bool  result = false;
+  switch (fn->thunk)
+    {
+    case THUNK_INTEGER_P:
+      result = IS_INST (value, INTEGER);
+      break;
+    case THUNK_NUMBER_P:
+      result = IS_INST (value, INTEGER) || IS_INST (value, FLOAT);
+      break;
+    case THUNK_PAIR_P:
+      result = CONSP (value);
+      break;
+    case THUNK_PROCEDURE_P:
+      result = IS_INST (value, THUNK) || IS_INST (value, LAMBDA);
+      break;
+    case THUNK_SYMBOL_P:
+      result = IS_INST (value, SYMBOL);
+      break;
+    default:
+      return lm_err_nil (lm, ERR_INTERNAL, "unknown type predicate");
+    }
+  return result ? T : NIL;
+}
+
+Cell *
+thunk_error (LM *lm, Cell *fn, Cell *arglist)
+{
+  (void)fn;
+  // The reader has no string literals yet; symbols and lists can carry a
+  // readable error description, e.g. (error 'filter-expected-list).
+  char *message = format (CAR (arglist));
+  Cell *result  = lm_err_nil (lm, ERR_USER, "%s", message);
+  free (message);
+  return result;
+}
+
 typedef enum
 {
   NUM_ADD,
@@ -384,6 +427,32 @@ number_lt (Number lhs, Number rhs)
   return (lhs.is_float || rhs.is_float)
              ? number_as_float (lhs) < number_as_float (rhs)
              : lhs.integer < rhs.integer;
+}
+
+static bool
+number_eq (Number lhs, Number rhs)
+{
+  if (!lhs.is_float && !rhs.is_float)
+    return lhs.integer == rhs.integer;
+  if (lhs.is_float && rhs.is_float)
+    return lhs._float == rhs._float;
+
+  Integer integer  = lhs.is_float ? rhs.integer : lhs.integer;
+  Float   floating = lhs.is_float ? lhs._float : rhs._float;
+  // Comparing by converting the integer to double could make adjacent large
+  // integers appear equal. Instead, range-check before casting the float,
+  // then require both the integer value and its float round-trip to match.
+  if (!isfinite (floating) || floating < (Float)LLONG_MIN
+      || floating >= -(Float)LLONG_MIN)
+    return false;
+  Integer converted = (Integer)floating;
+  return converted == integer && (Float)converted == floating;
+}
+
+Cell *
+thunk_num_eq (LM *lm, Cell *fn, Cell *arglist)
+{
+  return thunk_compare (lm, fn, arglist, number_eq);
 }
 
 Cell *

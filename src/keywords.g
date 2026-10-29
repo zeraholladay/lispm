@@ -34,6 +34,13 @@ struct Keyword;
 "cons",    &wrapped_thunks[THUNK_CONS].ptr
 "define",  &wrapped_thunks[THUNK_DEFINE].ptr
 "eq",      &wrapped_thunks[THUNK_EQ].ptr
+"=",       &wrapped_thunks[THUNK_NUM_EQ].ptr
+"error",   &wrapped_thunks[THUNK_ERROR].ptr
+"integer?",   &wrapped_thunks[THUNK_INTEGER_P].ptr
+"number?",    &wrapped_thunks[THUNK_NUMBER_P].ptr
+"pair?",      &wrapped_thunks[THUNK_PAIR_P].ptr
+"procedure?", &wrapped_thunks[THUNK_PROCEDURE_P].ptr
+"symbol?",    &wrapped_thunks[THUNK_SYMBOL_P].ptr
 "eval",    &wrapped_thunks[THUNK_EVAL].ptr
 "first",   &wrapped_thunks[THUNK_FIRST].ptr
 "funcall", &wrapped_thunks[THUNK_FUNCALL].ptr
