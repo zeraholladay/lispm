@@ -91,7 +91,7 @@ form
         Cell *body = LIST1 (LAMBDA ($5, $7, lm), lm);
         $$ = CONS ($2, CONS ($4, body, lm), lm);
       }
-    | '(' let forms forms ')'
+    | '(' let form forms ')'
       {
         $$ = CONS ($2, CONS ($3, $4, lm), lm);
       }
@@ -127,18 +127,14 @@ form
       {
         $$ = $2;
       }
-    | '(' forms '.' form ')'
+    | '(' form forms '.' form ')'
       {
-        if (NILP ($2))
-          $$ = $4;
-        else
-          {
-            Cell *tail = $2;
-            while (!NILP (CDR (tail)))
-              tail = CDR (tail);
-            RPLACD (tail, $4);
-            $$ = $2;
-          }
+        Cell *head = CONS ($2, $3, lm);
+        Cell *tail = head;
+        while (!NILP (CDR (tail)))
+          tail = CDR (tail);
+        RPLACD (tail, $5);
+        $$ = head;
       }
     ;
 

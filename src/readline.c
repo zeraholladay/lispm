@@ -61,28 +61,18 @@ rl_init (void)
   atexit (rl_cleanup);
 }
 
-int
-rl_readline (char *full_input, size_t n)
+char *
+rl_readline (void)
 {
   char *line = readline ("> ");
 
   if (!line)
-    return -1;
+    return NULL;
 
-  size_t len = strlen (line);
-  if (len >= n)
+  if (*line)
     {
-      free (line);
-      return -1;
+      add_history (line);
     }
 
-  strcpy (full_input, line);
-
-  if (len > 0)
-    {
-      add_history (full_input);
-    }
-
-  free (line);
-  return len;
+  return line;
 }

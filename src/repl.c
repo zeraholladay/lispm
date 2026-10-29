@@ -7,28 +7,25 @@
 #include "readline.h"
 #include "types.h"
 
-#ifndef RL_BUF_SIZ
-#define RL_BUF_SIZ 4096
-#endif
-
 int
 repl (LM *lm)
 {
   Cell *progn = NULL;
-  char  input[RL_BUF_SIZ];
 
   rl_init ();
 
   for (;;)
     {
-      int len = rl_readline (input, sizeof (input));
+      char *input = rl_readline ();
 
-      if (len < 0)
+      if (!input)
         break;
 
-      if (!parser_buf (input, &progn, lm))
+      bool parsed = parser_buf (input, &progn, lm);
+      free (input);
+      if (!parsed)
         {
-          perror ("Parse failed");
+          fputs ("Parse failed\n", stderr);
           continue;
         }
 

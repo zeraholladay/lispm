@@ -23,7 +23,7 @@ stack_xgrow (Stack *stack, size_t count)
 Stack *
 stack_create (void)
 {
-  Stack *stack = xmalloc (sizeof *(stack));
+  Stack *stack = xcalloc (1, sizeof *(stack));
   stack_xgrow (stack, STACK_INITIAL);
   stack->sp = stack->fp = 0;
   return stack;

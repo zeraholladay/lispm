@@ -614,6 +614,136 @@ START_TEST (test_quote_edge)
 }
 END_TEST
 
+START_TEST (test_closure_shared_locations)
+{
+  Cell *r = run_eval_progn (
+      "(define (make-counter) (let ((x 0)) (lambda () (set! x (+ x 1)) x)))"
+      "(define counter (make-counter)) (counter)");
+  ck_assert (IS_INST (r, INTEGER));
+  ck_assert_int_eq (r->integer, 1);
+  lm_gc (lm);
+  r = run_eval_progn ("(counter)");
+  ck_assert_int_eq (r->integer, 2);
+
+  r = run_eval_progn ("(define pair (let ((x 0))"
+                      "  (list (lambda () (set! x (+ x 1))) (lambda () x))))"
+                      "(funcall (first pair)) (funcall (first (rest pair)))");
+  ck_assert_int_eq (r->integer, 1);
+
+  r = run_eval_progn (
+      "(define x 10) (define f ((lambda (x) (lambda () x)) 20))"
+      "(set! x 30) (let ((x 99)) (f))");
+  ck_assert_int_eq (r->integer, 20);
+  r = run_eval_progn ("x");
+  ck_assert_int_eq (r->integer, 30);
+}
+END_TEST
+
+START_TEST (test_gc_collects_closure_cycles)
+{
+  Cell *closure = run_eval_progn (
+      "(define escaped (let () (define (loop) (loop)) loop))");
+  ck_assert (IS_INST (closure, LAMBDA));
+  Cell *frame = closure->lambda.env;
+  lm_gc (lm);
+  ck_assert (!pool_gc_is_free (closure));
+  ck_assert (!pool_gc_is_free (frame));
+  run_eval_progn ("(set! escaped NIL)");
+  lm_gc (lm);
+  ck_assert (pool_gc_is_free (closure));
+  ck_assert (pool_gc_is_free (frame));
+}
+END_TEST
+
+START_TEST (test_invalid_forms_and_improper_lists)
+{
+  const char *invalid[] = { "(let x 1)",
+                            "(let ((x . 1)) x)",
+                            "(quote)",
+                            "(quote a b)",
+                            "(eval)",
+                            "(eval 1 2)",
+                            "(apply)",
+                            "(funcall)",
+                            "(map)",
+                            "(+ 1 . 2)",
+                            "(length '(a . b))",
+                            "(reverse '(a . b))",
+                            "(nth 0 '(a . b))",
+                            "(last '(a . b))",
+                            "(butlast '(a . b))",
+                            "(append '(a) '(b . c))",
+                            "(map list '(a . b))",
+                            "(apply + '(1 . 2))" };
+  for (size_t i = 0; i < sizeof (invalid) / sizeof (*invalid); ++i)
+    ck_assert_msg (NILP (run_eval_progn (invalid[i])), "%s should fail",
+                   invalid[i]);
+
+  run_eval_progn ("(define changed 0)");
+  ck_assert_ptr_eq (run_eval_progn ("(define bad 1 (set! changed 9))"), NIL);
+  ck_assert_int_eq (run_eval_progn ("changed")->integer, 0);
+  ck_assert_int_eq (run_eval_progn ("(+ 1 2)")->integer, 3);
+}
+END_TEST
+
+START_TEST (test_formatter_pairs_and_float)
+{
+  const char *inputs[]   = { "'(a . b)", "'(a b . c)", "'(a b)", "42.5" };
+  const char *expected[] = { "(a . b)", "(a b . c)", "(a b)", "42.500000" };
+  for (size_t i = 0; i < 4; ++i)
+    {
+      char *formatted = format (run_eval_progn (inputs[i]));
+      ck_assert_str_eq (formatted, expected[i]);
+      free (formatted);
+    }
+}
+END_TEST
+
+START_TEST (test_parser_stream_lifecycle)
+{
+  for (int i = 1; i <= 2; ++i)
+    {
+      FILE *in = tmpfile ();
+      ck_assert_ptr_nonnull (in);
+      fprintf (in, "(+ %d 10)", i);
+      rewind (in);
+      Cell *ast = NULL;
+      ck_assert (parser_stream (in, &ast, lm));
+      ck_assert_int_eq (lm_progn (lm, ast)->integer, i + 10);
+      fclose (in);
+    }
+  ck_assert_int_eq (run_eval_progn ("(+ 3 10)")->integer, 13);
+  Cell *ast = T;
+  ck_assert (!parser_stream (NULL, &ast, lm));
+  ck_assert_ptr_eq (ast, NIL);
+  ck_assert (!parser_buf ("(. x)", &ast, lm));
+}
+END_TEST
+
+START_TEST (test_string_ownership_and_pool_boundary)
+{
+  char  original[] = "owned";
+  Cell *string     = STRING (original, lm);
+  original[0]      = 'X';
+  ck_assert_str_eq (string->string, "owned");
+  lm->stk.cells[lm->stk.sp++] = string;
+  lm_gc (lm);
+  ck_assert (!pool_gc_is_free (string));
+  --lm->stk.sp;
+  lm_gc (lm);
+  ck_assert (pool_gc_is_free (string));
+
+  Cell *last = NULL;
+  while (lm->pool->free_list)
+    last = INTEGER ((Integer)42, lm);
+  lm_gc (lm);
+  ck_assert (pool_gc_is_free (last));
+  for (size_t i = 0; i < LM_CAP_PER_POOL + 1; ++i)
+    STRING ("payload", lm);
+  ck_assert_ptr_nonnull (lm->pool->next);
+}
+END_TEST
+
 // START_TEST (test_string_literals)
 // {
 //   // if you support strings
@@ -657,6 +787,12 @@ eval_suite (void)
   tcase_add_test (tc, test_parser_errors);
   tcase_add_test (tc, test_gc_reclaims_unreachable_cells);
   tcase_add_test (tc, test_quote_edge);
+  tcase_add_test (tc, test_closure_shared_locations);
+  tcase_add_test (tc, test_gc_collects_closure_cycles);
+  tcase_add_test (tc, test_invalid_forms_and_improper_lists);
+  tcase_add_test (tc, test_formatter_pairs_and_float);
+  tcase_add_test (tc, test_parser_stream_lifecycle);
+  tcase_add_test (tc, test_string_ownership_and_pool_boundary);
   // tcase_add_test (tc, test_string_literals);
 
   suite_add_tcase (s, tc);

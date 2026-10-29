@@ -13,6 +13,9 @@
 Pool *
 pool_init (size_t count, size_t size)
 {
+  if (count == 0)
+    return NULL;
+
   Pool  *p      = xcalloc (1, sizeof *(p));
   size_t stride = STRIDE (sizeof (PallocWrapper)
                           + size); // array-aligned PallocWrapper and size
@@ -70,8 +73,9 @@ pool_xalloc_hier (Pool **head)
 {
   Pool *cur = *head;
 
-  if (cur->free_list)
-    return pool_xalloc (cur);
+  for (Pool *p = cur; p; p = p->next)
+    if (p->free_list)
+      return pool_xalloc (p);
 
   Pool *new_pool = pool_init (cur->count, cur->size);
 
@@ -89,9 +93,13 @@ pool_free (Pool *p, void *ptr)
   PallocWrapper *wrapper
       = (PallocWrapper *)((void *)ptr - offsetof (PallocWrapper, ptr));
 
+  if (wrapper->free)
+    return;
+
   wrapper->next_free = p->free_list;
   p->free_list       = wrapper;
   wrapper->free      = 1;
+  wrapper->gc_mark   = 0;
 }
 
 void
@@ -100,16 +108,15 @@ pool_reset_all (Pool *p)
   size_t count  = p->count;
   size_t stride = p->stride;
 
-  for (size_t i = 0; i < count - 1; ++i)
+  for (size_t i = 0; i < count; ++i)
     {
       PallocWrapper *cur = INDEX (p->pool, i, stride);
-      cur->next_free     = INDEX (p->pool, i + 1, stride);
-      cur->free          = 1;
-      cur->gc_mark       = 0;
+      cur->next_free = (i + 1 < count) ? INDEX (p->pool, i + 1, stride) : NULL;
+      cur->free      = 1;
+      cur->gc_mark   = 0;
     }
 
-  INDEX (p->pool, count - 1, stride)->next_free = NULL;
-  p->free_list                                  = INDEX (p->pool, 0, stride);
+  p->free_list = INDEX (p->pool, 0, stride);
 }
 
 bool
@@ -147,7 +154,7 @@ pool_gc_unmark (void *ptr)
 void
 pool_map (Pool *p, void (*cb) (Pool *p, void *))
 {
-  for (size_t i = 0; i < p->count - 1; ++i)
+  for (size_t i = 0; i < p->count; ++i)
     {
       PallocWrapper *wrapper = INDEX (p->pool, i, p->stride);
       cb (p, &wrapper->ptr);

@@ -200,6 +200,14 @@ rb_uncle (rb_node *n)
   return RB_LEFT (grandparent);
 }
 
+static int
+rb_compare_key (const char *key, size_t len, const rb_node *node)
+{
+  size_t common = len < node->key_len ? len : node->key_len;
+  int    cmp    = memcmp (key, node->key, common);
+  return cmp ? cmp : (len > node->key_len) - (len < node->key_len);
+}
+
 void
 rb_insert (rb_node **root, rb_node *n)
 {
@@ -211,8 +219,7 @@ rb_insert (rb_node **root, rb_node *n)
     {
       parent = cur;
 
-      int cmp
-          = safe_strncmp_minlen (RB_KEY (n), RB_KEY (cur), RB_KEY_LEN (n) + 1);
+      int cmp = rb_compare_key (RB_KEY (n), RB_KEY_LEN (n), cur);
 
       if (cmp == 0)
         return;
@@ -228,8 +235,7 @@ rb_insert (rb_node **root, rb_node *n)
   else
     {
       RB_PARENT (n) = parent;
-      int cmp       = safe_strncmp_minlen (RB_KEY (n), RB_KEY (parent),
-                                           RB_KEY_LEN (n) + 1);
+      int cmp       = rb_compare_key (RB_KEY (n), RB_KEY_LEN (n), parent);
 
       if (cmp < 0)
         RB_LEFT (parent) = n;
@@ -254,7 +260,7 @@ rb_lookup (rb_node *root, const char *key, size_t key_len)
 
   while (cur)
     {
-      int cmp = safe_strncmp_minlen (key, RB_KEY (cur), key_len + 1);
+      int cmp = rb_compare_key (key, key_len, cur);
 
       if (cmp == 0)
         return cur;

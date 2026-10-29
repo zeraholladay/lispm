@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -40,27 +41,6 @@ stk_push (LM *lm, Cell *val)
 }
 
 static inline bool
-enter_frame (LM *lm)
-{
-  if (lm->env.sp >= LISPM_ENV_MAX)
-    return lm_err_bool (lm, ERR_OVERFLOW, "enter_frame");
-
-  lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
-  return true;
-}
-
-static inline bool
-leave_frame (LM *lm)
-{
-  if (lm->env.sp == 0)
-    return lm_err_bool (lm, ERR_UNDERFLOW, "leave_frame");
-
-  lm->env.sp--;
-  dict_destroy (lm->env.dict[lm->env.sp]);
-  return true;
-}
-
-static inline bool
 ctl_pop (LM *lm, State *out)
 {
   if (lm->ctl.sp == 0)
@@ -94,65 +74,9 @@ ctl_push_states (LM *lm, const State sts[], size_t n)
 static Cell *
 lambda_capture (LM *lm, Cell *lambda)
 {
-  Cell *env  = NIL;
-  Cell *tail = NIL;
-
-  for (size_t i = 0; i < lm->env.sp; ++i)
-    {
-      DictIter    iter = dict_iter (lm->env.dict[i]);
-      DictEntity *entity;
-
-      while ((entity = dict_items (&iter)))
-        {
-          Cell *sym  = SYMBOL (entity->key, entity->len, lm);
-          Cell *pair = CONS (sym, entity->val, lm);
-          Cell *node = LIST1 (pair, lm);
-
-          if (NILP (env))
-            env = node;
-          else
-            RPLACD (tail, node);
-
-          tail = node;
-        }
-    }
-
   Cell *closure = LAMBDA (lambda->lambda.params, lambda->lambda.body, lm);
-  closure->lambda.env = env;
+  closure->lambda.env = lm->env.current;
   return closure;
-}
-
-static bool
-dump_push (LM *lm)
-{
-  if ((lm)->dmp.sp >= LISPM_DMP_MAX)
-    return false;
-
-  lm->dmp.dumps[(lm)->dmp.sp++] = (Dump){ .stk_sp = lm->stk.sp,
-                                          .env_sp = lm->env.sp,
-                                          .ctl_sp = lm->ctl.sp };
-  if (!enter_frame (lm))
-    return false;
-
-  return true;
-}
-
-static bool
-dump_pop (LM *lm)
-{
-  if (lm->dmp.sp == 0)
-    return false;
-
-  Dump dump = lm->dmp.dumps[--lm->dmp.sp];
-
-  lm->stk.sp = dump.stk_sp;
-  lm->env.sp = dump.env_sp;
-  lm->ctl.sp = dump.ctl_sp;
-
-  if (!leave_frame (lm))
-    return false;
-
-  return true;
 }
 
 static void
@@ -161,20 +85,14 @@ lm_reset (LM *lm)
   fprintf (stderr,
            "Registers:\n"
            "  stk: %zu\n"
-           "  env: %zu\n"
-           "  ctl: %zu\n"
-           "  dmp: %zu\n",
-           lm->stk.sp, lm->env.sp, lm->ctl.sp, lm->dmp.sp);
+           "  env: %p\n"
+           "  ctl: %zu\n",
+           lm->stk.sp, (void *)lm->env.current, lm->ctl.sp);
 
-  // Destroy every frame except the reserved global at index 0
-  for (size_t i = 1; i < lm->env.sp; ++i)
-    dict_destroy (lm->env.dict[i]);
-
-  // Reset stack pointers
-  lm->stk.sp = 0;
-  lm->env.sp = 1; // save global env
-  lm->ctl.sp = 0;
-  lm->dmp.sp = 0;
+  // Reset stack pointers and restore the permanent global frame.
+  lm->stk.sp      = 0;
+  lm->env.current = lm->env.global;
+  lm->ctl.sp      = 0;
 
   lm->err_bool = false;
 }
@@ -195,12 +113,15 @@ lm_eval_switch (LM *lm, StateEnum s, Union u)
 
 ctl_closure_enter:
   {
-    return enter_frame (lm);
+    assert (IS_INST (u.closure_enter.fn->lambda.env, ENV));
+    lm->env.current = ENV (u.closure_enter.fn->lambda.env, lm);
+    return true;
   }
 
 ctl_closure_leave:
   {
-    return leave_frame (lm);
+    lm->env.current = u.closure_leave.env;
+    return true;
   }
 
 ctl_eval:
@@ -214,6 +135,11 @@ ctl_eval:
     if (IS_INST (expr, SYMBOL))
       return stk_push (lm, lm_env_lookup (lm, expr));
 
+    // Named definitions contain a bare lambda AST; anonymous lambdas are
+    // wrapped.
+    if (IS_INST (expr, LAMBDA) && NILP (expr->lambda.env))
+      return stk_push (lm, lambda_capture (lm, expr));
+
     // Literals
     if (!LISTP (expr))
       return stk_push (lm, expr);
@@ -224,12 +150,20 @@ ctl_eval:
         if (NILP (expr))
           return stk_push (lm, NIL);
 
+        if (!proper_list_p (expr))
+          return lm_err_bool (lm, ERR_INVALID_ARG, "eval: improper call form");
+
         Cell *car = CAR (expr);
         Cell *cdr = CDR (expr);
 
         // quote is a special symbol.
         if (car == QUOTE)
-          return stk_push (lm, CAR (cdr));
+          {
+            if (length (cdr) != 1)
+              return lm_err_bool (lm, ERR_INVALID_ARG_LEN,
+                                  "quote: expected one argument");
+            return stk_push (lm, CAR (cdr));
+          }
 
         // Lambda is an AST-type.
         if (IS_INST (car, LAMBDA))
@@ -320,6 +254,10 @@ ctl_funcall:
     if (!arglist && !(arglist = stk_pop (lm)))
       return false;
 
+    if (!proper_list_p (arglist))
+      return lm_err_bool (lm, ERR_INVALID_ARG,
+                          "funcall: improper argument list");
+
     if (IS_INST (fn, THUNK))
       switch (fn->thunk)
         {
@@ -335,9 +273,9 @@ ctl_funcall:
     if (IS_INST (fn, LAMBDA))
       return ctl_push_states (lm,
                               (State[]){
-                                  S (closure_enter),
+                                  S (closure_enter, .fn = fn),
                                   S (lambda, .fn = fn, .arglist = arglist),
-                                  S (closure_leave),
+                                  S (closure_leave, .env = lm->env.current),
                               },
                               3);
 
@@ -366,19 +304,7 @@ ctl_lambda:
         return lm_err_bool (lm, err, "lambda");
       }
 
-    Cell *pairs = lambda->env;
-
-    while (!NILP (pairs))
-      {
-        Cell *pair = CAR (pairs);
-
-        if (!lm_env_define (lm, CAR (pair), CDR (pair)))
-          return false;
-
-        pairs = CDR (pairs);
-      }
-
-    pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
+    Cell *pairs = zip (lm, LIST2 (lambda->params, arglist, lm));
 
     while (!NILP (pairs))
       {
@@ -398,6 +324,9 @@ ctl_let:
     Cell *progn = CDR (u.let.arglist);
     Cell *pairs = CAR (u.let.arglist);
 
+    if (!proper_list_p (pairs))
+      return lm_err_bool (lm, ERR_INVALID_ARG, "let: improper binding list");
+
     Cell *rev_vars  = NIL;
     Cell *rev_exprs = NIL;
 
@@ -405,7 +334,8 @@ ctl_let:
       {
         Cell *pair = CAR (pairs);
 
-        if (!CONSP (pair) || !CONSP (CDR (pair)) || !NILP (CDDR (pair)))
+        if (!proper_list_p (pair) || length (pair) != 2
+            || !IS_INST (CAR (pair), SYMBOL))
           return lm_err_bool (lm, ERR_INVALID_ARG, "let: binding not a list");
 
         rev_vars  = CONS (CAR (pair), rev_vars, lm);
@@ -414,19 +344,18 @@ ctl_let:
         pairs = CDR (pairs);
       }
 
-    Cell *vars  = reverse_inplace (rev_vars);
-    Cell *exprs = reverse_inplace (rev_exprs);
+    Cell *vars    = reverse_inplace (rev_vars);
+    Cell *exprs   = reverse_inplace (rev_exprs);
+    Cell *closure = lambda_capture (lm, LAMBDA (vars, progn, lm));
 
-    return ctl_push_states (
-        lm,
-        (State[]){
-            S (evlis, .acc = NIL, .arglist = exprs),
-            S (closure_enter),
-            S (lambda, .fn = lambda_capture (lm, LAMBDA (vars, progn, lm)),
-               .arglist = NULL),
-            S (closure_leave),
-        },
-        4);
+    return ctl_push_states (lm,
+                            (State[]){
+                                S (evlis, .acc = NIL, .arglist = exprs),
+                                S (closure_enter, .fn = closure),
+                                S (lambda, .fn = closure, .arglist = NULL),
+                                S (closure_leave, .env = lm->env.current),
+                            },
+                            4);
   }
 
 ctl_define:
@@ -474,13 +403,13 @@ ctl_apply:
     if (!arglist && !(arglist = stk_pop (lm)))
       return false;
 
-    if (!LISTP (arglist))
+    if (!proper_list_p (arglist) || NILP (arglist))
       return lm_err_bool (lm, ERR_MISSING_ARG, "apply: not a list.");
 
     Cell *fixed     = butlast (lm, arglist);
     Cell *tail_list = CAR (last (lm, arglist));
 
-    if (!LISTP (tail_list))
+    if (!proper_list_p (tail_list))
       return lm_err_bool (lm, ERR_MISSING_ARG, "apply: last not a list.");
 
     Cell *all = append_inplace (fixed, tail_list);
@@ -518,6 +447,41 @@ ctl_lispm:
   {
     Cell *fn      = u.lispm.fn;
     Cell *arglist = u.lispm.arglist;
+
+    if (!proper_list_p (arglist))
+      return lm_err_bool (lm, ERR_INVALID_ARG,
+                          "special form: improper arguments");
+    size_t received = length (arglist);
+    size_t minimum  = 0;
+    size_t maximum  = (size_t)-1;
+    switch (fn->thunk)
+      {
+      case THUNK_DEFINE:
+      case THUNK_SET:
+        minimum = maximum = 2;
+        break;
+      case THUNK_EVAL:
+        minimum = maximum = 1;
+        break;
+      case THUNK_IF:
+        minimum = 2;
+        maximum = 3;
+        break;
+      case THUNK_LET:
+      case THUNK_MAP:
+      case THUNK_APPLY:
+        minimum = 2;
+        break;
+      case THUNK_FUNCALL:
+        minimum = 1;
+        break;
+      default:
+        break;
+      }
+    if (received < minimum || received > maximum)
+      return lm_err_bool (
+          lm, received < minimum ? ERR_MISSING_ARG : ERR_UNEXPECTED_ARG, "%s",
+          thunk_get_name (fn));
 
     switch (fn->thunk)
       {
@@ -599,7 +563,7 @@ ctl_lispm:
         return ctl_push_state (lm, S (or, .arglist = arglist));
 
       case THUNK_LET:
-        return ctl_push_state (lm, S (let, .arglist = CAR (arglist)));
+        return ctl_push_state (lm, S (let, .arglist = arglist));
 
       default:
         break;
@@ -729,7 +693,7 @@ ctl_map:
       return false;
 
     for (Cell *lists = arglist; !NILP (lists); lists = CDR (lists))
-      if (!LISTP (CAR (lists)))
+      if (!proper_list_p (CAR (lists)))
         return lm_err_bool (lm, ERR_ARG_TYPE_MISMATCH, "map: not a list");
 
     Cell *ziplst = zip (lm, arglist);
@@ -779,35 +743,34 @@ ctl_map_acc:
   }
 }
 
-// clang-format off
 static Cell *
 lm_eval (LM *lm)
 {
-  const size_t DELTA_SP = 256;  // temp: only GC if stack grew by >= 256
-  size_t last_sp  = lm->ctl.sp;
+  size_t steps    = 0;
   size_t base_ptr = lm->ctl.sp;
   State  state;
 
   do
     {
-      if (lm->err_bool 
-          || !ctl_pop (lm, &state)
+      if (lm->err_bool || !ctl_pop (lm, &state)
           || !lm_eval_switch (lm, state.s, state.u))
         {
           lm_reset (lm);
           return NIL;
         }
 
-        if (lm->ctl.sp - last_sp >= DELTA_SP) {
-            lm_gc(lm);
-            last_sp = lm->ctl.sp;
+      // Collect only between VM steps, after temporary values have been
+      // rooted.
+      if (++steps >= 256)
+        {
+          lm_gc (lm);
+          steps = 0;
         }
     }
   while (base_ptr <= lm->ctl.sp);
 
   return stk_pop (lm);
 }
-// clang-format on
 
 LM *
 lm_create (void)
@@ -818,24 +781,26 @@ lm_create (void)
   // Zeros out stack pointers
   LM *lm = xcalloc (1, sizeof *(lm));
 
-  // Create global frame
-  lm->env.dict[lm->env.sp++] = dict_create (NULL, 0);
-
   // Allocate pool
-  lm->pool = pool_init (LM_CAP_PER_POOL, sizeof (Cell));
+  lm->pool       = pool_init (LM_CAP_PER_POOL, sizeof (Cell));
+  lm->env.global = lm->env.current = ENV (NULL, lm);
 
   return lm;
+}
+
+static void
+dispose_allocated_cell (Pool *pool, void *ptr)
+{
+  (void)pool;
+  if (!pool_gc_is_free (ptr))
+    cell_dispose (ptr);
 }
 
 void
 lm_destroy (LM *lm)
 {
-  pool_destroy (&lm->pool);
-
-  // Destory the whole environment
-  for (size_t i = 0; i < lm->env.sp; ++i)
-    dict_destroy (lm->env.dict[i]);
-
+  pool_map_hier (lm->pool, dispose_allocated_cell);
+  pool_destroy_hier (&lm->pool);
   free (lm);
 }
 

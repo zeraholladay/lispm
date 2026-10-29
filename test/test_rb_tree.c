@@ -21,13 +21,13 @@ START_TEST (test_insert_and_lookup)
 {
   rb_node *root = NULL;
 
-  char *apple  = "apple";
-  char *cherry = "cherry";
-  char *banana = "banana";
+  char apple[]  = "apple";
+  char cherry[] = "cherry";
+  char banana[] = "banana";
 
-  rb_node *n1 = make_node (apple, sizeof (apple));
-  rb_node *n2 = make_node (banana, sizeof (banana));
-  rb_node *n3 = make_node (cherry, sizeof (cherry));
+  rb_node *n1 = make_node (apple, strlen (apple));
+  rb_node *n2 = make_node (banana, strlen (banana));
+  rb_node *n3 = make_node (cherry, strlen (cherry));
 
   rb_insert (&root, n1);
   rb_insert (&root, n2);
@@ -63,13 +63,13 @@ START_TEST (test_remove)
 {
   rb_node *root = NULL;
 
-  char *apple  = "apple";
-  char *cherry = "cherry";
-  char *banana = "banana";
+  char apple[]  = "apple";
+  char cherry[] = "cherry";
+  char banana[] = "banana";
 
-  rb_insert (&root, make_node (apple, sizeof (apple)));
-  rb_insert (&root, make_node (banana, sizeof (banana)));
-  rb_insert (&root, make_node (cherry, sizeof (cherry)));
+  rb_insert (&root, make_node (apple, strlen (apple)));
+  rb_insert (&root, make_node (banana, strlen (banana)));
+  rb_insert (&root, make_node (cherry, strlen (cherry)));
 
   // Test removal
   rb_node *found_b = rb_lookup (root, banana, sizeof (banana) - 1);

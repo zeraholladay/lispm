@@ -10,12 +10,15 @@
 
 #define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
 
-#define INTEGER(integer, lm)     (new (lm, TYPE_INTEGER, integer))
-#define FLOAT(_float, lm)        (new (lm, TYPE_FLOAT, _float))
-#define SYMBOL(str, len, lm)     (new (lm, TYPE_SYMBOL, str, len))
-#define STRING(str, lm)          (new (lm, TYPE_STRING, str))
+#define INTEGER(integer, lm) (new (lm, TYPE_INTEGER, (Integer)(integer)))
+#define FLOAT(_float, lm)    (new (lm, TYPE_FLOAT, (Float)(_float)))
+#define SYMBOL(str, len, lm)                                                  \
+  (new (lm, TYPE_SYMBOL, (const char *)(str), (size_t)(len)))
+// STRING copies its input; string_take transfers an allocated buffer.
+#define STRING(str, lm)          (new (lm, TYPE_STRING, (const char *)(str)))
 #define CONS(car, cdr, lm)       (new (lm, TYPE_CONS, car, cdr))
 #define LAMBDA(params, body, lm) (new (lm, TYPE_LAMBDA, params, body))
+#define ENV(parent, lm)          (new (lm, TYPE_ENV, (Cell *)(parent)))
 
 // forward decls
 typedef struct cell Cell;
@@ -31,6 +34,7 @@ typedef enum
   TYPE_CONS,    // cons cells
   TYPE_THUNK,   // thunk fn
   TYPE_LAMBDA,  // user-defined fn
+  TYPE_ENV,     // lexical environment frame
   TYPE_UNKNOWN, // unknown ptr
   _TYPE_END     // sentinel for end
 } TypeEnum;
@@ -65,6 +69,12 @@ typedef struct
   Cell *env;
 } Lambda;
 
+typedef struct
+{
+  Cell *parent;
+  Dict *dict;
+} Env;
+
 struct cell
 {
   TypeEnum type;
@@ -80,6 +90,7 @@ struct cell
     // Function-like values
     ThunkEnum thunk;
     Lambda    lambda;
+    Env       env;
   };
 };
 
@@ -96,6 +107,8 @@ cons_iter (Cell *c)
 }
 
 Cell *new (LM *lm, TypeEnum type, ...);
+Cell *string_take (LM *lm, char *string);
+void  cell_dispose (Cell *cell);
 Cell *cons_next (ConsIter *iter);
 
 #endif

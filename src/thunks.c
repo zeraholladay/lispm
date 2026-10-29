@@ -25,8 +25,10 @@ typedef struct
 Cell *
 thunk_append (LM *lm, Cell *fn, Cell *arglist)
 {
-  if (!LISTP (CAR (arglist)))
-    return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
+  for (Cell *p = arglist; CONSP (p); p = CDR (p))
+    if (!proper_list_p (CAR (p)))
+      return lm_err_nil (lm, ERR_INVALID_ARG, "%s: improper list",
+                         thunk_get_name (fn));
 
   Cell *result = CAR (arglist);
 
@@ -39,7 +41,7 @@ thunk_append (LM *lm, Cell *fn, Cell *arglist)
 Cell *
 thunk_butlast (LM *lm, Cell *fn, Cell *arglist)
 {
-  if (!LISTP (CAR (arglist)))
+  if (!proper_list_p (CAR (arglist)))
     return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return butlast (lm, CAR (arglist));
@@ -77,7 +79,7 @@ thunk_cdr (LM *lm, Cell *fn, Cell *arglist)
 Cell *
 thunk_last (LM *lm, Cell *fn, Cell *arglist)
 {
-  if (!LISTP (CAR (arglist)))
+  if (!proper_list_p (CAR (arglist)))
     return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return last (lm, CAR (arglist));
@@ -86,7 +88,7 @@ thunk_last (LM *lm, Cell *fn, Cell *arglist)
 Cell *
 thunk_length (LM *lm, Cell *fn, Cell *arglist)
 {
-  if (!LISTP (CAR (arglist)))
+  if (!proper_list_p (CAR (arglist)))
     return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return INTEGER (length (CAR (arglist)), lm);
@@ -98,7 +100,7 @@ thunk_nth (LM *lm, Cell *fn, Cell *arglist)
   (void)lm;
 
   if (!IS_INST (arglist, CONS) || !IS_INST (CAR (arglist), INTEGER)
-      || !LISTP (CAR (CDR (arglist))))
+      || !proper_list_p (CAR (CDR (arglist))))
     return lm_err_nil (lm, ERR_ARG_NOT_ITER, "%s i arglist",
                        thunk_get_name (fn));
 
@@ -121,7 +123,7 @@ thunk_print (LM *lm, Cell *fn, Cell *arglist)
 Cell *
 thunk_reverse (LM *lm, Cell *fn, Cell *arglist)
 {
-  if (!LISTP (CAR (arglist)))
+  if (!proper_list_p (CAR (arglist)))
     return lm_err_nil (lm, ERR_INVALID_ARG, thunk_get_name (fn));
 
   return reverse (lm, CAR (arglist));
@@ -131,7 +133,7 @@ Cell *
 thunk_string (LM *lm, Cell *fn, Cell *arglist)
 {
   (void)fn;
-  return STRING (format (CAR (arglist)), lm);
+  return string_take (lm, format (CAR (arglist)));
 }
 
 Cell *
@@ -441,6 +443,8 @@ thunk_sf_bool (Cell *c)
 Cell *
 thunker (LM *lm, Cell *fn, Cell *arglist)
 {
+  if (!proper_list_p (arglist))
+    return lm_err_nil (lm, ERR_INVALID_ARG, "thunker: improper argument list");
   if (!fn)
     return lm_err_nil (lm, ERR_INTERNAL, "null thunk");
 

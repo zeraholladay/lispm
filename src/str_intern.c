@@ -9,9 +9,9 @@
 
 typedef struct BumpPool
 {
-  size_t           offset;
+  size_t           capacity, offset;
   struct BumpPool *next;
-  char             buffer[STR_INTERN_BUMP_SIZE];
+  char             buffer[];
 } BumpPool;
 
 static rb_node  *root        = NULL;
@@ -20,22 +20,22 @@ static Pool     *pool        = NULL;
 static BumpPool *bump_pool   = NULL;
 
 static BumpPool *
-xalloc_bump_pool (void)
+xalloc_bump_pool (size_t capacity)
 {
-  BumpPool *new = xcalloc (1, sizeof *(bump_pool));
-  new->offset   = 0;
-  new->next     = NULL;
+  BumpPool *new = xcalloc (1, sizeof (*new) + capacity);
+  new->capacity = capacity;
   return new;
 }
 
 static char *
 bump_pool_xalloc (size_t n)
 {
-  if (bump_pool->offset + n > STR_INTERN_BUMP_SIZE)
-    { // FIXME: large symbols
-      BumpPool *new = xalloc_bump_pool ();
-      new->next     = bump_pool;
-      bump_pool     = new;
+  if (bump_pool->offset + n > bump_pool->capacity)
+    {
+      size_t    capacity = n > STR_INTERN_BUMP_SIZE ? n : STR_INTERN_BUMP_SIZE;
+      BumpPool *new      = xalloc_bump_pool (capacity);
+      new->next          = bump_pool;
+      bump_pool          = new;
     }
   char *ptr = &bump_pool->buffer[bump_pool->offset];
   bump_pool->offset += n;
@@ -45,20 +45,25 @@ bump_pool_xalloc (size_t n)
 static char *
 bump_pool_strndup (const char *s, size_t len)
 {
-  len += 1;
-  char *new = bump_pool_xalloc (len);
-  new[len]  = '\0';
-  return memcpy (new, s, len);
+  char *new = bump_pool_xalloc (len + 1);
+  memcpy (new, s, len);
+  new[len] = '\0';
+  return new;
 }
 
 static void
 str_intern_init (void)
 {
-  bump_pool = xalloc_bump_pool ();
+  static bool cleanup_registered = false;
+  if (!cleanup_registered)
+    {
+      atexit (str_intern_destroy);
+      cleanup_registered = true;
+    }
+  bump_pool = xalloc_bump_pool (STR_INTERN_BUMP_SIZE);
   pool      = pool_init (STR_INTERN_POOL_CAPACITY, sizeof (rb_node));
 }
 
-// TODO: max symbol size/limit
 const char *
 str_intern (const char *s, size_t len)
 {
@@ -73,7 +78,7 @@ str_intern (const char *s, size_t len)
   if (node)
     return RB_KEY (node);
 
-  node = pool_xalloc (pool);
+  node = pool_xalloc_hier (&pool);
 
   RB_KEY (node)     = bump_pool_strndup (s, len);
   RB_KEY_LEN (node) = len;
@@ -86,4 +91,19 @@ str_intern (const char *s, size_t len)
   rb_insert (&root, node);
 
   return RB_KEY (node);
+}
+
+void
+str_intern_destroy (void)
+{
+  while (bump_pool)
+    {
+      BumpPool *next = bump_pool->next;
+      free (bump_pool);
+      bump_pool = next;
+    }
+
+  pool_destroy_hier (&pool);
+  root        = NULL;
+  str_internd = false;
 }

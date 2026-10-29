@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 
 #include "lm_gc.h"
 #include "palloc.h"
@@ -8,6 +9,9 @@
 static void
 gc_mark_reachable (Stack *stack, Cell *root)
 {
+  if (!root)
+    return;
+
   Cell *c;
   stack_push (stack, root);
 
@@ -29,6 +33,17 @@ gc_mark_reachable (Stack *stack, Cell *root)
           stack_push (stack, c->lambda.body);
           stack_push (stack, c->lambda.params);
           stack_push (stack, c->lambda.env);
+          break;
+
+        case TYPE_ENV:
+          if (c->env.parent)
+            stack_push (stack, c->env.parent);
+          {
+            DictIter    iter = dict_iter (c->env.dict);
+            DictEntity *entity;
+            while ((entity = dict_items (&iter)))
+              stack_push (stack, entity->val);
+          }
           break;
 
         case TYPE_INTEGER:
@@ -83,11 +98,13 @@ gc_state_apply:
 
 gc_state_closure_enter:
   {
+    gc_mark_reachable (stack, u.closure_enter.fn);
     return;
   }
 
 gc_state_closure_leave:
   {
+    gc_mark_reachable (stack, u.closure_leave.env);
     return;
   }
 
@@ -226,14 +243,8 @@ gc_mark (LM *lm)
   for (size_t i = 0; i < lm->stk.sp; ++i)
     gc_mark_reachable (stack, lm->stk.cells[i]);
 
-  for (size_t i = 0; i < lm->env.sp; ++i)
-    {
-      DictIter    iter = dict_iter (lm->env.dict[i]);
-      DictEntity *entity;
-
-      while ((entity = dict_items (&iter)))
-        gc_mark_reachable (stack, entity->val);
-    }
+  gc_mark_reachable (stack, lm->env.current);
+  gc_mark_reachable (stack, lm->env.global);
 
   for (size_t i = 0; i < lm->ctl.sp; ++i)
     gc_mark_state (stack, lm->ctl.states[i]);
@@ -247,7 +258,10 @@ gc_sweep (Pool *p, void *ptr)
   Cell *c = ptr;
 
   if (!pool_gc_is_free (c) && !pool_gc_is_marked (c))
-    pool_free (p, c);
+    {
+      cell_dispose (c);
+      pool_free (p, c);
+    }
 }
 
 static void

@@ -54,6 +54,7 @@ struct prim_wrapper
 };
 
 Cell  *append_inplace (Cell *lst1, Cell *lst2);
+bool   proper_list_p (Cell *list);
 Cell  *append_list (LM *lm, Cell *lst1, Cell *lst2);
 Cell  *butlast (LM *lm, Cell *args);
 Cell  *last (LM *lm, Cell *args);

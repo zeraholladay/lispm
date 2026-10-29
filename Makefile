@@ -98,7 +98,7 @@ endif
 test: src $(TEST_EXE)
 	@./$(TEST_EXE)
 
-$(TEST_EXE): $(TEST_OBJS) | bin
+$(TEST_EXE): $(TEST_OBJS) $(SRC_OBJS) | bin
 	$(CC) $(CFLAGS) -DTEST_MAIN=1 -o $(TEST_EXE) $(SRC_OBJS) $(TEST_OBJS) $(TEST_MAIN_SRC) $(TEST_FLAGS) $(TEST_LIBS) $(LDLIBS)
 
 $(BIN)/%.o: $(TEST_SRC)/%.c

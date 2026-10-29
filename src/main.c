@@ -34,13 +34,20 @@ run (int argc, char **argv)
   if (!argc)
     run_repl = 1;
 
-  LM *lm = lm_create ();
+  LM *lm     = lm_create ();
+  int status = 0;
 
   for (int i = 0; i < argc; ++i)
     {
       Cell *progn = NULL;
 
       FILE *in = fopen (argv[i], "r");
+      if (!in)
+        {
+          perror (argv[i]);
+          status = 1;
+          break;
+        }
 
       bool parse_res = parser_stream (in, &progn, lm);
 
@@ -48,7 +55,8 @@ run (int argc, char **argv)
 
       if (!parse_res)
         {
-          fputs ("Parse failed", stderr);
+          fputs ("Parse failed\n", stderr);
+          status = 1;
           break; // TODO: syntax error
         }
 
@@ -58,7 +66,8 @@ run (int argc, char **argv)
   if (run_repl)
     repl (lm);
 
-  return 0;
+  lm_destroy (lm);
+  return status;
 }
 
 int
