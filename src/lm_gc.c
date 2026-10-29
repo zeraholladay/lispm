@@ -77,18 +77,6 @@ gc_mark_state (Stack *stack, State state)
       assert (0 && "no such GC state");
     }
 
-gc_state_and_cont:
-  {
-    gc_mark_reachable (stack, u.and_cont.arglist);
-    return;
-  }
-
-gc_state_and:
-  {
-    gc_mark_reachable (stack, u.and.arglist);
-    return;
-  }
-
 gc_state_apply:
   {
     gc_mark_reachable (stack, u.apply.fn);
@@ -167,28 +155,10 @@ gc_state_lambda:
     return;
   }
 
-gc_state_let:
-  {
-    gc_mark_reachable (stack, u.let.arglist);
-    return;
-  }
-
 gc_state_lispm:
   {
     gc_mark_reachable (stack, u.lispm.fn);
     gc_mark_reachable (stack, u.lispm.arglist);
-    return;
-  }
-
-gc_state_or_cont:
-  {
-    gc_mark_reachable (stack, u.or_cont.arglist);
-    return;
-  }
-
-gc_state_or:
-  {
-    gc_mark_reachable (stack, u.or.arglist);
     return;
   }
 

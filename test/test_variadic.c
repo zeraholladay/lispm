@@ -95,8 +95,8 @@ START_TEST (test_invalid_parameter_specifications)
           "(lambda (x . 42) x)",     "(lambda (. args) args)",
           "(lambda (x . args y) x)", "(lambda (x . (y)) x)",
           "(define (f . 42) 1)",     "(define (f . (x)) x)",
-          "(lambda NIL 1)",          "(lambda (first) first)",
-          "(lambda (x . rest) x)",   "(lambda (quote) 1)" };
+          "(lambda NIL 1)",          "(lambda (car) car)",
+          "(lambda (x . cdr) x)",    "(lambda (quote) 1)" };
   for (size_t i = 0; i < sizeof (invalid) / sizeof (*invalid); ++i)
     {
       Cell *forms = T;

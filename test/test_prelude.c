@@ -180,6 +180,17 @@ START_TEST (test_native_foundations)
 }
 END_TEST
 
+START_TEST (test_first_and_rest_are_redefinable_aliases)
+{
+  expect ("(list (eq first car) (eq rest cdr))", "(t t)");
+  expect ("(first '(1 . 2))", "1");
+  expect ("(rest '(1 . 2))", "2");
+  expect ("(set! first (lambda (xs) 99)) (first NIL)", "99");
+  expect ("(define (rest xs) 88) (rest NIL)", "88");
+  expect ("((lambda (first . rest) (cons first rest)) 1 2 3)", "(1 2 3)");
+}
+END_TEST
+
 START_TEST (test_predicates_and_numeric_helpers)
 {
   expect ("(list (null? NIL) (null? '(NIL)) (zero? 0) (zero? 0.0)"
@@ -467,6 +478,7 @@ prelude_suite (void)
   tcase_add_test (tc, test_migrated_sequence_identity_and_nonmutation);
   tcase_add_test (tc, test_migrated_sequence_validation);
   tcase_add_test (tc, test_native_foundations);
+  tcase_add_test (tc, test_first_and_rest_are_redefinable_aliases);
   tcase_add_test (tc, test_predicates_and_numeric_helpers);
   tcase_add_test (tc, test_accessors);
   tcase_add_test (tc, test_list_shape_and_structural_equality);

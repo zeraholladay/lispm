@@ -40,7 +40,6 @@ struct Keyword;
 "procedure?", &wrapped_thunks[THUNK_PROCEDURE_P].ptr
 "symbol?",    &wrapped_thunks[THUNK_SYMBOL_P].ptr
 "eval",    &wrapped_thunks[THUNK_EVAL].ptr
-"first",   &wrapped_thunks[THUNK_FIRST].ptr
 "funcall", &wrapped_thunks[THUNK_FUNCALL].ptr
 "gt",      &wrapped_thunks[THUNK_GT].ptr
 ">",       &wrapped_thunks[THUNK_GT].ptr
@@ -51,7 +50,6 @@ struct Keyword;
 "or",      &wrapped_thunks[THUNK_OR].ptr
 "print",   &wrapped_thunks[THUNK_PRINT].ptr
 "progn",   &wrapped_thunks[THUNK_PROGN].ptr
-"rest",    &wrapped_thunks[THUNK_REST].ptr
 "set!",    &wrapped_thunks[THUNK_SET].ptr
 "string",  &wrapped_thunks[THUNK_STRING].ptr
 "add",     &wrapped_thunks[THUNK_ADD].ptr

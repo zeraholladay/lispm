@@ -52,6 +52,10 @@ void        dict_del (Dict *dict, const char *key);
 bool        dict_has_key (Dict *dict, const char *key);
 bool        dict_insert (Dict *dict, const char *key, void *val);
 DictEntity *dict_lookup (Dict *dict, const char *key);
+// Byte-length variants accept non-NUL-terminated slices. Keys are borrowed:
+// insertion requires their storage to remain valid until deletion/destruction.
+bool        dict_insert_n (Dict *dict, const char *key, size_t len, void *val);
+DictEntity *dict_lookup_n (Dict *dict, const char *key, size_t len);
 DictEntity *dict_items (DictIter *iter);
 
 #endif

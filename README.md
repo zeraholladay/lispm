@@ -9,6 +9,7 @@ A simple Scheme-dialect.
 - [Quickstart](#quickstart)
 - [REPL Usage](#repl-usage)
 - [Scheme Prelude](#scheme-prelude)
+- [Core Implementation](#core-implementation)
 - [Types](#types)
 - [Special Forms](#special-forms)
 - [Primitives](#primitives)
@@ -87,7 +88,7 @@ The prelude provides:
 
 - Predicates: `not`, `null?`, `zero?`, `positive?`, `negative?`, `list?`, `equal?`
 - Numeric helpers: binary `<=`, `>=`, and `abs`
-- Accessors: `caar`, `cadr`, `cdar`, `cddr`, `caddr`
+- Accessors: aliases `first`/`rest`, plus `caar`, `cadr`, `cdar`, `cddr`, `caddr`
 - List operations: `list`, `append`, `length`, `reverse`, `nth`, `last`, `butlast`
 - Traversal: `map`, `fold-left`, `fold-right`, `filter`, `find`, `any?`, `every?`, `for-each`
 - Lookup: `memq`, `assq`
@@ -99,10 +100,10 @@ Numeric `=` accepts one or more arguments, supports integer/float comparisons,
 and preserves exact integer distinctions in mixed comparisons. It is separate
 from `eq`'s type-sensitive and object-identity behavior.
 
-Prelude names are case-sensitive. The former native procedures `not`, `length`,
-`reverse`, `nth`, `last`, `butlast`, `list`, `append`, and `map` now use these ordinary binding rules;
-write their names in lowercase. The VM retains internal C list utilities for
-argument counting and application, separate from the Scheme-visible procedures.
+Prelude names are case-sensitive. The former native names `first`, `rest`, `not`,
+`length`, `reverse`, `nth`, `last`, `butlast`, `list`, `append`, and `map` now use
+these ordinary binding rules; write their names in lowercase. `first` and `rest`
+initially refer to the same procedures as `car` and `cdr`, but may be rebound.
 `nth` is zero-based and returns NIL for negative or out-of-range integer indexes.
 `last` returns a fresh one-element list, including `(NIL)` for an empty input;
 `butlast` returns NIL for empty and singleton inputs.
@@ -125,6 +126,31 @@ short-circuiting, callback order, and tail-recursion behavior next to each
 definition. `find` returns the matching element or NIL, `memq` returns a matching
 original suffix, and `assq` returns a matching association pair. `for-each`
 returns T. `constantly` and the function returned by `compose` are unary.
+
+---
+
+## Core Implementation
+
+`src/syntax.c` lowers the derived forms `let`, `and`, and `or` when they are
+evaluated. `let` becomes a lambda application; `and`/`or` become nested core
+conditionals. They no longer need dedicated VM states or GC-state visitors.
+Quoted data is left intact, and expressions passed to `eval` follow the same
+lowering path. Named function definitions are already lowered by the parser
+to ordinary definitions containing lambdas.
+
+For `or`, a private AST placeholder tells the `if` continuation to return its
+already computed predicate. This evaluates each operand once and preserves
+the exact result object without introducing a temporary binding or changing
+the lexical scope of later operands (including `define` expressions).
+
+Symbol interning and lexical environments share the dictionary hash-table
+implementation. Explicit-length dictionary keys support reader slices without
+requiring a NUL terminator; interned strings retain stable addresses across
+table growth. There is no separate red-black-tree or interning-pool subsystem.
+
+The VM's internal C list helpers are limited to proper-list checking, counting,
+and in-place reversal. `apply` assembles its fixed arguments directly and
+shares its final list suffix without mutating caller-owned list spines.
 
 ---
 
@@ -261,7 +287,7 @@ Required arguments must be present; fixed-arity functions still reject extras.
 Rest arguments retain their evaluated values in order. In an `apply` call the
 rest binding can share the supplied argument-list suffix. Parameter names must
 be distinct, including the rest name, and cannot use protected native names
-such as `first` or `rest`. Malformed or duplicate parameters are rejected when
+such as `car` or `cdr`. Malformed or duplicate parameters are rejected when
 the definition is parsed, even if the function is never called.
 
 ```lisp

@@ -11,8 +11,8 @@
 ;;; pairs, application, type predicates, numeric =, and error; this file builds
 ;;; the higher-level library from those pieces.
 ;;; Like other ordinary bindings, these names are case-sensitive. Use lowercase
-;;; not, length, reverse, nth, last, butlast, list, append, and map, even though
-;;; their former native registrations accepted uppercase/mixed-case spellings.
+;;; first, rest, not, length, reverse, nth, last, butlast, list, append, and map.
+;;; Their former native registrations accepted uppercase/mixed-case spellings.
 ;;;
 ;;; Dialect conventions to keep in mind:
 ;;;   * NIL is both false and the empty list. Every other value is true,
@@ -22,7 +22,7 @@
 ;;;   * Lambda parameters can be fixed (x y), dotted (x . extras), or a bare
 ;;;     symbol args that receives all arguments. Named define uses the same
 ;;;     dotted syntax, e.g. (define (collect . args) args). Names must be
-;;;     distinct and cannot be protected native names such as first or rest.
+;;;     distinct and cannot be protected native names such as car or cdr.
 ;;;     compose and constantly intentionally remain unary helpers below.
 ;;;   * The reader has no string literals yet. error accepts a quoted symbol
 ;;;     (or other value), so we use symbols such as 'expected-proper-list.
@@ -82,6 +82,12 @@
 ;; Read the letters between c and r from RIGHT TO LEFT: cadr means "cdr, then
 ;; car". A pair need not be a proper list; these also work on suitable dotted
 ;; pairs. They inherit car/cdr's checks when an intermediate value is an atom.
+
+;; These are ordinary aliases, not new native registrations. Their initial
+;; values are the same procedures as car and cdr; either alias may be rebound.
+;; Removing native keywords also lets first/rest serve as parameter names.
+(define first car)
+(define rest cdr)
 
 (define (caar value)
   (car (car value)))

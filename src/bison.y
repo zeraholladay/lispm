@@ -94,6 +94,8 @@ form
       }
     | '(' define '(' symbol formal_tail ')' forms ')'
       {
+        // Named-definition shorthand lowers to an ordinary binding of a
+        // lambda AST; the VM needs no separate function-definition operation.
         if (!valid_formals ($5))
           yyerror (progn, lm, "Function parameters must be distinct, non-reserved symbols");
         Cell *body = LIST1 (LAMBDA ($5, $7, lm), lm);

@@ -1,17 +1,24 @@
 #include <string.h>
 
 #include "dict.h"
-#include "safe_str.h"
 
 #include "xalloc.h"
 
 #define EMPTY     -1
 #define TOMBSTONE -2
 
-#define HASH(str)          ((size_t)djb2 (str))
 #define LIST_IDX(d_ptr, i) ((DictEntity *)((d_ptr)->list->items[i]))
 #define STR_EQ(entity, str, str_len)                                          \
   ((entity)->len == (str_len) && memcmp ((entity)->key, (str), (str_len)) == 0)
+
+static size_t
+hash_bytes (const char *key, size_t len)
+{
+  size_t hash = 5381;
+  for (size_t i = 0; i < len; ++i)
+    hash = hash * 33 + (unsigned char)key[i];
+  return hash;
+}
 
 static size_t
 get_bins_idx (Dict *dict, size_t hash_key, const char *key, size_t len)
@@ -146,7 +153,7 @@ void
 dict_del (Dict *dict, const char *key)
 {
   size_t len      = strlen (key);
-  size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
+  size_t bins_idx = get_bins_idx (dict, hash_bytes (key, len), key, len);
   if (bins_idx == dict->capacity)
     return;
   int bin_val = dict->bins[bins_idx];
@@ -178,11 +185,16 @@ dict_has_key (Dict *dict, const char *key)
 bool
 dict_insert (Dict *dict, const char *key, void *val)
 {
+  return dict_insert_n (dict, key, strlen (key), val);
+}
+
+bool
+dict_insert_n (Dict *dict, const char *key, size_t len, void *val)
+{
   if ((dict->count + 1) * 5 > dict->capacity * 4) // 80% >
     xgrow_bins (dict);
 
-  size_t hash_key = HASH (key);
-  size_t len      = strlen (key);
+  size_t hash_key = hash_bytes (key, len);
   size_t bin_idx  = get_bins_idx (dict, hash_key, key, len);
 
   if (bin_idx == dict->capacity)
@@ -217,8 +229,13 @@ dict_insert (Dict *dict, const char *key, void *val)
 DictEntity *
 dict_lookup (Dict *dict, const char *key)
 {
-  size_t len      = strlen (key);
-  size_t bins_idx = get_bins_idx (dict, HASH (key), key, len);
+  return dict_lookup_n (dict, key, strlen (key));
+}
+
+DictEntity *
+dict_lookup_n (Dict *dict, const char *key, size_t len)
+{
+  size_t bins_idx = get_bins_idx (dict, hash_bytes (key, len), key, len);
   if (bins_idx == dict->capacity)
     return NULL;
   int bin_val = dict->bins[bins_idx];

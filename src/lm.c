@@ -12,6 +12,7 @@
 #include "palloc.h"
 #include "prelude.h"
 #include "prims.h"
+#include "syntax.h"
 #include "thunks.h"
 #include "types.h"
 #include "xalloc.h"
@@ -345,47 +346,6 @@ ctl_lambda:
     return ctl_push_state (lm, S (progn, .res = NIL, .arglist = lambda->body));
   }
 
-ctl_let:
-  {
-    Cell *progn = CDR (u.let.arglist);
-    Cell *pairs = CAR (u.let.arglist);
-
-    if (!proper_list_p (pairs))
-      return lm_err_bool (lm, ERR_INVALID_ARG, "let: improper binding list");
-
-    Cell *rev_vars  = NIL;
-    Cell *rev_exprs = NIL;
-
-    while (!NILP (pairs))
-      {
-        Cell *pair = CAR (pairs);
-
-        if (!proper_list_p (pair) || length (pair) != 2
-            || !IS_INST (CAR (pair), SYMBOL))
-          return lm_err_bool (lm, ERR_INVALID_ARG, "let: binding not a list");
-
-        rev_vars  = CONS (CAR (pair), rev_vars, lm);
-        rev_exprs = CONS (CADR (pair), rev_exprs, lm);
-
-        pairs = CDR (pairs);
-      }
-
-    Cell *vars    = reverse_inplace (rev_vars);
-    Cell *exprs   = reverse_inplace (rev_exprs);
-    Cell *closure = lambda_capture (lm, LAMBDA (vars, progn, lm));
-
-    // Treat (let ((x init) ...) body ...) as a synthetic lambda call.
-    // evlis evaluates the initializers before any new frame is entered;
-    // its result is popped by funcall because .arglist is NULL here.
-    // Going through funcall lets a tail-position let reuse the same return
-    // continuation as any other call, rather than adding a restore state.
-    return ctl_push_states (
-        lm,
-        (State[]){ S (evlis, .acc = NIL, .arglist = exprs),
-                   S (funcall, .fn = closure, .arglist = NULL) },
-        2);
-  }
-
 ctl_define:
   {
     Cell *sym = u.define.sym;
@@ -434,13 +394,24 @@ ctl_apply:
     if (!proper_list_p (arglist) || NILP (arglist))
       return lm_err_bool (lm, ERR_MISSING_ARG, "apply: not a list.");
 
-    Cell *fixed     = butlast (lm, arglist);
-    Cell *tail_list = CAR (last (lm, arglist));
-
-    if (!proper_list_p (tail_list))
+    // Copy fixed arguments in reverse order, then link the fresh cells onto
+    // the final list. Never reverse or overwrite any caller-owned list spine.
+    Cell *fixed = NIL;
+    while (!NILP (CDR (arglist)))
+      {
+        fixed   = CONS (CAR (arglist), fixed, lm);
+        arglist = CDR (arglist);
+      }
+    Cell *all = CAR (arglist);
+    if (!proper_list_p (all))
       return lm_err_bool (lm, ERR_MISSING_ARG, "apply: last not a list.");
-
-    Cell *all = append_inplace (fixed, tail_list);
+    while (CONSP (fixed))
+      {
+        Cell *next = CDR (fixed);
+        RPLACD (fixed, all);
+        all   = fixed;
+        fixed = next;
+      }
 
     return ctl_push_state (lm, S (funcall, .fn = fn, .arglist = all));
   }
@@ -578,13 +549,12 @@ ctl_lispm:
         return ctl_push_state (lm, S (if_, .form = arglist));
 
       case THUNK_AND:
-        return ctl_push_state (lm, S (and, .arglist = arglist));
-
       case THUNK_OR:
-        return ctl_push_state (lm, S (or, .arglist = arglist));
-
       case THUNK_LET:
-        return ctl_push_state (lm, S (let, .arglist = arglist));
+        {
+          Cell *lowered = syntax_lower (lm, fn->thunk, arglist);
+          return lowered && ctl_push_state (lm, S (eval, .expr = lowered));
+        }
 
       default:
         break;
@@ -614,7 +584,13 @@ ctl_if_cont:
       return false;
 
     if (!NILP (pred))
-      return ctl_push_state (lm, S (eval, .expr = CAR (form)));
+      {
+        // Lowered or returns this already evaluated predicate without a
+        // temporary lexical binding or a second evaluation of the operand.
+        if (CAR (form) == syntax_predicate_value)
+          return stk_push (lm, pred);
+        return ctl_push_state (lm, S (eval, .expr = CAR (form)));
+      }
 
     Cell *else_form = CAR (CDR (form));
 
@@ -622,86 +598,6 @@ ctl_if_cont:
       return ctl_push_state (lm, S (eval, .expr = else_form));
     else
       return stk_push (lm, NIL);
-  }
-
-ctl_and:
-  {
-    Cell *arglist = u.and.arglist;
-
-    if (NILP (arglist))
-      return stk_push (lm, T);
-
-    // No truth test is needed after the last operand: and returns its value
-    // unchanged. Omitting and_cont here preserves the enclosing tail position.
-    if (NILP (CDR (arglist)))
-      return ctl_push_state (lm, S (eval, .expr = CAR (arglist)));
-
-    return ctl_push_states (lm,
-                            (State[]){
-                                S (eval, .expr = CAR (arglist)),
-                                S (and_cont, .arglist = arglist),
-                            },
-                            2);
-  }
-
-ctl_and_cont:
-  {
-    Cell *res     = stk_pop (lm);
-    Cell *arglist = u.and_cont.arglist;
-
-    if (!res)
-      return false;
-
-    if (NILP (res))
-      return stk_push (lm, NIL);
-
-    Cell *cdr = CDR (arglist);
-
-    if (NILP (cdr))
-      return stk_push (lm, res);
-
-    // Re-enter and so its last-operand case can drop the truth-test state.
-    return ctl_push_state (lm, S (and, .arglist = cdr));
-  }
-
-ctl_or:
-  {
-    Cell *arglist = u.or.arglist;
-
-    if (NILP (arglist))
-      return stk_push (lm, NIL);
-
-    // Like and, or returns its final operand unchanged. Earlier operands
-    // still need or_cont to short-circuit on the first non-NIL result.
-    if (NILP (CDR (arglist)))
-      return ctl_push_state (lm, S (eval, .expr = CAR (arglist)));
-
-    return ctl_push_states (lm,
-                            (State[]){
-                                S (eval, .expr = CAR (arglist)),
-                                S (or_cont, .arglist = arglist),
-                            },
-                            2);
-  }
-
-ctl_or_cont:
-  {
-    Cell *res     = stk_pop (lm);
-    Cell *arglist = u.or_cont.arglist;
-
-    if (!res)
-      return false;
-
-    if (!NILP (res))
-      return stk_push (lm, res);
-
-    Cell *cdr = CDR (arglist);
-
-    if (NILP (cdr))
-      return stk_push (lm, res);
-
-    // Re-enter or so the last operand is evaluated without an or_cont.
-    return ctl_push_state (lm, S (or, .arglist = cdr));
   }
 }
 

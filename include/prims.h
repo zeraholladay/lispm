@@ -53,15 +53,8 @@ struct prim_wrapper
   Cell ptr;
 };
 
-Cell  *append_inplace (Cell *lst1, Cell *lst2);
 bool   proper_list_p (Cell *list);
-Cell  *append_list (LM *lm, Cell *lst1, Cell *lst2);
-Cell  *butlast (LM *lm, Cell *args);
-Cell  *last (LM *lm, Cell *args);
 size_t length (Cell *lst);
-Cell  *nth (size_t idx, Cell *lst);
-Cell  *reverse (LM *lm, Cell *lst);
 Cell  *reverse_inplace (Cell *lst);
-Cell  *zip (LM *lm, Cell *lsts);
 
 #endif
