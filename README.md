@@ -63,6 +63,20 @@ bin/lispm program.scm
 bin/lispm -i program.scm
 ```
 
+Run the self-checking language tour:
+
+```bash
+bin/lispm test-scm/basic.scm
+bin/lispm -i test-scm/basic.scm  # run the tour, then explore its bindings
+```
+
+The demo walks through core forms, closures, variadic calls, the prelude, a
+record-query application, and deep tail recursion. It prints named check
+results and a final summary; a mismatch reports expected/actual values and
+exits with failure status.
+
+With `-i`, try `(report records)`, `(range 3 8)`, or `(counter-a)` afterward.
+
 The REPL evaluates one submitted line at a time; use `Ctrl+D` to exit. Put the
 multiline examples below in a file, or enter each complete expression on one
 line. Program files can contain multiple expressions and multiline definitions.
