@@ -8,7 +8,7 @@
 static int
 lm_env_update_guard (Cell *x)
 {
-  if (!IS_INST (x, SYMBOL))
+  if (!cell_has_type (x, CELL_TYPE_SYMBOL))
     return 1;
 
   if (keyword_lookup (x->symbol.str, x->symbol.len))
@@ -23,8 +23,8 @@ lm_env_define (LM *lm, Cell *car, Cell *cdr)
   int check = lm_env_update_guard (car);
   if (check)
     {
-      Err code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
-      return lm_err_bool (lm, code, "define");
+      ErrorCode code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
+      return lm_fail (lm, code, "define");
     }
 
   return lm->env.current
@@ -38,15 +38,15 @@ lm_env_set (LM *lm, Cell *car, Cell *cdr)
   int check = lm_env_update_guard (car);
   if (check)
     {
-      Err code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
-      return lm_err_bool (lm, code, "set!");
+      ErrorCode code = (check > 0) ? ERR_ARG_TYPE_MISMATCH : ERR_INVALID_ARG;
+      return lm_fail (lm, code, "set!");
     }
 
   for (Cell *frame = lm->env.current; frame; frame = frame->env.parent)
     if (dict_has_key (frame->env.dict, car->symbol.str))
       return dict_insert (frame->env.dict, car->symbol.str, cdr);
 
-  return lm_err_bool (lm, ERR_SYM_NOT_FOUND, car->symbol.str);
+  return lm_fail (lm, ERR_SYM_NOT_FOUND, "%s", car->symbol.str);
 }
 
 Cell *
@@ -58,11 +58,11 @@ lm_env_lookup (LM *lm, Cell *sym)
 
   for (Cell *frame = lm->env.current; frame; frame = frame->env.parent)
     {
-      assert (IS_INST (frame, ENV));
+      assert (cell_has_type (frame, CELL_TYPE_ENV));
       DictEntity *entity = dict_lookup (frame->env.dict, sym->symbol.str);
       if (entity)
         return entity->val;
     }
 
-  return lm_err_nil (lm, ERR_SYM_NOT_FOUND, sym->symbol.str);
+  return lm_fail_value (lm, ERR_SYM_NOT_FOUND, "%s", sym->symbol.str);
 }

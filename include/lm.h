@@ -1,7 +1,6 @@
 #ifndef LM_H
 #define LM_H
 
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -26,27 +25,33 @@ typedef struct lm   LM;
 
 typedef enum
 {
-#define X(tag, ...) s_##tag,
+#define X(id, tag, ...) STATE_##id,
 #include "lm.def"
 #undef X
-  COUNT,
-} StateEnum;
+  STATE_KIND_COUNT,
+} StateKind;
 
 typedef union
 {
-#define X(tag, ...)                                                           \
+#define X(id, tag, ...)                                                       \
   struct                                                                      \
   {                                                                           \
     __VA_ARGS__;                                                              \
   } tag;
 #include "lm.def"
 #undef X
-} Union;
+} StatePayload;
 
+// A pending VM instruction/continuation on the control stack: a tagged union.
+// kind selects the operation and the matching payload member (for example,
+// STATE_EVAL uses payload.eval). Only that member is meaningful for this
+// state. The evaluator executes it; GC uses the same tag to trace its Cell
+// pointers while it is pending. Use lm_states.h constructors to keep tag/data
+// consistent.
 typedef struct state
 {
-  StateEnum s;
-  Union     u;
+  StateKind    kind;
+  StatePayload payload;
 } State;
 
 typedef struct lm
@@ -64,15 +69,23 @@ typedef struct lm
   struct
   {
     size_t sp;
-    // Peak pending-state count for the latest lm_progn call. Tail recursion
+    // Peak pending-state count for the latest evaluation. Tail recursion
     // should leave this bounded as the number of iterations increases.
     size_t high_water;
     State  states[LISPM_CTL_MAX];
   } ctl;
   Pool *pool;
-  bool  err_bool;
+  bool  has_error;
 } LM;
 
+typedef struct
+{
+  bool  success;
+  Cell *value;
+} EvaluationResult;
+
+// Creates a VM and loads the embedded Scheme prelude; NULL on bootstrap
+// failure.
 LM  *lm_create (void);
 void lm_destroy (LM *lm);
 
@@ -80,7 +93,9 @@ void lm_destroy (LM *lm);
 Cell *lm_alloc_cell (LM *lm);
 
 // external entrypoints
-Cell *lm_funcall (LM *lm, Cell *fn, Cell *arglist);
+// Checked evaluation distinguishes a successful NIL from a failed evaluation.
+EvaluationResult lm_evaluate (LM *lm, Cell *forms);
+// Value-only compatibility API: returns NIL after a failure.
 Cell *lm_progn (LM *lm, Cell *progn);
 
 #endif

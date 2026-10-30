@@ -49,7 +49,7 @@ START_TEST (test_deep_tail_recursion)
   // Merely completing a large call could hide a raised stack limit. Equal
   // peaks for 10 and 30000 iterations establish bounded continuation usage.
   result = evaluate ("(countdown 30000 0)");
-  ck_assert (IS_INST (result, INTEGER));
+  ck_assert (cell_has_type (result, CELL_TYPE_INTEGER));
   ck_assert_int_eq (result->integer, 30000);
   ck_assert_int_eq (lm->ctl.high_water, shallow_depth);
   ck_assert_uint_lt (lm->ctl.high_water, 64);
@@ -87,8 +87,8 @@ START_TEST (test_tail_positions_and_indirect_calls)
                 "(define (step n) n n (if (> n 0) %s 42))", calls[i]);
       evaluate (source);
       Cell *result = evaluate ("(step 10000)");
-      ck_assert_msg (IS_INST (result, INTEGER), "tail path failed: %s",
-                     calls[i]);
+      ck_assert_msg (cell_has_type (result, CELL_TYPE_INTEGER),
+                     "tail path failed: %s", calls[i]);
       ck_assert_int_eq (result->integer, 42);
       ck_assert_msg (lm->ctl.high_water < 64, "stack grew for %s: %zu",
                      calls[i], lm->ctl.high_water);
@@ -101,7 +101,7 @@ START_TEST (test_tail_positions_and_indirect_calls)
       = evaluate ("(define (dispatch f n) (f f n))"
                   "(dispatch (lambda (self n)"
                   "  (if (eq n 0) 42 (dispatch self (- n 1)))) 10000)");
-  ck_assert (IS_INST (result, INTEGER));
+  ck_assert (cell_has_type (result, CELL_TYPE_INTEGER));
   ck_assert_int_eq (result->integer, 42);
   ck_assert_uint_lt (lm->ctl.high_water, 64);
   assert_returned ();
@@ -159,7 +159,7 @@ START_TEST (test_tail_calls_preserve_escaped_frames)
   Cell *values = evaluate ("(map (lambda (f) (f)) saved)");
   for (Integer expected = 0; expected <= 100; ++expected)
     {
-      ck_assert (CONSP (values));
+      ck_assert (cell_is_pair (values));
       ck_assert_int_eq (CAR (values)->integer, expected);
       values = CDR (values);
     }

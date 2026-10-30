@@ -4,6 +4,8 @@
 %option nounput
 
 %{
+#include <errno.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,11 +35,41 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     return '.';
                   }
   {NUM}           {
-                    yylval.integer = atoll (yytext);
+                    char *end;
+                    // errno is sticky: a previous token's range error must
+                    // not cause a valid literal to fail conversion.
+                    errno = 0;
+                    Integer value = strtoll (yytext, &end, 10);
+                    if (errno == ERANGE)
+                      {
+                        yylval.error = "Integer literal out of range";
+                        return NUMERIC_ERROR;
+                      }
+                    if (end != yytext + yyleng)
+                      {
+                        yylval.error = "Invalid integer literal";
+                        return NUMERIC_ERROR;
+                      }
+                    yylval.integer = value;
                     return INTEGER;
                   }
   {FLOAT}         {
-                    yylval._float = atof (yytext);
+                    char *end;
+                    errno = 0;
+                    Float value = strtod (yytext, &end);
+                    // Reject overflow and reported underflow, including a
+                    // nonzero input rounded down to zero by strtod.
+                    if (errno == ERANGE || !isfinite (value))
+                      {
+                        yylval.error = "Floating-point literal out of range";
+                        return NUMERIC_ERROR;
+                      }
+                    if (end != yytext + yyleng)
+                      {
+                        yylval.error = "Invalid floating-point literal";
+                        return NUMERIC_ERROR;
+                      }
+                    yylval.floating = value;
                     return FLOAT;
                   }
   {ID}            {
@@ -62,7 +94,7 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
 
                     return SYMBOL;
                   }
-  [+\-*/><]       {
+  "<="|">="|[+\-*/><=] {
                     yylval.symbol.str = str_intern (yytext, yyleng);
                     yylval.symbol.len = yyleng;
                     return SYMBOL;

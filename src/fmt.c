@@ -1,13 +1,11 @@
 #include <stdarg.h>
-#include <stdio.h>
-
-#include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
+#include "builtins.h"
 #include "fmt.h"
 #include "prims.h"
-#include "thunks.h"
 #include "xalloc.h"
 
 typedef struct str_sb
@@ -24,16 +22,16 @@ static void fmt_integer (StrBuf *, Cell *);
 static void fmt_float (StrBuf *, Cell *);
 static void fmt_string (StrBuf *, Cell *);
 static void fmt_cons (StrBuf *, Cell *);
-static void fmt_thunk (StrBuf *, Cell *);
+static void fmt_builtin (StrBuf *, Cell *);
 static void fmt_lambda (StrBuf *, Cell *);
 static void fmt_unknown (StrBuf *, Cell *);
 
-static void (*fmters[_TYPE_END + 1]) (StrBuf *, Cell *) = {
-  [TYPE_NIL] = fmt_nil,         [TYPE_SYMBOL] = fmt_symbol,
-  [TYPE_INTEGER] = fmt_integer, [TYPE_FLOAT] = fmt_float,
-  [TYPE_STRING] = fmt_string,   [TYPE_CONS] = fmt_cons,
-  [TYPE_THUNK] = fmt_thunk,     [TYPE_LAMBDA] = fmt_lambda,
-  [TYPE_UNKNOWN] = fmt_unknown, [TYPE_ENV] = fmt_unknown,
+static void (*fmters[CELL_TYPE_COUNT]) (StrBuf *, Cell *) = {
+  [CELL_TYPE_NIL] = fmt_nil,         [CELL_TYPE_SYMBOL] = fmt_symbol,
+  [CELL_TYPE_INTEGER] = fmt_integer, [CELL_TYPE_FLOAT] = fmt_float,
+  [CELL_TYPE_STRING] = fmt_string,   [CELL_TYPE_CONS] = fmt_cons,
+  [CELL_TYPE_BUILTIN] = fmt_builtin, [CELL_TYPE_LAMBDA] = fmt_lambda,
+  [CELL_TYPE_UNKNOWN] = fmt_unknown, [CELL_TYPE_ENV] = fmt_unknown,
 };
 
 static void
@@ -105,7 +103,7 @@ fmt_integer (StrBuf *sb, Cell *n)
 void
 fmt_float (StrBuf *sb, Cell *n)
 {
-  appendf (sb, "%f", n->_float);
+  appendf (sb, "%f", n->floating);
 }
 
 void
@@ -120,7 +118,7 @@ fmt_cons (StrBuf *sb, Cell *n)
   Cell *cur;
   appendf (sb, "(");
 
-  for (cur = n; IS_INST (cur, CONS); cur = CDR (cur))
+  for (cur = n; cell_is_pair (cur); cur = CDR (cur))
     {
       Cell *car = CAR (cur);
       Cell *cdr = CDR (cur);
@@ -130,12 +128,12 @@ fmt_cons (StrBuf *sb, Cell *n)
           char *s = format (car);
           appendf (sb, "%s", s);
           free (s);
-          if (CONSP (cdr))
+          if (cell_is_pair (cdr))
             appendf (sb, " ");
         }
     }
 
-  if (!NILP (cur))
+  if (!cell_is_nil (cur))
     {
       appendf (sb, " . ");
       char *s = format (cur);
@@ -147,9 +145,9 @@ fmt_cons (StrBuf *sb, Cell *n)
 }
 
 void
-fmt_thunk (StrBuf *sb, Cell *n)
+fmt_builtin (StrBuf *sb, Cell *n)
 {
-  return appendf (sb, "#<THUNK %s>", thunk_get_name (n));
+  return appendf (sb, "#<BUILTIN %s>", builtin_name (n));
 }
 
 void
@@ -179,12 +177,12 @@ format (Cell *n)
      .used = 0,
      .str  = NULL,
   };
-  size_t idx = TYPE_UNKNOWN;
+  size_t idx = CELL_TYPE_UNKNOWN;
 
   sb.str = xcalloc ((&sb)->cap, sizeof *(sb.str));
 
   if (n)
-    idx = n->type < _TYPE_END ? n->type : TYPE_UNKNOWN;
+    idx = (unsigned)n->type < CELL_TYPE_COUNT ? n->type : CELL_TYPE_UNKNOWN;
 
   fmters[idx](&sb, n);
 

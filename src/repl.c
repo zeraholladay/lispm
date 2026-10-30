@@ -29,9 +29,9 @@ repl (LM *lm)
           continue;
         }
 
-      Cell *res = lm_progn (lm, progn);
-
-      PRINT (res);
+      EvaluationResult result = lm_evaluate (lm, progn);
+      if (result.success)
+        PRINT (result.value);
     }
 
   return 0;

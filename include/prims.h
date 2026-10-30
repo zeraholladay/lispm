@@ -7,6 +7,12 @@
 
 typedef struct prim_wrapper PrimWrapper;
 
+struct prim_wrapper
+{
+  PALLOC_WRAPPER_FIELDS (PrimWrapper)
+  Cell ptr;
+};
+
 extern PrimWrapper wrapper_nil;
 extern PrimWrapper wrapped_t;
 extern PrimWrapper wrapper_quote;
@@ -15,9 +21,17 @@ extern PrimWrapper wrapper_quote;
 #define T     (&wrapped_t.ptr)
 #define QUOTE (&wrapper_quote.ptr)
 
-#define NILP(x)  (x == NIL)
-#define LISTP(x) (NILP (x) || CONSP (x))
-#define CONSP(x) (IS_INST (x, CONS))
+static inline bool
+cell_is_nil (const Cell *cell)
+{
+  return cell == NIL;
+}
+
+static inline bool
+cell_is_pair_or_nil (const Cell *cell)
+{
+  return cell_is_nil (cell) || cell_is_pair (cell);
+}
 
 #define CAR(x)   ((x)->cons.car)
 #define CDR(x)   ((x)->cons.cdr)
@@ -28,40 +42,34 @@ extern PrimWrapper wrapper_quote;
 #define CADDR(x) (CAR (CDDR (x)))
 #define CDDDR(x) (CDR (CDDR (x)))
 
-#define LIST1(car, lm)      (CONS (car, NIL, lm))
-#define LIST2(car, cdr, lm) (CONS (car, LIST1 (cdr, lm), lm))
-
-#define RPLACA(x, val)                                                        \
-  do                                                                          \
-    {                                                                         \
-      if (CONSP (x))                                                          \
-        CAR (x) = val;                                                        \
-    }                                                                         \
-  while (0)
-
-#define RPLACD(x, val)                                                        \
-  do                                                                          \
-    {                                                                         \
-      if (CONSP (x))                                                          \
-        CDR (x) = val;                                                        \
-    }                                                                         \
-  while (0)
-
-struct prim_wrapper
+static inline Cell *
+cell_list1 (LM *lm, Cell *value)
 {
-  PALLOC_WRAPPER_FIELDS (PrimWrapper)
-  Cell ptr;
-};
+  return cell_make_pair (lm, value, NIL);
+}
 
-Cell  *append_inplace (Cell *lst1, Cell *lst2);
-bool   proper_list_p (Cell *list);
-Cell  *append_list (LM *lm, Cell *lst1, Cell *lst2);
-Cell  *butlast (LM *lm, Cell *args);
-Cell  *last (LM *lm, Cell *args);
+static inline Cell *
+cell_list2 (LM *lm, Cell *first, Cell *second)
+{
+  return cell_make_pair (lm, first, cell_list1 (lm, second));
+}
+
+static inline void
+cell_set_car (Cell *cell, Cell *value)
+{
+  if (cell_is_pair (cell))
+    CAR (cell) = value;
+}
+
+static inline void
+cell_set_cdr (Cell *cell, Cell *value)
+{
+  if (cell_is_pair (cell))
+    CDR (cell) = value;
+}
+
+bool   cell_is_proper_list (const Cell *list);
 size_t length (Cell *lst);
-Cell  *nth (size_t idx, Cell *lst);
-Cell  *reverse (LM *lm, Cell *lst);
 Cell  *reverse_inplace (Cell *lst);
-Cell  *zip (LM *lm, Cell *lsts);
 
 #endif

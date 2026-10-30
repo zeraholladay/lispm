@@ -1,121 +1,111 @@
-# export DEBUG=1 # enable debugging
-# make clean; make test
-#
-# make hints
-# $@	The target of the rule (the thing being built)
-# $<	The first prerequisite (typically the input file)
-# $^	All prerequisites, with duplicates removed
-
-# src
-
-# src/ and gen/
 SRC := src
+TEST_SRC := test
 BIN := bin
 GEN := gen
 
-MAIN_SRC := $(SRC)/main.c
-EXEC := $(BIN)/lispm
+CC ?= cc
+PKG_CONFIG ?= pkg-config
+FLEX ?= flex
+BISON ?= bison
+GPERF ?= gperf
+XXD ?= xxd
 
-# Compilers and flags
-CC ?= gcc
-
-ifeq ($(DEBUG), 1)
-	CFLAGS := -Iinclude -I$(GEN) -Wall -Wextra -O0 -g -DYYDEBUG=0 -Dlispm_DEBUG
-	# FLEX_FLAGS := -d
-	# BISON_FLAGS := -d -v --debug
+CPPFLAGS += -Iinclude -I$(GEN) -DYYDEBUG=0 $(shell $(PKG_CONFIG) --cflags readline)
+ifeq ($(DEBUG),1)
+  CFLAGS ?= -std=c11 -Wall -Wextra -O0 -g
+  CPPFLAGS += -Dlispm_DEBUG
 else
-	CFLAGS := -Iinclude -I$(GEN) -Wall -Wextra -O2 -DNDEBUG -DYYDEBUG=0
-	FLEX_FLAGS :=
-	BISON_FLAGS :=
+  CFLAGS ?= -std=c11 -Wall -Wextra -O2 -DNDEBUG
 endif
+LDLIBS += $(shell $(PKG_CONFIG) --libs readline)
+TEST_FLAGS := $(shell $(PKG_CONFIG) --cflags check)
+TEST_LIBS := $(shell $(PKG_CONFIG) --libs check) -pthread
 
-# libs
-ifeq ($(shell uname), Darwin)
-	LDLIBS   += $(shell pkg-config --cflags --libs readline)
-	LDFLAGS  += $(shell pkg-config --cflags --libs readline)
-endif
+EXEC := $(BIN)/lispm
+TEST_EXE := $(BIN)/test_main
+CORE_SOURCES := $(filter-out $(SRC)/main.c,$(wildcard $(SRC)/*.c))
+CORE_OBJECTS := $(patsubst $(SRC)/%.c,$(BIN)/src/%.o,$(CORE_SOURCES))
+GENERATED_OBJECTS := $(addprefix $(BIN)/gen/,bison.o flex.o keywords.o)
+RUNTIME_OBJECTS := $(CORE_OBJECTS) $(GENERATED_OBJECTS)
+MAIN_OBJECT := $(BIN)/src/main.o
+TEST_OBJECTS := $(patsubst $(TEST_SRC)/%.c,$(BIN)/test/%.o,$(wildcard $(TEST_SRC)/*.c))
+ALL_OBJECTS := $(RUNTIME_OBJECTS) $(MAIN_OBJECT) $(TEST_OBJECTS)
 
-FLEX := flex
-BISON := bison
-GPERF := gperf
-
-FLEX_SRC := $(SRC)/flex.l
-BISON_SRC := $(SRC)/bison.y
-GPERF_SCR := $(SRC)/keywords.g
-
-FLEX_C := $(GEN)/flex.c
-FLEX_H := $(GEN)/flex.h
 BISON_C := $(GEN)/bison.c
 BISON_H := $(GEN)/bison.h
-GPERF_C := $(GEN)/keywords.c
+FLEX_C := $(GEN)/flex.c
+FLEX_H := $(GEN)/flex.h
+KEYWORDS_C := $(GEN)/keywords.c
+PRELUDE_DATA := $(GEN)/prelude.inc
+BUILD_CONFIG := $(BIN)/build-config
 
-SRC_CFILES := $(wildcard $(SRC)/*.c) $(FLEX_C) $(BISON_C) $(GPERF_C)
-SRC_CFILES_ALL := $(sort $(SRC_CFILES))
-SRC_OBJS := $(patsubst $(SRC)/%.c, $(BIN)/%.o, $(SRC_CFILES_ALL))
+.PHONY: all src exec gen test lint clean FORCE generated-directory
+all: $(EXEC)
+exec: $(EXEC)
+src: $(RUNTIME_OBJECTS)
+gen: $(BISON_C) $(BISON_H) $(FLEX_C) $(FLEX_H) $(KEYWORDS_C) $(PRELUDE_DATA)
 
-.PHONY: all
-all: src exec
+# Link objects only. Each source, including each entry point and generated
+# source, is compiled once with its own automatic header dependency file.
+$(EXEC): $(RUNTIME_OBJECTS) $(MAIN_OBJECT)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-exec: $(MAIN_SRC)
-	$(CC) $(CFLAGS) -DLISPM_MAIN=1 -o $(EXEC) $(SRC_OBJS) $(MAIN_SRC) $(LDLIBS)
+$(TEST_EXE): $(RUNTIME_OBJECTS) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(TEST_LIBS) $(LDLIBS)
 
-.PHONY: src
-src: gen $(SRC_OBJS)
-
-# ie pattern rule istead of $(SRC_OBJS) because $(SRC_OBJS) would assume gcc built all $(SRC_OBJS)
-$(BIN)/%.o: $(SRC)/%.c | bin
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# gen
-.PHONY: gen
-gen: $(BISON_C) $(FLEX_C) $(GPERF_C)
-
-$(BISON_C): $(BISON_SRC) | bin
-	$(BISON) $(BISON_FLAGS) -o $(BISON_C) --defines=$(BISON_H) $(BISON_SRC)
-
-$(FLEX_C): $(FLEX_SRC) $(BISON_H) | bin
-	$(FLEX) $(FLEX_FLAGS) -o $(FLEX_C) --header-file=$(FLEX_H) $(FLEX_SRC)
-
-$(GPERF_C): $(GPERF_SCR) $(BISON_H) | bin
-	$(GPERF) $(GPERF_SCR) --output-file=$(GPERF_C)
-
-# test/
-TEST_SRC := test
-
-TEST_MAIN_SRC := $(TEST_SRC)/test_main.c
-TEST_EXE := $(BIN)/test_main
-
-TEST_CFILES := $(wildcard $(TEST_SRC)/*.c)
-TEST_OBJS := $(patsubst $(TEST_SRC)/%.c, $(BIN)/%.o, $(TEST_CFILES))
-
-ifeq ($(shell uname), Darwin)
-	CHECK := check
-	TEST_FLAGS := $(shell pkg-config --cflags $(CHECK))
-	TEST_LIBS := $(shell pkg-config --libs $(CHECK)) -pthread $(LIBS)
-endif
-
-.PHONY: test
-test: src $(TEST_EXE)
+test: $(TEST_EXE)
 	@./$(TEST_EXE)
 
-$(TEST_EXE): $(TEST_OBJS) $(SRC_OBJS) | bin
-	$(CC) $(CFLAGS) -DTEST_MAIN=1 -o $(TEST_EXE) $(SRC_OBJS) $(TEST_OBJS) $(TEST_MAIN_SRC) $(TEST_FLAGS) $(TEST_LIBS) $(LDLIBS)
+$(BIN)/src/%.o: $(SRC)/%.c $(BUILD_CONFIG) | $(BIN)/src
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
-$(BIN)/%.o: $(TEST_SRC)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@ $(TEST_FLAGS)
+$(BIN)/gen/%.o: $(GEN)/%.c $(BUILD_CONFIG) | $(BIN)/gen
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
-# linting
-.PHONY: lint
+$(BIN)/test/%.o: $(TEST_SRC)/%.c $(BUILD_CONFIG) | $(BIN)/test
+	$(CC) $(CPPFLAGS) $(TEST_FLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
+
+# Bootstrap prerequisites are explicit because .d files do not exist on a
+# first build. The generated-header rules also recover a missing header when
+# its generated C file still exists, without racing generators under make -j.
+$(BIN)/src/parser.o $(BIN)/gen/bison.o $(BIN)/gen/flex.o: $(BISON_H) $(FLEX_H)
+$(BIN)/src/prelude.o: $(PRELUDE_DATA)
+
+$(BISON_C): $(SRC)/bison.y | generated-directory
+	$(BISON) $(BISON_FLAGS) -o $@ --defines=$(BISON_H) $<
+$(BISON_H): $(BISON_C)
+	@test -f $@ || $(BISON) $(BISON_FLAGS) -o $(BISON_C) --defines=$@ $(SRC)/bison.y
+
+$(FLEX_C): $(SRC)/flex.l $(BISON_H) | generated-directory
+	$(FLEX) $(FLEX_FLAGS) -o $@ --header-file=$(FLEX_H) $<
+$(FLEX_H): $(FLEX_C)
+	@test -f $@ || $(FLEX) $(FLEX_FLAGS) -o $(FLEX_C) --header-file=$@ $(SRC)/flex.l
+
+$(KEYWORDS_C): $(SRC)/keywords.g | generated-directory
+	$(GPERF) $< --output-file=$@
+
+$(PRELUDE_DATA): lib/prelude.scm | generated-directory
+	$(XXD) -i < $< > $@
+	@printf ', 0\n' >> $@
+
+# Keep the timestamp when configuration is unchanged. Changing compiler,
+# flags, DEBUG, or libraries therefore rebuilds objects without a make clean,
+# while an unchanged make all really is a no-op.
+$(BUILD_CONFIG): FORCE | $(BIN)
+	@printf '%s\n' '$(CC)' '$(CPPFLAGS)' '$(CFLAGS)' '$(LDFLAGS)' '$(LDLIBS)' '$(TEST_FLAGS)' '$(TEST_LIBS)' > $@.tmp
+	@if cmp -s $@.tmp $@; then rm $@.tmp; else mv $@.tmp $@; fi
+
+$(BIN) $(BIN)/src $(BIN)/gen $(BIN)/test:
+	@mkdir -p $@
+
+generated-directory:
+	@mkdir -p $(GEN)
+
 lint: clean
-	clang-format -i */*.c */*.y */*.h
-	cppcheck */*.c */*.h --check-level=exhaustive
+	clang-format -i src/*.c include/*.h test/*.c src/*.y
+	cppcheck src/*.c include/*.h test/*.c --check-level=exhaustive --error-exitcode=1
 
-# bin/
-.PHONY: bin
-bin:
-	-@mkdir $(BIN) $(GEN)
-
-# clean
-.PHONY: clean
 clean:
 	@rm -rf $(BIN) $(GEN)
+
+-include $(ALL_OBJECTS:.o=.d)

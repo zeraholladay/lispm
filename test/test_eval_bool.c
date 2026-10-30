@@ -75,40 +75,40 @@ START_TEST (test_eq)
 
   // False statements
   eval_result = run_eval_progn ("(eq T NIL)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq NIL T)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq 0 1)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq -42 42)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq '() '(1))");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq 'foo 'bar)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   test_program = "(define foo (lambda () ()))"
                  "(define bar (lambda () ()))"
                  "(eq foo bar)";
   eval_result  = run_eval_progn (test_program);
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   test_program = "(define foo '(1 2 3 4))"
                  "(define bar '(1 2 3 4))"
                  "(eq foo bar)";
   eval_result  = run_eval_progn (test_program);
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq (string 'foo) (string 'bar))");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq first rest)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 }
 END_TEST
 
@@ -120,7 +120,7 @@ START_TEST (test_not)
   ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(not T)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 }
 END_TEST
 
@@ -129,10 +129,10 @@ START_TEST (test_and)
   Cell *eval_result = NULL;
 
   eval_result = run_eval_progn ("(and nil T)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(and T nil)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(and T T)");
   ck_assert_ptr_eq (eval_result, T);
@@ -150,7 +150,7 @@ START_TEST (test_or)
   Cell *eval_result = NULL;
 
   eval_result = run_eval_progn ("(or nil nil)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(or T nil)");
   ck_assert_ptr_eq (eval_result, T);
@@ -159,7 +159,7 @@ START_TEST (test_or)
   ck_assert_ptr_eq (eval_result, T);
 
   eval_result = run_eval_progn ("(or)");
-  ck_assert (NILP (eval_result));
+  ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(or 'foobar T T)");
   ck_assert_str_eq (eval_result->symbol.str, "foobar");

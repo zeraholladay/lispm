@@ -24,18 +24,18 @@ gc_mark_reachable (Stack *stack, Cell *root)
 
       switch (c->type)
         {
-        case TYPE_CONS:
+        case CELL_TYPE_CONS:
           stack_push (stack, CDR (c));
           stack_push (stack, CAR (c));
           break;
 
-        case TYPE_LAMBDA:
+        case CELL_TYPE_LAMBDA:
           stack_push (stack, c->lambda.body);
           stack_push (stack, c->lambda.params);
           stack_push (stack, c->lambda.env);
           break;
 
-        case TYPE_ENV:
+        case CELL_TYPE_ENV:
           if (c->env.parent)
             stack_push (stack, c->env.parent);
           {
@@ -46,12 +46,12 @@ gc_mark_reachable (Stack *stack, Cell *root)
           }
           break;
 
-        case TYPE_INTEGER:
-        case TYPE_FLOAT:
-        case TYPE_STRING:
-        case TYPE_SYMBOL:
-        case TYPE_NIL:
-        case TYPE_THUNK:
+        case CELL_TYPE_INTEGER:
+        case CELL_TYPE_FLOAT:
+        case CELL_TYPE_STRING:
+        case CELL_TYPE_SYMBOL:
+        case CELL_TYPE_NIL:
+        case CELL_TYPE_BUILTIN:
           break;
 
         default:
@@ -64,12 +64,12 @@ gc_mark_reachable (Stack *stack, Cell *root)
 static void
 gc_mark_state (Stack *stack, State state)
 {
-  Union u = state.u;
+  StatePayload payload = state.payload;
 
-  switch (state.s)
+  switch (state.kind)
     {
-#define X(tag, ...)                                                           \
-  case s_##tag:                                                               \
+#define X(id, tag, ...)                                                       \
+  case STATE_##id:                                                            \
     goto gc_state_##tag;
 #include "lm.def"
 #undef X
@@ -77,160 +77,107 @@ gc_mark_state (Stack *stack, State state)
       assert (0 && "no such GC state");
     }
 
-gc_state_and_cont:
-  {
-    gc_mark_reachable (stack, u.and_cont.arglist);
-    return;
-  }
-
-gc_state_and:
-  {
-    gc_mark_reachable (stack, u.and.arglist);
-    return;
-  }
-
 gc_state_apply:
   {
-    gc_mark_reachable (stack, u.apply.fn);
-    gc_mark_reachable (stack, u.apply.arglist);
+    gc_mark_reachable (stack, payload.apply.fn);
+    gc_mark_reachable (stack, payload.apply.arglist);
     return;
   }
 
 gc_state_closure_enter:
   {
-    gc_mark_reachable (stack, u.closure_enter.fn);
+    gc_mark_reachable (stack, payload.closure_enter.fn);
     return;
   }
 
 gc_state_closure_leave:
   {
-    gc_mark_reachable (stack, u.closure_leave.env);
+    gc_mark_reachable (stack, payload.closure_leave.env);
     return;
   }
 
 gc_state_define:
   {
-    gc_mark_reachable (stack, u.define.sym);
+    gc_mark_reachable (stack, payload.define.sym);
     return;
   }
 
 gc_state_eval_apply:
   {
-    gc_mark_reachable (stack, u.eval_apply.fn);
-    gc_mark_reachable (stack, u.eval_apply.arglist);
+    gc_mark_reachable (stack, payload.eval_apply.fn);
+    gc_mark_reachable (stack, payload.eval_apply.arglist);
     return;
   }
 
 gc_state_eval:
   {
-    gc_mark_reachable (stack, u.eval.expr);
+    gc_mark_reachable (stack, payload.eval.expr);
     return;
   }
 
 gc_state_evlis_acc:
   {
-    gc_mark_reachable (stack, u.evlis_acc.acc);
-    gc_mark_reachable (stack, u.evlis_acc.arglist);
+    gc_mark_reachable (stack, payload.evlis_acc.acc);
+    gc_mark_reachable (stack, payload.evlis_acc.arglist);
     return;
   }
 
 gc_state_evlis:
   {
-    gc_mark_reachable (stack, u.evlis.acc);
-    gc_mark_reachable (stack, u.evlis.arglist);
+    gc_mark_reachable (stack, payload.evlis.acc);
+    gc_mark_reachable (stack, payload.evlis.arglist);
     return;
   }
 
 gc_state_funcall:
   {
-    gc_mark_reachable (stack, u.funcall.fn);
-    gc_mark_reachable (stack, u.funcall.arglist);
+    gc_mark_reachable (stack, payload.funcall.fn);
+    gc_mark_reachable (stack, payload.funcall.arglist);
     return;
   }
 
 gc_state_if_:
   {
-    gc_mark_reachable (stack, u.if_.form);
+    gc_mark_reachable (stack, payload.if_.form);
     return;
   }
 
 gc_state_if_cont:
   {
-    gc_mark_reachable (stack, u.if_cont.form);
+    gc_mark_reachable (stack, payload.if_cont.form);
     return;
   }
 
 gc_state_lambda:
   {
-    gc_mark_reachable (stack, u.lambda.fn);
-    gc_mark_reachable (stack, u.lambda.arglist);
+    gc_mark_reachable (stack, payload.lambda.fn);
+    gc_mark_reachable (stack, payload.lambda.arglist);
     return;
   }
 
-gc_state_let:
+gc_state_special_form:
   {
-    gc_mark_reachable (stack, u.let.arglist);
-    return;
-  }
-
-gc_state_lispm:
-  {
-    gc_mark_reachable (stack, u.lispm.fn);
-    gc_mark_reachable (stack, u.lispm.arglist);
-    return;
-  }
-
-gc_state_map_acc:
-  {
-    gc_mark_reachable (stack, u.map_acc.fn);
-    gc_mark_reachable (stack, u.map_acc.acc);
-    gc_mark_reachable (stack, u.map_acc.ziplist);
-    return;
-  }
-
-gc_state_map_cont:
-  {
-    gc_mark_reachable (stack, u.map_cont.fn);
-    gc_mark_reachable (stack, u.map_cont.acc);
-    gc_mark_reachable (stack, u.map_cont.ziplist);
-    return;
-  }
-
-gc_state_map:
-  {
-    gc_mark_reachable (stack, u.map.fn);
-    gc_mark_reachable (stack, u.map.arglist);
-    return;
-  }
-
-gc_state_or_cont:
-  {
-    gc_mark_reachable (stack, u.or_cont.arglist);
-    return;
-  }
-
-gc_state_or:
-  {
-    gc_mark_reachable (stack, u.or.arglist);
+    gc_mark_reachable (stack, payload.special_form.fn);
+    gc_mark_reachable (stack, payload.special_form.arglist);
     return;
   }
 
 gc_state_progn_eval:
   {
-    gc_mark_reachable (stack, u.progn_eval.arglist);
+    gc_mark_reachable (stack, payload.progn_eval.arglist);
     return;
   }
 
 gc_state_progn:
   {
-    gc_mark_reachable (stack, u.progn.res);
-    gc_mark_reachable (stack, u.progn.arglist);
+    gc_mark_reachable (stack, payload.progn.res);
+    gc_mark_reachable (stack, payload.progn.arglist);
     return;
   }
 
 gc_state_set:
   {
-    gc_mark_reachable (stack, u.set.sym);
+    gc_mark_reachable (stack, payload.set.sym);
     return;
   }
 }

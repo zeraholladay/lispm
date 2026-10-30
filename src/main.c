@@ -1,5 +1,3 @@
-#ifdef LISPM_MAIN
-
 #include <stdio.h>
 #include <unistd.h>
 
@@ -34,7 +32,9 @@ run (int argc, char **argv)
   if (!argc)
     run_repl = 1;
 
-  LM *lm     = lm_create ();
+  LM *lm = lm_create ();
+  if (!lm)
+    return 1;
   int status = 0;
 
   for (int i = 0; i < argc; ++i)
@@ -60,7 +60,12 @@ run (int argc, char **argv)
           break; // TODO: syntax error
         }
 
-      lm_progn (lm, progn);
+      EvaluationResult result = lm_evaluate (lm, progn);
+      if (!result.success)
+        {
+          status = 1;
+          break;
+        }
     }
 
   if (run_repl)
@@ -75,5 +80,3 @@ main (int argc, char **argv)
 {
   return run (argc, argv);
 }
-
-#endif

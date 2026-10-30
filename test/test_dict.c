@@ -245,6 +245,31 @@ START_TEST (test_long_keys_and_delete_churn)
 }
 END_TEST
 
+START_TEST (test_byte_slice_keys_and_growth)
+{
+  // Include embedded NULs and non-terminated keys: hashing/equality must use
+  // the supplied byte count both during lookup and table resizing.
+  static char keys[64][2];
+  for (size_t i = 0; i < 64; ++i)
+    {
+      keys[i][0] = (char)i;
+      keys[i][1] = 'x';
+      ck_assert (dict_insert_n (dict, keys[i], 2, (void *)(intptr_t)(i + 1)));
+    }
+  for (size_t i = 0; i < 64; ++i)
+    {
+      DictEntity *entry = dict_lookup_n (dict, keys[i], 2);
+      ck_assert_ptr_nonnull (entry);
+      ck_assert_int_eq ((intptr_t)entry->val, i + 1);
+    }
+  static char prefix[] = { 'a', 'b', 'c', 'x' };
+  static char same[]   = { 'a', 'b', 'c', 'y' };
+  dict_insert_n (dict, prefix, 3, &vals_int[0]);
+  ck_assert_ptr_eq (dict_lookup_n (dict, same, 3)->val, &vals_int[0]);
+  ck_assert_ptr_null (dict_lookup_n (dict, same, 4));
+}
+END_TEST
+
 Suite *
 dict_suite (void)
 {
@@ -260,6 +285,7 @@ dict_suite (void)
   tcase_add_test (tc, test_initialization_va_list);
   tcase_add_test (tc, test_uuid_fuzz);
   tcase_add_test (tc, test_long_keys_and_delete_churn);
+  tcase_add_test (tc, test_byte_slice_keys_and_growth);
   suite_add_tcase (s, tc);
   return s;
 }

@@ -1,97 +1,101 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "lm.h"
 #include "prims.h"
 #include "types.h"
 #include "xalloc.h"
 
-Cell *
-new (LM *lm, TypeEnum type, ...)
+static Cell *
+cell_allocate (LM *lm, CellType type)
 {
-  va_list ap;
-  va_start (ap, type);
-
-  Cell *c = lm_alloc_cell (lm);
-  c->type = type;
-
-  switch (type)
-    {
-    case TYPE_LAMBDA:
-      c->lambda.params = va_arg (ap, Cell *);
-      c->lambda.body   = va_arg (ap, Cell *);
-      c->lambda.env    = NIL;
-      break;
-
-    case TYPE_ENV:
-      c->env.parent = va_arg (ap, Cell *);
-      c->env.dict   = dict_create (NULL, 0);
-      break;
-
-    case TYPE_INTEGER:
-      c->integer = va_arg (ap, Integer);
-      break;
-
-    case TYPE_FLOAT:
-      c->_float = va_arg (ap, Float);
-      break;
-
-    case TYPE_CONS:
-      c->cons.car = va_arg (ap, Cell *);
-      c->cons.cdr = va_arg (ap, Cell *);
-      break;
-
-    case TYPE_STRING:
-      {
-        const char *string = va_arg (ap, const char *);
-        size_t      len    = strlen (string) + 1;
-        c->string          = xmalloc (len);
-        memcpy (c->string, string, len);
-      }
-      break;
-
-    case TYPE_SYMBOL:
-      c->symbol.str = va_arg (ap, const char *);
-      c->symbol.len = va_arg (ap, size_t);
-      break;
-
-    default:
-      return NIL;
-      break;
-    }
-
-  va_end (ap);
-  return c;
+  Cell *cell = lm_alloc_cell (lm);
+  cell->type = type;
+  return cell;
 }
 
 Cell *
-string_take (LM *lm, char *string)
+cell_make_integer (LM *lm, Integer value)
 {
-  Cell *cell   = lm_alloc_cell (lm);
-  cell->type   = TYPE_STRING;
-  cell->string = string;
+  Cell *cell    = cell_allocate (lm, CELL_TYPE_INTEGER);
+  cell->integer = value;
   return cell;
+}
+
+Cell *
+cell_make_float (LM *lm, Float value)
+{
+  Cell *cell     = cell_allocate (lm, CELL_TYPE_FLOAT);
+  cell->floating = value;
+  return cell;
+}
+
+Cell *
+cell_make_symbol (LM *lm, const char *text, size_t length)
+{
+  Cell *cell   = cell_allocate (lm, CELL_TYPE_SYMBOL);
+  cell->symbol = (Symbol){ .str = text, .len = length };
+  return cell;
+}
+
+Cell *
+cell_make_pair (LM *lm, Cell *car, Cell *cdr)
+{
+  Cell *cell = cell_allocate (lm, CELL_TYPE_CONS);
+  cell->cons = (Cons){ .car = car, .cdr = cdr };
+  return cell;
+}
+
+Cell *
+cell_make_lambda (LM *lm, Cell *parameters, Cell *body)
+{
+  Cell *cell   = cell_allocate (lm, CELL_TYPE_LAMBDA);
+  cell->lambda = (Lambda){ .params = parameters, .body = body, .env = NIL };
+  return cell;
+}
+
+Cell *
+cell_make_environment (LM *lm, Cell *parent)
+{
+  Cell *cell = cell_allocate (lm, CELL_TYPE_ENV);
+  cell->env  = (Env){ .parent = parent, .dict = dict_create (NULL, 0) };
+  return cell;
+}
+
+Cell *
+cell_make_string_take (LM *lm, char *text)
+{
+  Cell *cell   = cell_allocate (lm, CELL_TYPE_STRING);
+  cell->string = text;
+  return cell;
+}
+
+Cell *
+cell_make_string_copy (LM *lm, const char *text)
+{
+  size_t size = strlen (text) + 1;
+  char  *copy = xmalloc (size);
+  memcpy (copy, text, size);
+  return cell_make_string_take (lm, copy);
 }
 
 void
 cell_dispose (Cell *cell)
 {
-  if (cell->type == TYPE_ENV)
+  if (cell->type == CELL_TYPE_ENV)
     dict_destroy (cell->env.dict);
-  else if (cell->type == TYPE_STRING)
+  else if (cell->type == CELL_TYPE_STRING)
     free (cell->string);
 }
 
 Cell *
 cons_next (ConsIter *iter)
 {
-  Cell *cur = iter->cur;
-
-  if (cur != NIL)
+  Cell *cell = iter->cur;
+  if (cell != NIL)
     {
-      iter->cur = CDR (iter->cur);
-      return CAR (cur);
+      iter->cur = CDR (cell);
+      return CAR (cell);
     }
-
   return NULL;
 }
