@@ -29,7 +29,7 @@ static bool valid_formals (Cell *params);
 %union
 {
   Integer integer;
-  Float _float;
+  Float floating;
   const char *error;
   Cell *cell;
   struct {
@@ -40,7 +40,7 @@ static bool valid_formals (Cell *params);
 
 %token ERROR LAMBDA QUOTE
 %token <integer> INTEGER
-%token <_float> FLOAT
+%token <floating> FLOAT
 %token <error> NUMERIC_ERROR
 %token <symbol>  IF DEFINE LET SET SYMBOL
 
@@ -77,7 +77,7 @@ forms
     }
   | form forms
     {
-      $$ = CONS ($1, $2, lm);
+      $$ = cell_make_pair (lm, $1, $2);
     }
   ;
 
@@ -86,11 +86,11 @@ form
       {
         if (!valid_formals ($3))
           yyerror (progn, lm, "Lambda parameters must be distinct, non-reserved symbols");
-        $$ = LIST1 (LAMBDA ($3, $4, lm), lm);
+        $$ = cell_list1 (lm, cell_make_lambda (lm, $3, $4));
       }
     | '(' define symbol forms ')'
       {
-        $$ = CONS ($2, CONS ($3, $4, lm), lm);
+        $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $3, $4));
       }
     | '(' define '(' symbol formal_tail ')' forms ')'
       {
@@ -98,24 +98,24 @@ form
         // lambda AST; the VM needs no separate function-definition operation.
         if (!valid_formals ($5))
           yyerror (progn, lm, "Function parameters must be distinct, non-reserved symbols");
-        Cell *body = LIST1 (LAMBDA ($5, $7, lm), lm);
-        $$ = CONS ($2, CONS ($4, body, lm), lm);
+        Cell *body = cell_list1 (lm, cell_make_lambda (lm, $5, $7));
+        $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $4, body));
       }
     | '(' let form forms ')'
       {
-        $$ = CONS ($2, CONS ($3, $4, lm), lm);
+        $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $3, $4));
       }
     | '(' set symbol forms ')'
       {
-        $$ = CONS ($2, CONS ($3, $4, lm), lm);
+        $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $3, $4));
       }
     | '(' if_ form form ')'
       {
-        $$ = CONS ($2, LIST2 ($3, $4, lm), lm);
+        $$ = cell_make_pair (lm, $2, cell_list2 (lm, $3, $4));
       }
     | '(' if_ form form form ')'
       {
-        $$ = CONS ($2, CONS ( $3, LIST2 ($4, $5, lm), lm), lm);
+        $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $3, cell_list2 (lm, $4, $5)));
       }
     | symbol
       {
@@ -123,11 +123,11 @@ form
       }
     | INTEGER
       {
-        $$ = INTEGER ($1, lm);
+        $$ = cell_make_integer (lm, $1);
       }
     | FLOAT
       {
-        $$ = FLOAT ($1, lm);
+        $$ = cell_make_float (lm, $1);
       }
     | NUMERIC_ERROR
       {
@@ -136,7 +136,7 @@ form
       }
     | '\'' form
       {
-        $$ = LIST2 (QUOTE, $2, lm);
+        $$ = cell_list2 (lm, QUOTE, $2);
       }
     | '(' forms ')'
       {
@@ -144,11 +144,11 @@ form
       }
     | '(' form forms '.' form ')'
       {
-        Cell *head = CONS ($2, $3, lm);
+        Cell *head = cell_make_pair (lm, $2, $3);
         Cell *tail = head;
-        while (!NILP (CDR (tail)))
+        while (!cell_is_nil (CDR (tail)))
           tail = CDR (tail);
-        RPLACD (tail, $5);
+        cell_set_cdr (tail, $5);
         $$ = head;
       }
     ;
@@ -166,7 +166,7 @@ param_list
   | '(' symbol formal_tail ')'
     {
       // Requiring a first symbol here rejects the malformed (. rest) form.
-      $$ = CONS ($2, $3, lm);
+      $$ = cell_make_pair (lm, $2, $3);
     }
   ;
 
@@ -177,7 +177,7 @@ formal_tail
     }
   | symbol formal_tail
     {
-      $$ = CONS ($1, $2, lm);
+      $$ = cell_make_pair (lm, $1, $2);
     }
   | '.' symbol
     {
@@ -189,7 +189,7 @@ formal_tail
 symbol
   : SYMBOL
     {
-      $$ = SYMBOL ($1.str, $1.len, lm);
+      $$ = cell_make_symbol (lm, $1.str, $1.len);
     }
   | QUOTE
     {
@@ -200,28 +200,28 @@ symbol
 define
   : DEFINE
     {
-      $$ = SYMBOL ($1.str, $1.len, lm);
+      $$ = cell_make_symbol (lm, $1.str, $1.len);
     }
   ;
 
 let
   : LET
     {
-      $$ = SYMBOL ($1.str, $1.len, lm);
+      $$ = cell_make_symbol (lm, $1.str, $1.len);
     }
   ;
 
 set
   : SET
     {
-      $$ = SYMBOL ($1.str, $1.len, lm);
+      $$ = cell_make_symbol (lm, $1.str, $1.len);
     }
   ;
 
 if_
   : IF
     {
-      $$ = SYMBOL ($1.str, $1.len, lm);
+      $$ = cell_make_symbol (lm, $1.str, $1.len);
     }
   ;
 
@@ -235,10 +235,10 @@ valid_formals (Cell *params)
   // reserved words and against each other, without rejecting lexical shadowing.
   Dict *seen = dict_create (NULL, 0);
   bool valid = true;
-  for (Cell *p = params; !NILP (p); p = CONSP (p) ? CDR (p) : NIL)
+  for (Cell *p = params; !cell_is_nil (p); p = cell_is_pair (p) ? CDR (p) : NIL)
     {
-      Cell *name = CONSP (p) ? CAR (p) : p;
-      if (!IS_INST (name, SYMBOL)
+      Cell *name = cell_is_pair (p) ? CAR (p) : p;
+      if (!cell_has_type (name, CELL_TYPE_SYMBOL)
           || keyword_lookup (name->symbol.str, name->symbol.len)
           || dict_has_key (seen, name->symbol.str))
         {

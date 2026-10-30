@@ -11,10 +11,6 @@
 #define DICT_INIT_CAP 8
 #endif
 
-#ifndef DICT_STR_MAX_LEN
-#define DICT_STR_MAX_LEN 256
-#endif
-
 #define DICT_CREATE()     (dict_create (NULL, 0))
 #define DICT_ENTITY(k, v) { .hash_key = 0, .key = k, .len = 0, .val = v }
 

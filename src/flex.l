@@ -69,7 +69,7 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                         yylval.error = "Invalid floating-point literal";
                         return NUMERIC_ERROR;
                       }
-                    yylval._float = value;
+                    yylval.floating = value;
                     return FLOAT;
                   }
   {ID}            {

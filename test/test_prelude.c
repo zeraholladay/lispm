@@ -43,7 +43,7 @@ expect (const char *source, const char *expected)
 
 START_TEST (test_loaded_and_redefinable)
 {
-  ck_assert (IS_INST (evaluate ("identity"), LAMBDA));
+  ck_assert (cell_has_type (evaluate ("identity"), CELL_TYPE_LAMBDA));
   expect ("(identity 42)", "42");
   lm_gc (lm);
   expect ("(fold-left + 0 '(1 2 3))", "6");
@@ -60,7 +60,7 @@ START_TEST (test_migrated_procedures_are_normal_bindings)
   lm_gc (lm);
   for (size_t i = 0; i < sizeof (names) / sizeof (*names); ++i)
     {
-      ck_assert_msg (IS_INST (evaluate (names[i]), LAMBDA),
+      ck_assert_msg (cell_has_type (evaluate (names[i]), CELL_TYPE_LAMBDA),
                      "%s should be a Scheme procedure", names[i]);
       char source[256];
       snprintf (source, sizeof (source),
@@ -70,7 +70,7 @@ START_TEST (test_migrated_procedures_are_normal_bindings)
       expect (source, "42");
       snprintf (source, sizeof (source), "(set! %s saved-procedure)",
                 names[i]);
-      ck_assert (IS_INST (evaluate (source), LAMBDA));
+      ck_assert (cell_has_type (evaluate (source), CELL_TYPE_LAMBDA));
     }
   // Internal VM application must not depend on redefinable library helpers.
   expect ("(set! last (lambda (xs) 99)) (apply + '(1 2 3))", "6");
@@ -150,7 +150,7 @@ START_TEST (test_migrated_sequence_validation)
       expect ("touched", "0");
     }
   Cell *cycle = evaluate ("(define cycle (list 1))");
-  RPLACD (cycle, cycle);
+  cell_set_cdr (cycle, cycle);
   const char *cyclic[]
       = { "(length cycle)", "(reverse cycle)", "(nth 0 cycle)", "(last cycle)",
           "(butlast cycle)" };
@@ -224,7 +224,7 @@ START_TEST (test_list_shape_and_structural_equality)
           " (equal? identity identity) (equal? NIL NIL))",
           "(t nil nil t t)");
   Cell *cycle = evaluate ("(define cycle (list 1 2 3))");
-  RPLACD (CDDR (cycle), cycle);
+  cell_set_cdr (CDDR (cycle), cycle);
   expect ("(list? cycle)", "nil");
   expect ("(filter identity cycle)", "nil");
 }
@@ -310,9 +310,9 @@ START_TEST (test_higher_order_closures)
   expect ("(map (constantly 7) '(a b c))", "(7 7 7)");
   expect ("(let ((value (list 1))) (eq ((constantly value) 999) value))", "t");
   expect ("((compose abs (lambda (x) (- x 10))) 3)", "7");
-  ck_assert (IS_INST (
+  ck_assert (cell_has_type (
       evaluate ("(define combined (compose abs (lambda (x) (- x 10))))"),
-      LAMBDA));
+      CELL_TYPE_LAMBDA));
   lm_gc (lm);
   expect ("(combined 3)", "7");
 }
@@ -439,7 +439,7 @@ START_TEST (test_variadic_list_argument_errors)
           "nil");
   expect ("visits", "0");
   Cell *cycle = evaluate ("(define cycle (list 1))");
-  RPLACD (cycle, cycle);
+  cell_set_cdr (cycle, cycle);
   expect ("(append NIL cycle)", "nil");
   expect ("(map list NIL cycle)", "nil");
 }

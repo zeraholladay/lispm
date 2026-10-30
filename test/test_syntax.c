@@ -134,13 +134,14 @@ START_TEST (test_long_boolean_forms_use_bounded_control)
   const char *names[] = { "and", "or" };
   for (size_t form = 0; form < 2; ++form)
     {
-      Cell *operands = LIST1 (INTEGER (42, lm), lm);
+      Cell *operands = cell_list1 (lm, cell_make_integer (lm, 42));
       for (size_t i = 0; i < 5000; ++i)
-        operands = CONS (form == 0 ? T : NIL, operands, lm);
-      Cell *call   = CONS (SYMBOL (names[form], strlen (names[form]), lm),
-                           operands, lm);
-      Cell *result = lm_progn (lm, LIST1 (call, lm));
-      ck_assert (IS_INST (result, INTEGER));
+        operands = cell_make_pair (lm, form == 0 ? T : NIL, operands);
+      Cell *call = cell_make_pair (
+          lm, cell_make_symbol (lm, names[form], strlen (names[form])),
+          operands);
+      Cell *result = lm_progn (lm, cell_list1 (lm, call));
+      ck_assert (cell_has_type (result, CELL_TYPE_INTEGER));
       ck_assert_int_eq (result->integer, 42);
       ck_assert_uint_lt (lm->ctl.high_water, 16);
     }

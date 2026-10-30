@@ -9,6 +9,6 @@ extern Cell *const syntax_predicate_value;
 
 // Lower one derived form when it is evaluated. Quoted data is never traversed
 // or rewritten, and eval-created expressions use this same expansion path.
-Cell *syntax_lower (LM *lm, ThunkEnum form, Cell *arguments);
+Cell *syntax_lower (LM *lm, BuiltinId form, Cell *arguments);
 
 #endif

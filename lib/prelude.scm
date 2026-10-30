@@ -201,7 +201,7 @@
         (f (car remaining) (walk (cdr remaining)))))
   (walk xs))
 
-;;; Basic list operations, implemented in Scheme rather than native thunks
+;;; Basic list operations, implemented in Scheme rather than native callbacks
 ;;; --------------------------------------------------------------------
 ;; The VM still has internal C list utilities for its own argument/control
 ;; bookkeeping. These LANGUAGE-LEVEL procedures are ordinary Scheme lambdas.

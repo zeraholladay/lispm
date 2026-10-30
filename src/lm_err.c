@@ -24,54 +24,43 @@ static const char *err_msg[] = {
 };
 
 static void
-lm_err_vprint (Err code, const char *fmt, va_list ap)
+lm_report_error (LM *lm, ErrorCode code, const char *fmt, va_list ap)
 {
   fprintf (stderr, "***error: %s: ", err_msg[code]);
   vfprintf (stderr, fmt, ap);
   fputc ('\n', stderr);
+  lm->has_error = true;
 }
 
-bool lm_err_bool (LM *lm, Err code, const char *fmt, ...)
-    __attribute__ ((format (printf, 3, 4)));
-
 bool
-lm_err_bool (LM *lm, Err code, const char *fmt, ...)
+lm_fail (LM *lm, ErrorCode code, const char *fmt, ...)
 {
   va_list ap;
   va_start (ap, fmt);
-  lm_err_vprint (code, fmt, ap);
+  lm_report_error (lm, code, fmt, ap);
   va_end (ap);
 
-  lm->err_bool = true;
   return false;
 }
 
-Cell *lm_err_nil (LM *lm, Err code, const char *fmt, ...)
-    __attribute__ ((format (printf, 3, 4)));
-
 Cell *
-lm_err_nil (LM *lm, Err code, const char *fmt, ...)
+lm_fail_value (LM *lm, ErrorCode code, const char *fmt, ...)
 {
   va_list ap;
   va_start (ap, fmt);
-  lm_err_vprint (code, fmt, ap);
+  lm_report_error (lm, code, fmt, ap);
   va_end (ap);
 
-  lm->err_bool = true;
   return NIL;
 }
 
-void *lm_err_null (LM *lm, Err code, const char *fmt, ...)
-    __attribute__ ((format (printf, 3, 4)));
-
 void *
-lm_err_null (LM *lm, Err code, const char *fmt, ...)
+lm_fail_pointer (LM *lm, ErrorCode code, const char *fmt, ...)
 {
   va_list ap;
   va_start (ap, fmt);
-  lm_err_vprint (code, fmt, ap);
+  lm_report_error (lm, code, fmt, ap);
   va_end (ap);
 
-  lm->err_bool = true;
   return NULL;
 }

@@ -3,12 +3,9 @@
 
 #include "xalloc.h"
 
-void *
-oom_handler_die (void *void_ptr, const char *msg)
+_Noreturn void
+xalloc_die (const char *message)
 {
-  (void)void_ptr;
-  perror (msg);
-  exit (1);
-  abort ();
-  return NULL;
+  fprintf (stderr, "%s: allocation failed\n", message);
+  exit (EXIT_FAILURE);
 }

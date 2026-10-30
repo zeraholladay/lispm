@@ -18,5 +18,6 @@ prelude_load (LM *lm)
 
   // The prelude ends with T as a success marker. Parse/evaluation failures
   // must fail construction rather than expose a partly bootstrapped VM.
-  return lm_progn (lm, forms) == T;
+  EvaluationResult result = lm_evaluate (lm, forms);
+  return result.success && result.value == T;
 }

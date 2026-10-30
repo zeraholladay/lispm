@@ -1,43 +1,28 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "lm.h"
-#include "lm_err.h"
+#include "dict.h"
 
-#define IS_INST(ptr, x) ((ptr) && (ptr)->type == TYPE_##x)
-
-#define INTEGER(integer, lm) (new (lm, TYPE_INTEGER, (Integer)(integer)))
-#define FLOAT(_float, lm)    (new (lm, TYPE_FLOAT, (Float)(_float)))
-#define SYMBOL(str, len, lm)                                                  \
-  (new (lm, TYPE_SYMBOL, (const char *)(str), (size_t)(len)))
-// STRING copies its input; string_take transfers an allocated buffer.
-#define STRING(str, lm)          (new (lm, TYPE_STRING, (const char *)(str)))
-#define CONS(car, cdr, lm)       (new (lm, TYPE_CONS, car, cdr))
-#define LAMBDA(params, body, lm) (new (lm, TYPE_LAMBDA, params, body))
-#define ENV(parent, lm)          (new (lm, TYPE_ENV, (Cell *)(parent)))
-
-// forward decls
 typedef struct cell Cell;
+typedef struct lm   LM;
 
-// Cells
 typedef enum
 {
-  TYPE_NIL,     // special constant
-  TYPE_INTEGER, // literal number
-  TYPE_FLOAT,   // floating point number
-  TYPE_SYMBOL,  // identifiers
-  TYPE_STRING,  // literal string
-  TYPE_CONS,    // cons cells
-  TYPE_THUNK,   // thunk fn
-  TYPE_LAMBDA,  // user-defined fn
-  TYPE_ENV,     // lexical environment frame
-  TYPE_UNKNOWN, // unknown ptr
-  _TYPE_END     // sentinel for end
-} TypeEnum;
+  CELL_TYPE_NIL,
+  CELL_TYPE_INTEGER,
+  CELL_TYPE_FLOAT,
+  CELL_TYPE_SYMBOL,
+  CELL_TYPE_STRING,
+  CELL_TYPE_CONS,
+  CELL_TYPE_BUILTIN,
+  CELL_TYPE_LAMBDA,
+  CELL_TYPE_ENV,
+  CELL_TYPE_UNKNOWN,
+  CELL_TYPE_COUNT
+} CellType;
 
 typedef long long Integer;
 typedef double    Float;
@@ -50,17 +35,17 @@ typedef struct
 
 typedef struct
 {
-  Cell *car; // Contents of the Address Register
-  Cell *cdr; // Contents of the Decrement Register
+  Cell *car;
+  Cell *cdr;
 } Cons;
 
 typedef enum
 {
-#define X(sym, is_l, ar, fn) THUNK_##sym,
-#include "thunks.def"
+#define X(id, is_special_form, arity, function) BUILTIN_##id,
+#include "builtins.def"
 #undef X
-  _THUNK_END // sentinel for end
-} ThunkEnum;
+  BUILTIN_COUNT
+} BuiltinId;
 
 typedef struct
 {
@@ -77,38 +62,58 @@ typedef struct
 
 struct cell
 {
-  TypeEnum type;
+  CellType type;
   union
   {
-    // Literal values
-    Integer integer;
-    Float   _float;
-    char   *string;
-    Symbol  symbol;
-    // Composite structures
-    Cons cons;
-    // Function-like values
-    ThunkEnum thunk;
+    Integer   integer;
+    Float     floating;
+    char     *string;
+    Symbol    symbol;
+    Cons      cons;
+    BuiltinId builtin;
     Lambda    lambda;
     Env       env;
   };
 };
 
-// cons iter
+// Typed constructors consistently take the owning VM first. Unlike a variadic
+// constructor, their argument types and counts are checked by the compiler.
+Cell *cell_make_integer (LM *lm, Integer value);
+Cell *cell_make_float (LM *lm, Float value);
+// Symbol text is borrowed (normally from str_intern) and must outlive the
+// cell.
+Cell *cell_make_symbol (LM *lm, const char *text, size_t length);
+Cell *cell_make_pair (LM *lm, Cell *car, Cell *cdr);
+Cell *cell_make_lambda (LM *lm, Cell *parameters, Cell *body);
+Cell *cell_make_environment (LM *lm, Cell *parent);
+// copy owns a duplicate; take assumes ownership of a malloc-compatible buffer.
+Cell *cell_make_string_copy (LM *lm, const char *text);
+Cell *cell_make_string_take (LM *lm, char *text);
+void  cell_dispose (Cell *cell);
+
+static inline bool
+cell_has_type (const Cell *cell, CellType type)
+{
+  return cell && cell->type == type;
+}
+
+static inline bool
+cell_is_pair (const Cell *cell)
+{
+  return cell_has_type (cell, CELL_TYPE_CONS);
+}
+
 typedef struct
 {
   Cell *cur;
 } ConsIter;
 
 static inline ConsIter
-cons_iter (Cell *c)
+cons_iter (Cell *cell)
 {
-  return (ConsIter){ .cur = c };
+  return (ConsIter){ .cur = cell };
 }
 
-Cell *new (LM *lm, TypeEnum type, ...);
-Cell *string_take (LM *lm, char *string);
-void  cell_dispose (Cell *cell);
 Cell *cons_next (ConsIter *iter);
 
 #endif

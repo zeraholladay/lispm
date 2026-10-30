@@ -49,16 +49,16 @@ START_TEST (test_literal_expressions)
   ck_assert (eval_res->integer == -42);
 
   eval_res = run_eval_progn ("42.0");
-  ck_assert (eval_res->_float == 42.0);
+  ck_assert (eval_res->floating == 42.0);
 
   eval_res = run_eval_progn ("-42.0");
-  ck_assert (eval_res->_float == -42.0);
+  ck_assert (eval_res->floating == -42.0);
 
   eval_res = run_eval_progn ("t");
   ck_assert_ptr_eq (eval_res, T);
 
   eval_res = run_eval_progn ("NIL");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("'foo");
   ck_assert_str_eq (eval_res->symbol.str, "foo");
@@ -76,17 +76,17 @@ START_TEST (test_quote)
   ck_assert (eval_res);
 
   eval_res = run_eval_progn ("'(foo)");
-  ck_assert (!NILP (eval_res));
+  ck_assert (!cell_is_nil (eval_res));
   car = CAR (eval_res);
   cdr = CDR (eval_res);
   ck_assert_str_eq (car->symbol.str, "foo");
-  ck_assert (NILP (cdr));
+  ck_assert (cell_is_nil (cdr));
 
   eval_res = run_eval_progn ("'(foo bar)");
-  ck_assert (!NILP (eval_res));
+  ck_assert (!cell_is_nil (eval_res));
   car = CAR (eval_res);
   cdr = CDR (eval_res);
-  ck_assert (!NILP (cdr));
+  ck_assert (!cell_is_nil (cdr));
   ck_assert_str_eq (car->symbol.str, "foo");
   ck_assert_str_eq (CAR (cdr)->symbol.str, "bar");
 
@@ -104,17 +104,17 @@ START_TEST (test_cons)
   Cell *cdr      = NULL;
 
   eval_res = run_eval_progn ("(cons 'foo 'bar)");
-  ck_assert (!NILP (eval_res));
+  ck_assert (!cell_is_nil (eval_res));
   car = CAR (eval_res);
   cdr = CDR (eval_res);
   ck_assert_str_eq (car->symbol.str, "foo");
   ck_assert_str_eq (cdr->symbol.str, "bar");
 
   eval_res = run_eval_progn ("(cons 'foo '(bar))");
-  ck_assert (!NILP (eval_res));
+  ck_assert (!cell_is_nil (eval_res));
   car = CAR (eval_res);
   cdr = CDR (eval_res);
-  ck_assert (!NILP (cdr));
+  ck_assert (!cell_is_nil (cdr));
   ck_assert_str_eq (CAR (cdr)->symbol.str, "bar");
 }
 END_TEST
@@ -130,13 +130,13 @@ START_TEST (test_define_set_and_lookup)
   ck_assert (eval_res->integer == 42);
 
   eval_res = run_eval_progn ("(define bar 'foo)");
-  ck_assert (IS_INST (eval_res, SYMBOL));
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_SYMBOL));
 
   eval_res = run_eval_progn ("(set! bar '(1 2 3))");
-  ck_assert (IS_INST (eval_res, CONS));
+  ck_assert (cell_is_pair (eval_res));
 
   eval_res = run_eval_progn ("(set! bar (lambda () ()))");
-  ck_assert (IS_INST (eval_res, LAMBDA));
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_LAMBDA));
 }
 END_TEST
 
@@ -145,14 +145,11 @@ START_TEST (test_first)
   Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(first '())");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(first '(foo bar))");
-  ck_assert (IS_INST (eval_res, SYMBOL));
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_SYMBOL));
   ck_assert_str_eq (eval_res->symbol.str, "foo");
-
-  // eval_res = run_eval_progn ("(first)");
-  // ck_assert (IS_INST (eval_res, ERROR));
 }
 END_TEST
 
@@ -161,15 +158,12 @@ START_TEST (test_rest)
   Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(rest '())");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(rest '(foo bar))");
-  ck_assert (IS_INST (eval_res, CONS));
-  ck_assert (IS_INST (CAR (eval_res), SYMBOL));
+  ck_assert (cell_is_pair (eval_res));
+  ck_assert (cell_has_type (CAR (eval_res), CELL_TYPE_SYMBOL));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
-
-  // eval_res = run_eval_progn ("(rest)");
-  // ck_assert (IS_INST (eval_res, ERROR));
 }
 END_TEST
 
@@ -202,7 +196,7 @@ START_TEST (test_if)
   ck_assert_int_eq (eval_res->integer, 42);
 
   eval_res = run_eval_progn ("(if NIL 42)");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(if (< 2 3) 'yes 'no)");
   ck_assert_str_eq (eval_res->symbol.str, "yes");
@@ -214,23 +208,23 @@ START_TEST (test_list)
   Cell *eval_res = NULL;
 
   eval_res = run_eval_progn ("(list)");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(list 7)");
   ck_assert_int_eq (CAR (eval_res)->integer, 7);
-  ck_assert (NILP (CDR (eval_res)));
+  ck_assert (cell_is_nil (CDR (eval_res)));
 
   eval_res = run_eval_progn ("(list 1 2 3)");
   ck_assert_int_eq (CAR (eval_res)->integer, 1);
   ck_assert_int_eq (CAR (CDR (eval_res))->integer, 2);
   ck_assert_int_eq (CAR (CDR (CDR (eval_res)))->integer, 3);
-  ck_assert (NILP (CDR (CDR (CDR (eval_res)))));
+  ck_assert (cell_is_nil (CDR (CDR (CDR (eval_res)))));
 
   eval_res     = run_eval_progn ("(list 'a 'b)");
   Cell *second = CAR (CDR (eval_res));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "a");
   ck_assert_str_eq (second->symbol.str, "b");
-  ck_assert (NILP (CDR (CDR (eval_res))));
+  ck_assert (cell_is_nil (CDR (CDR (eval_res))));
 }
 END_TEST
 
@@ -240,29 +234,31 @@ START_TEST (test_lambda)
 
   // define
   eval_res = run_eval_progn ("(lambda () ())");
-  ck_assert (IS_INST (eval_res, LAMBDA));
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_LAMBDA));
 
   // run
   eval_res = run_eval_progn ("((lambda () ()))");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   // run
   eval_res = run_eval_progn ("((lambda () (cons 'a 'b) 42))");
-  ck_assert (IS_INST (eval_res, INTEGER) && eval_res->integer == 42);
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_INTEGER)
+             && eval_res->integer == 42);
 
   // run body with a=42
   eval_res = run_eval_progn ("((lambda (a) a) 42)");
-  ck_assert (IS_INST (eval_res, INTEGER) && eval_res->integer == 42);
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_INTEGER)
+             && eval_res->integer == 42);
 
   // define foo and run
   eval_res = run_eval_progn ("(define foo (lambda () (cons 'a 'b)))"
                              "(foo)");
-  ck_assert (IS_INST (eval_res, CONS));
+  ck_assert (cell_is_pair (eval_res));
 
   // with parameters
   eval_res = run_eval_progn ("(define foo (lambda (a b) (cons a b)))"
                              "(foo 'bar 'biz)");
-  ck_assert (IS_INST (eval_res, CONS));
+  ck_assert (cell_is_pair (eval_res));
   ck_assert_str_eq (CAR (eval_res)->symbol.str, "bar");
 
   // test lexical scope
@@ -282,12 +278,12 @@ START_TEST (test_apply)
   Cell *cdr      = NULL;
 
   eval_res = run_eval_progn ("(apply (lambda () ()) '())");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   // (apply #'+ 1 2 3 '(4 5 6))
 
   eval_res = run_eval_progn ("(apply (lambda (a b) (cons a b)) '(foo bar))");
-  ck_assert (!NILP (eval_res));
+  ck_assert (!cell_is_nil (eval_res));
   car = CAR (eval_res);
   cdr = CDR (eval_res);
   ck_assert_str_eq (car->symbol.str, "foo");
@@ -317,10 +313,10 @@ START_TEST (test_funcall)
   Cell *cdr      = NULL;
 
   eval_res = run_eval_progn ("(funcall (lambda () ()))");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(funcall (lambda (a b) (cons a b)) 'foo 'bar)");
-  ck_assert (!NILP (eval_res));
+  ck_assert (!cell_is_nil (eval_res));
   car = CAR (eval_res);
   cdr = CDR (eval_res);
   ck_assert_str_eq (car->symbol.str, "foo");
@@ -536,15 +532,15 @@ START_TEST (test_error_arity)
 {
   // first with no args → error
   Cell *r = run_eval_progn ("(first)");
-  ck_assert (IS_INST (r, NIL));
+  ck_assert (cell_is_nil (r));
 
   // length without args → error
   r = run_eval_progn ("(length)");
-  ck_assert (IS_INST (r, NIL));
+  ck_assert (cell_is_nil (r));
 
   // cons with one arg → error
   r = run_eval_progn ("(cons 'a)");
-  ck_assert (IS_INST (r, NIL));
+  ck_assert (cell_is_nil (r));
 
   r = run_eval_progn ("(define x 1 2)");
   ck_assert_ptr_eq (r, NIL);
@@ -598,7 +594,7 @@ START_TEST (test_gc_reclaims_unreachable_cells)
   Cell *floating = run_eval_progn ("(define y 42.0)");
   lm_gc (lm);
   ck_assert (!pool_gc_is_free (floating));
-  ck_assert_float_eq (floating->_float, 42.0);
+  ck_assert_float_eq (floating->floating, 42.0);
 }
 END_TEST
 
@@ -609,7 +605,7 @@ START_TEST (test_quote_edge)
   r = run_eval_progn ("'('foo)");
   // equivalent to (quote (quote foo))
   // so r should be the list (quote foo)
-  ck_assert (!NILP (r));
+  ck_assert (!cell_is_nil (r));
   ck_assert_str_eq (CAAR (r)->symbol.str, "quote");
 }
 END_TEST
@@ -619,7 +615,7 @@ START_TEST (test_closure_shared_locations)
   Cell *r = run_eval_progn (
       "(define (make-counter) (let ((x 0)) (lambda () (set! x (+ x 1)) x)))"
       "(define counter (make-counter)) (counter)");
-  ck_assert (IS_INST (r, INTEGER));
+  ck_assert (cell_has_type (r, CELL_TYPE_INTEGER));
   ck_assert_int_eq (r->integer, 1);
   lm_gc (lm);
   r = run_eval_progn ("(counter)");
@@ -643,7 +639,7 @@ START_TEST (test_gc_collects_closure_cycles)
 {
   Cell *closure = run_eval_progn (
       "(define escaped (let () (define (loop) (loop)) loop))");
-  ck_assert (IS_INST (closure, LAMBDA));
+  ck_assert (cell_has_type (closure, CELL_TYPE_LAMBDA));
   Cell *frame = closure->lambda.env;
   lm_gc (lm);
   ck_assert (!pool_gc_is_free (closure));
@@ -676,7 +672,7 @@ START_TEST (test_invalid_forms_and_improper_lists)
                             "(map list '(a . b))",
                             "(apply + '(1 . 2))" };
   for (size_t i = 0; i < sizeof (invalid) / sizeof (*invalid); ++i)
-    ck_assert_msg (NILP (run_eval_progn (invalid[i])), "%s should fail",
+    ck_assert_msg (cell_is_nil (run_eval_progn (invalid[i])), "%s should fail",
                    invalid[i]);
 
   run_eval_progn ("(define changed 0)");
@@ -723,7 +719,7 @@ END_TEST
 START_TEST (test_string_ownership_and_pool_boundary)
 {
   char  original[] = "owned";
-  Cell *string     = STRING (original, lm);
+  Cell *string     = cell_make_string_copy (lm, original);
   original[0]      = 'X';
   ck_assert_str_eq (string->string, "owned");
   lm->stk.cells[lm->stk.sp++] = string;
@@ -735,11 +731,11 @@ START_TEST (test_string_ownership_and_pool_boundary)
 
   Cell *last = NULL;
   while (lm->pool->free_list)
-    last = INTEGER ((Integer)42, lm);
+    last = cell_make_integer (lm, 42);
   lm_gc (lm);
   ck_assert (pool_gc_is_free (last));
   for (size_t i = 0; i < LM_CAP_PER_POOL + 1; ++i)
-    STRING ("payload", lm);
+    cell_make_string_copy (lm, "payload");
   ck_assert_ptr_nonnull (lm->pool->next);
 }
 END_TEST

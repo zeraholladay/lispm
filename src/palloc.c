@@ -59,7 +59,7 @@ void *
 pool_xalloc (Pool *p)
 {
   if (!p->free_list)
-    return oom_handler_die (p, OOM_LOCATION "free_list empty");
+    xalloc_die (OOM_LOCATION "free_list empty");
 
   PallocWrapper *wrapper = p->free_list;
   p->free_list           = wrapper->next_free;

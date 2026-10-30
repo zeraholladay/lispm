@@ -6,52 +6,52 @@ PrimWrapper wrapped_t = {
   .free      = 0,
   .gc_mark   = 1,
   .next_free = NULL,
-  .ptr       = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("t") },
+  .ptr       = { .type = CELL_TYPE_SYMBOL, .symbol = AS_SYM ("t") },
 };
 
 PrimWrapper wrapper_nil = {
   .free      = 0,
   .gc_mark   = 1,
   .next_free = NULL,
-  .ptr       = { .type = TYPE_NIL, .cons = { .car = NULL, .cdr = NULL } },
+  .ptr       = { .type = CELL_TYPE_NIL, .cons = { .car = NIL, .cdr = NIL } },
 };
 
 PrimWrapper wrapper_quote = {
   .free      = 0,
   .gc_mark   = 1,
   .next_free = NULL,
-  .ptr       = { .type = TYPE_SYMBOL, .symbol = AS_SYM ("quote") },
+  .ptr       = { .type = CELL_TYPE_SYMBOL, .symbol = AS_SYM ("quote") },
 };
 
 // Only the list operations needed by VM bookkeeping remain native. The
 // public list library is implemented by ordinary Scheme prelude procedures.
 bool
-proper_list_p (Cell *list)
+cell_is_proper_list (const Cell *list)
 {
-  Cell *slow = list;
-  Cell *fast = list;
-  while (CONSP (fast))
+  const Cell *slow = list;
+  const Cell *fast = list;
+  while (cell_is_pair (fast))
     {
       fast = CDR (fast);
-      if (NILP (fast))
+      if (cell_is_nil (fast))
         return true;
-      if (!CONSP (fast))
+      if (!cell_is_pair (fast))
         return false;
       fast = CDR (fast);
       slow = CDR (slow);
       if (fast == slow)
         return false;
     }
-  return NILP (fast);
+  return cell_is_nil (fast);
 }
 
 size_t
 length (Cell *list)
 {
-  if (!proper_list_p (list))
+  if (!cell_is_proper_list (list))
     return 0;
   size_t count = 0;
-  for (Cell *p = list; CONSP (p); p = CDR (p))
+  for (Cell *p = list; cell_is_pair (p); p = CDR (p))
     ++count;
   return count;
 }
@@ -59,13 +59,13 @@ length (Cell *list)
 Cell *
 reverse_inplace (Cell *list)
 {
-  if (!proper_list_p (list))
+  if (!cell_is_proper_list (list))
     return NIL;
   Cell *previous = NIL;
-  while (CONSP (list))
+  while (cell_is_pair (list))
     {
       Cell *next = CDR (list);
-      RPLACD (list, previous);
+      cell_set_cdr (list, previous);
       previous = list;
       list     = next;
     }

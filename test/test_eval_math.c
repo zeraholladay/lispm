@@ -45,10 +45,10 @@ START_TEST (test_gt)
   ck_assert_ptr_eq (eval_res, T);
 
   eval_res = run_eval_progn ("(gt 2 3)");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(gt 3 3)");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(gt 3.5 3 2.5)");
   ck_assert_ptr_eq (eval_res, T);
@@ -69,10 +69,10 @@ START_TEST (test_lt)
   ck_assert_ptr_eq (eval_res, T);
 
   eval_res = run_eval_progn ("(lt 3 2)");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(lt 4 4)");
-  ck_assert (NILP (eval_res));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(lt 1 1.5 2.0)");
   ck_assert_ptr_eq (eval_res, T);
@@ -96,8 +96,8 @@ START_TEST (test_add)
   ck_assert_int_eq (eval_res->integer, 4);
 
   eval_res = run_eval_progn ("(add 1 2.5)");
-  ck_assert (IS_INST (eval_res, FLOAT));
-  ck_assert_float_eq (eval_res->_float, 3.5);
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_FLOAT));
+  ck_assert_float_eq (eval_res->floating, 3.5);
 
   eval_res = run_eval_progn ("(add 9223372036854775807 1)");
   ck_assert_ptr_eq (eval_res, NIL);
@@ -118,8 +118,8 @@ START_TEST (test_sub)
   ck_assert_int_eq (eval_res->integer, -3);
 
   eval_res = run_eval_progn ("(sub 5.0 1 1.5)");
-  ck_assert (IS_INST (eval_res, FLOAT));
-  ck_assert_float_eq (eval_res->_float, 2.5);
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_FLOAT));
+  ck_assert_float_eq (eval_res->floating, 2.5);
 }
 END_TEST
 
@@ -137,8 +137,8 @@ START_TEST (test_mul)
   ck_assert_int_eq (eval_res->integer, 0);
 
   eval_res = run_eval_progn ("(mul 2 2.5)");
-  ck_assert (IS_INST (eval_res, FLOAT));
-  ck_assert_float_eq (eval_res->_float, 5.0);
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_FLOAT));
+  ck_assert_float_eq (eval_res->floating, 5.0);
 }
 END_TEST
 
@@ -153,14 +153,14 @@ START_TEST (test_div)
   ck_assert_int_eq (eval_res->integer, 42);
 
   eval_res = run_eval_progn ("(div 10 0)");
-  ck_assert (IS_INST (eval_res, NIL));
+  ck_assert (cell_is_nil (eval_res));
 
   eval_res = run_eval_progn ("(div 5 2)");
   ck_assert_int_eq (eval_res->integer, 2);
 
   eval_res = run_eval_progn ("(div 5 2.0)");
-  ck_assert (IS_INST (eval_res, FLOAT));
-  ck_assert_float_eq (eval_res->_float, 2.5);
+  ck_assert (cell_has_type (eval_res, CELL_TYPE_FLOAT));
+  ck_assert_float_eq (eval_res->floating, 2.5);
 
   eval_res = run_eval_progn ("(div 1.0 0.0)");
   ck_assert_ptr_eq (eval_res, NIL);
@@ -175,12 +175,12 @@ START_TEST (test_integer_literal_boundaries)
   char literal[64];
   snprintf (literal, sizeof (literal), "%lld", LLONG_MAX);
   Cell *value = run_eval_progn (literal);
-  ck_assert (IS_INST (value, INTEGER));
+  ck_assert (cell_has_type (value, CELL_TYPE_INTEGER));
   ck_assert_int_eq (value->integer, LLONG_MAX);
 
   snprintf (literal, sizeof (literal), "%lld", LLONG_MIN);
   value = run_eval_progn (literal);
-  ck_assert (IS_INST (value, INTEGER));
+  ck_assert (cell_has_type (value, CELL_TYPE_INTEGER));
   ck_assert_int_eq (value->integer, LLONG_MIN);
   ck_assert_int_eq (run_eval_progn ("-0")->integer, 0);
 }
@@ -225,14 +225,14 @@ START_TEST (test_float_literal_boundaries)
       ck_assert_int_gt (len, 0);
       ck_assert_uint_lt ((size_t)len, sizeof (literal));
       Cell *value = run_eval_progn (literal);
-      ck_assert (IS_INST (value, FLOAT));
-      ck_assert (isfinite (value->_float));
-      ck_assert (value->_float == values[i]);
+      ck_assert (cell_has_type (value, CELL_TYPE_FLOAT));
+      ck_assert (isfinite (value->floating));
+      ck_assert (value->floating == values[i]);
     }
   Cell *zero = run_eval_progn ("-0.0");
-  ck_assert (IS_INST (zero, FLOAT));
-  ck_assert (zero->_float == 0.0);
-  ck_assert (signbit (zero->_float));
+  ck_assert (cell_has_type (zero, CELL_TYPE_FLOAT));
+  ck_assert (zero->floating == 0.0);
+  ck_assert (signbit (zero->floating));
 }
 END_TEST
 
@@ -257,7 +257,7 @@ START_TEST (test_float_literal_range_errors)
           Cell *ast = T;
           ck_assert (!parser_buf (literal, &ast, lm));
           ck_assert_ptr_eq (ast, NIL);
-          ck_assert (run_eval_progn ("1.5")->_float == 1.5);
+          ck_assert (run_eval_progn ("1.5")->floating == 1.5);
         }
     }
 }

@@ -1,10 +1,10 @@
-#include <readline/history.h>
-#include <readline/readline.h>
-
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <readline/history.h>
+#include <readline/readline.h>
 
 #include "keywords.h"
 

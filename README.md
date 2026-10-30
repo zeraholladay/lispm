@@ -61,6 +61,12 @@ Enable debug logging:
 DEBUG=1 make clean all
 ```
 
+Objects and generated sources are compiled separately, with automatic header
+dependencies. Changing headers or switching compiler/build flags triggers the
+necessary rebuilds; unchanged `make all` does not recompile or relink. Parallel
+builds such as `make -j4 all test` are supported. `DEBUG=1 make all` switches to a
+debug build without requiring `make clean` first.
+
 ---
 
 ## REPL Usage
@@ -151,6 +157,28 @@ table growth. There is no separate red-black-tree or interning-pool subsystem.
 The VM's internal C list helpers are limited to proper-list checking, counting,
 and in-place reversal. `apply` assembles its fixed arguments directly and
 shares its final list suffix without mutating caller-owned list spines.
+
+### C runtime conventions
+
+- Value constructors are typed functions with the VM first, such as
+  `cell_make_integer(lm, 42)` and `cell_make_pair(lm, head, tail)`. There is no
+  variadic value-construction dispatcher. `cell_make_string_copy` duplicates
+  borrowed text; `cell_make_string_take` transfers an allocated buffer.
+- `cell_has_type`, `cell_is_nil`, `cell_is_pair`, `cell_is_pair_or_nil`, and
+  `cell_is_proper_list` distinguish value shape explicitly and evaluate each
+  argument once. Cell types, built-in IDs, and state kinds use `CELL_TYPE_*`,
+  `BUILTIN_*`, and `STATE_*` enum constants.
+- `src/builtins.c` owns the canonical built-in objects and dispatch metadata,
+  registered in `include/builtins.def`. `builtin_value(id)` returns the same
+  object used by keyword lookup, across translation units and interpreter
+  instances. Built-in procedures print as `#<BUILTIN NAME>`.
+- `lm_evaluate` returns an `EvaluationResult` with separate `success` and `value`
+  fields. Successful NIL and failure are distinguishable. The CLI uses failure
+  status for its exit code, and the REPL only prints successful results.
+  `lm_progn` remains a value-only compatibility wrapper, returning NIL on error.
+- `lm_fail`, `lm_fail_value`, and `lm_fail_pointer` report errors and set
+  `has_error`, returning false, NIL, or NULL for their respective callers. VM
+  recovery clears the flag before accepting the next evaluation.
 
 ---
 
