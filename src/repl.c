@@ -21,11 +21,10 @@ repl (LM *lm)
       if (!input)
         break;
 
-      bool parsed = parser_buf (input, &progn, lm);
+      bool parsed = parser_buf_named ("<repl>", input, &progn, lm);
       free (input);
       if (!parsed)
         {
-          fputs ("Parse failed\n", stderr);
           continue;
         }
 

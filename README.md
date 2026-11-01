@@ -12,6 +12,7 @@ The reference below describes the operations implemented in this repository.
 - [Build and run](#build-and-run)
 - [Core language: C-defined primitives and conventions](#core-language-c-defined-primitives-and-conventions)
   - [Reader, values, and truth](#reader-values-and-truth)
+  - [Parse diagnostics](#parse-diagnostics)
   - [Names, scope, and evaluation](#names-scope-and-evaluation)
   - [Binding and function forms](#binding-and-function-forms)
   - [Control forms](#control-forms)
@@ -35,7 +36,7 @@ The reference below describes the operations implemented in this repository.
 
 ## Build and run
 
-Dependencies: a C compiler, Make, Flex, Bison, gperf, `xxd`, Readline, and
+Dependencies: a C compiler, Make, Flex, Bison 3.6 or newer, gperf, `xxd`, Readline, and
 `pkg-config`. Tests also require the Check C testing framework.
 
 On macOS, select the Homebrew tools first:
@@ -134,6 +135,30 @@ conversions are parse errors.
 The runtime also has native procedure, Scheme lambda/closure, and string
 values. Strings can be produced with `string`, but there is no string-literal
 reader syntax yet.
+
+### Parse diagnostics
+
+Reader/parser errors include the source name, one-based line and byte column,
+a source excerpt, and a caret or underline. For example, an extra closing
+parenthesis in `example.scm` produces:
+
+```text
+example.scm:1:8: error: syntax error, unexpected ')'
+  (+ 1 2))
+         ^
+```
+
+Unexpected tokens use readable names and expected-token information where
+available. Unknown characters, out-of-range numeric literals, and invalid
+parameter specifications are located too. Incomplete expressions point at the
+next input position (EOF). Tabs are expanded at eight-column stops in excerpts;
+reported columns still count source bytes. Multiline spans underline the first
+source line.
+
+File errors use the supplied pathname; REPL errors use `<repl>` and coordinates
+relative to the submitted line. Each parse resets its position. Streams are
+buffered without seeking, so source excerpts also work for piped input.
+These are parse-time locations; runtime errors do not yet carry AST locations.
 
 ### Names, scope, and evaluation
 
@@ -895,6 +920,12 @@ and `value` fields, so failure and successful `NIL` are distinguishable.
 `lm_progn()` is the value-only compatibility entry point. Call `lm_destroy()`
 to release the interpreter's pools and owned payloads.
 
+`parser_buf_named(source_name, input, ...)` and
+`parser_stream_named(source_name, stream, ...)` provide diagnostic source names.
+The original `parser_buf`/`parser_stream` entry points remain available and use
+`<input>`/`<stream>` labels. Failed parses return false and set the AST output to
+NIL; the buffered source context is released after parsing.
+
 ## Current boundaries
 
 The documented names above are the implemented reference. There is no macro
@@ -902,3 +933,19 @@ system, `let*`/`letrec`, `cond`, continuations, vectors, character type, string
 literal syntax, Scheme-level pair mutation, or exception handling yet.
 Scheme standard-library names such as `eq?`, `display`, and `begin` are not
 aliases here: use the documented `eq`, `print`, and `progn` interfaces.
+
+### Planned: `cond`
+
+- [ ] Add `cond` as C-supported derived syntax for multi-branch conditionals,
+  with an optional final `else` clause. Lower it to nested core `if` expressions
+  in `src/syntax.c`, preserving short-circuiting, exactly-once test evaluation,
+  and tail position without introducing additional VM states.
+
+Illustrative syntax only; `cond` is **not implemented yet**:
+
+```lisp
+(cond
+  ((< x 0) 'negative)
+  ((= x 0) 'zero)
+  (else 'positive))
+```
