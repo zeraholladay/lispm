@@ -1,16 +1,26 @@
+%top{
+#include "parser_internal.h"
+#define YY_DECL int yylex (ParserContext *context)
+}
+
 %option noyywrap
-%option yylineno
 %option noinput
 %option nounput
 
 %{
 #include <errno.h>
+#include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "bison.h"
 #include "str_intern.h"
+
+// Location tracking includes matches discarded as comments/whitespace. Do not
+// mix this cursor with Flex's yylineno counter: one source of truth per parse.
+#define YY_USER_ACTION parser_advance (context, &yylloc, yytext, (size_t)yyleng);
 %}
 
 NL       \r?\n
@@ -42,13 +52,13 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     Integer value = strtoll (yytext, &end, 10);
                     if (errno == ERANGE)
                       {
-                        yylval.error = "Integer literal out of range";
-                        return NUMERIC_ERROR;
+                        parser_report_error (context, yylloc, "Integer literal out of range");
+                        return ERROR;
                       }
                     if (end != yytext + yyleng)
                       {
-                        yylval.error = "Invalid integer literal";
-                        return NUMERIC_ERROR;
+                        parser_report_error (context, yylloc, "Invalid integer literal");
+                        return ERROR;
                       }
                     yylval.integer = value;
                     return INTEGER;
@@ -61,13 +71,13 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     // nonzero input rounded down to zero by strtod.
                     if (errno == ERANGE || !isfinite (value))
                       {
-                        yylval.error = "Floating-point literal out of range";
-                        return NUMERIC_ERROR;
+                        parser_report_error (context, yylloc, "Floating-point literal out of range");
+                        return ERROR;
                       }
                     if (end != yytext + yyleng)
                       {
-                        yylval.error = "Invalid floating-point literal";
-                        return NUMERIC_ERROR;
+                        parser_report_error (context, yylloc, "Invalid floating-point literal");
+                        return ERROR;
                       }
                     yylval.floating = value;
                     return FLOAT;
@@ -103,7 +113,18 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
   {NL}            { /* ignore */ }
   ;[^\n]*         { /* ignore */ }
   .               {
+                    char message[64];
+                    unsigned char byte = (unsigned char)yytext[0];
+                    if (isprint (byte))
+                      snprintf (message, sizeof (message), "Unexpected character '%c'", byte);
+                    else
+                      snprintf (message, sizeof (message), "Unexpected byte 0x%02X", byte);
+                    parser_report_error (context, yylloc, message);
                     return ERROR;
+                  }
+  <<EOF>>         {
+                    parser_at_eof (context, &yylloc);
+                    return 0;
                   }
 }
 

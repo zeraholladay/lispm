@@ -49,15 +49,14 @@ run (int argc, char **argv)
           break;
         }
 
-      bool parse_res = parser_stream (in, &progn, lm);
+      bool parse_res = parser_stream_named (argv[i], in, &progn, lm);
 
       fclose (in);
 
       if (!parse_res)
         {
-          fputs ("Parse failed\n", stderr);
           status = 1;
-          break; // TODO: syntax error
+          break;
         }
 
       EvaluationResult result = lm_evaluate (lm, progn);

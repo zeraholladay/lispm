@@ -13,7 +13,7 @@ bool
 prelude_load (LM *lm)
 {
   Cell *forms = NULL;
-  if (!parser_buf (prelude_source, &forms, lm))
+  if (!parser_buf_named ("lib/prelude.scm", prelude_source, &forms, lm))
     return false;
 
   // The prelude ends with T as a success marker. Parse/evaluation failures

@@ -1,36 +1,32 @@
 // clang-format off
-%{
-#include <stdio.h>
+%require "3.6"
+%locations
+%define api.location.type {SourceLocation}
+%define parse.error detailed
+%define parse.lac full
 
+%{
 #include "bison.h"
-#include "flex.h"
 #include "keywords.h"
 #include "prims.h"
 
-#define yyerror(n, lm, s)                                                     \
-  do                                                                          \
-    {                                                                         \
-      yyerror_handler (lm, s);                                                \
-      YYABORT;                                                                \
-    }                                                                         \
-  while (0)
-
-void yyerror_handler (LM *lm, const char *s);
+void yyerror (Cell **progn, LM *lm, ParserContext *context, const char *message);
 static bool valid_formals (Cell *params);
 %}
 
 %code requires
 {
 #include "types.h"
+#include "parser_internal.h"
 }
 
-%parse-param {Cell **progn} {LM *lm}
+%parse-param {Cell **progn} {LM *lm} {ParserContext *context}
+%lex-param {ParserContext *context}
 
 %union
 {
   Integer integer;
   Float floating;
-  const char *error;
   Cell *cell;
   struct {
     const char *str;
@@ -38,11 +34,10 @@ static bool valid_formals (Cell *params);
   } symbol;
 }
 
-%token ERROR LAMBDA QUOTE
-%token <integer> INTEGER
-%token <floating> FLOAT
-%token <error> NUMERIC_ERROR
-%token <symbol>  IF DEFINE LET SET SYMBOL
+%token ERROR "invalid token" LAMBDA "lambda" QUOTE "quote"
+%token <integer> INTEGER "integer"
+%token <floating> FLOAT "float"
+%token <symbol> IF "if" DEFINE "define" LET "let" SET "set" SYMBOL "identifier"
 
 %type <cell>
   program
@@ -63,11 +58,6 @@ program
       *progn = $1;
       YYACCEPT;
     }
-  | forms error
-    {
-      *progn = NIL;
-      yyerror (progn, lm, "Parse error\n");
-    }
   ;
 
 forms
@@ -85,7 +75,10 @@ form
     : '(' LAMBDA param_list forms ')'
       {
         if (!valid_formals ($3))
-          yyerror (progn, lm, "Lambda parameters must be distinct, non-reserved symbols");
+          {
+            parser_report_error (context, @3, "Lambda parameters must be distinct, non-reserved symbols");
+            YYABORT;
+          }
         $$ = cell_list1 (lm, cell_make_lambda (lm, $3, $4));
       }
     | '(' define symbol forms ')'
@@ -97,7 +90,10 @@ form
         // Named-definition shorthand lowers to an ordinary binding of a
         // lambda AST; the VM needs no separate function-definition operation.
         if (!valid_formals ($5))
-          yyerror (progn, lm, "Function parameters must be distinct, non-reserved symbols");
+          {
+            parser_report_error (context, @5, "Function parameters must be distinct, non-reserved symbols");
+            YYABORT;
+          }
         Cell *body = cell_list1 (lm, cell_make_lambda (lm, $5, $7));
         $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $4, body));
       }
@@ -128,11 +124,6 @@ form
     | FLOAT
       {
         $$ = cell_make_float (lm, $1);
-      }
-    | NUMERIC_ERROR
-      {
-        // Abort parsing before an out-of-range value can enter the AST.
-        yyerror (progn, lm, $1);
       }
     | '\'' form
       {
@@ -252,8 +243,9 @@ valid_formals (Cell *params)
 }
 
 void
-yyerror_handler (LM *lm, const char *s)
+yyerror (Cell **progn, LM *lm, ParserContext *context, const char *message)
 {
+  (void)progn;
   (void)lm;
-  fprintf (stderr, "Syntax error: line %d: %s\n", yylineno, s);
+  parser_report_error (context, yylloc, message);
 }
