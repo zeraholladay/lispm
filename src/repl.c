@@ -16,7 +16,7 @@ repl (LM *lm)
 
   for (;;)
     {
-      char *input = rl_readline ();
+      char *input = rl_readline (lm);
 
       if (!input)
         break;

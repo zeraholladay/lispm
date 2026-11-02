@@ -85,7 +85,8 @@ is_keyword_strncmp (const char *text, int state)
       len = strlen (text);
     }
 
-  while (idx < GPERF_TOTAL_KEYWORDS)
+  // The generated hash table is sparse; keyword count is not its last index.
+  while (idx <= GPERF_MAX_HASH_VALUE)
     {
       const char *name = keyword_table[idx++].name;
       if (name[0] == '\0')

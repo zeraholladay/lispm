@@ -83,6 +83,15 @@ multiline examples below in a file, or enter each complete expression on one
 line. Program files can contain multiple expressions and multiline definitions.
 File execution does not automatically print expression results; use `print`.
 
+Tab completes built-in names, prelude functions, and current environment
+bindings, including names defined in earlier submissions or loaded files.
+For example, `fold-l<Tab>` completes to `fold-left`; after defining `square`,
+`squ<Tab>` completes to `square`. Ambiguous matches are sorted and deduplicated.
+Parentheses, brackets, and quote delimit names, while `-`, `?`, and `!` remain
+part of a name. User-defined names match case-sensitively, as in evaluation;
+built-in names retain their case-insensitive matching. Completion uses existing
+bindings; it does not infer local names inside an unfinished `let` or `lambda`.
+
 In examples, `; => ...` describes the result as the interpreter prints it.
 The built-in true and false values are printed as `t` and `nil`.
 
