@@ -22,6 +22,9 @@ typedef struct
   size_t      line;
   size_t      column;
   bool        has_error;
+  char       *delimiters;
+  size_t      delimiter_count;
+  size_t      delimiter_capacity;
 } ParserContext;
 
 void parser_advance (ParserContext *context, SourceLocation *location,
@@ -29,6 +32,9 @@ void parser_advance (ParserContext *context, SourceLocation *location,
 void parser_at_eof (ParserContext *context, SourceLocation *location);
 void parser_report_error (ParserContext *context, SourceLocation location,
                           const char *message);
+// Check original delimiter types before the lexer normalizes [] to ().
+bool parser_delimiter (ParserContext *context, SourceLocation location,
+                       char delimiter);
 
 // The non-reentrant Flex scanner receives the current parse's source context
 // explicitly. Its Bison semantic value and location remain generated globals.

@@ -77,7 +77,7 @@ ctl_push_states (LM *lm, const State sts[], size_t n)
 // reverse for the LIFO control stack. Infer the count from the initializer.
 // The repeated initializer is inside sizeof, so constructor arguments are
 // evaluated only once; this array's inferred length is not variable-length.
-#define PUSH_SEQ(lm, ...)                                                \
+#define PUSH_SEQ(lm, ...)                                                     \
   ctl_push_states ((lm), (State[]){ __VA_ARGS__ },                            \
                    sizeof ((State[]){ __VA_ARGS__ }) / sizeof (State))
 
@@ -210,8 +210,7 @@ ctl_eval_apply:
     if (cell_has_type (fn, CELL_TYPE_BUILTIN) && builtin_is_special_form (fn))
       return ctl_push_state (lm, eval_special_form (fn, arglist));
 
-    return PUSH_SEQ (lm, eval_args (arglist),
-                          call_with_stacked_args (fn));
+    return PUSH_SEQ (lm, eval_args (arglist), call_with_stacked_args (fn));
   }
 
 // list
@@ -284,8 +283,7 @@ ctl_funcall:
 
         // Leave the existing return in place for a tail call. Both cases
         // enter a fresh frame, then bind arguments and evaluate the body.
-        return PUSH_SEQ (lm, enter_closure (fn),
-                              run_lambda (fn, arglist));
+        return PUSH_SEQ (lm, enter_closure (fn), run_lambda (fn, arglist));
       }
 
     return lm_fail (lm, ERR_NOT_A_FN, "funcall");
@@ -420,7 +418,7 @@ ctl_progn:
       return ctl_push_state (lm, eval_expr (CAR (arglist)));
 
     return PUSH_SEQ (lm, eval_expr (CAR (arglist)),
-                          continue_body (CDR (arglist)));
+                     continue_body (CDR (arglist)));
   }
 
 ctl_progn_eval:
@@ -476,29 +474,28 @@ ctl_special_form:
       {
       case BUILTIN_APPLY:
         return PUSH_SEQ (lm, eval_args (CDR (arglist)),
-                              eval_expr (CAR (arglist)), apply_from_stack ());
+                         eval_expr (CAR (arglist)), apply_from_stack ());
 
       case BUILTIN_FUNCALL:
         return PUSH_SEQ (lm, eval_args (CDR (arglist)),
-                              eval_expr (CAR (arglist)), call_from_stack ());
+                         eval_expr (CAR (arglist)), call_from_stack ());
 
       case BUILTIN_DEFINE:
         if (!cell_is_pair (arglist) || !cell_is_pair (CDR (arglist))
             || !cell_is_nil (CDDR (arglist)))
           return lm_fail (lm, ERR_UNEXPECTED_ARG, "define");
         return PUSH_SEQ (lm, eval_args (CDR (arglist)),
-                              define_from_stack (CAR (arglist)));
+                         define_from_stack (CAR (arglist)));
 
       case BUILTIN_SET:
         if (!cell_is_pair (arglist) || !cell_is_pair (CDR (arglist))
             || !cell_is_nil (CDDR (arglist)))
           return lm_fail (lm, ERR_UNEXPECTED_ARG, "set!");
         return PUSH_SEQ (lm, eval_args (CDR (arglist)),
-                              set_from_stack (CAR (arglist)));
+                         set_from_stack (CAR (arglist)));
 
       case BUILTIN_EVAL:
-        return PUSH_SEQ (lm, eval_expr (CAR (arglist)),
-                              eval_from_stack ());
+        return PUSH_SEQ (lm, eval_expr (CAR (arglist)), eval_from_stack ());
 
       case BUILTIN_PROGN:
         return ctl_push_state (lm, eval_body (arglist));
@@ -525,8 +522,7 @@ ctl_if_:
   {
     Cell *form = payload.if_.form;
 
-    return PUSH_SEQ (lm, eval_expr (CAR (form)),
-                          select_branch (CDR (form)));
+    return PUSH_SEQ (lm, eval_expr (CAR (form)), select_branch (CDR (form)));
   }
 
 ctl_if_cont:

@@ -111,6 +111,17 @@ a comment that continues to the end of the line.
 Only `NIL` is false. Every other value, including `0` and nonempty lists, is
 truthy. Use `T`/`NIL`, not Scheme's `#t`/`#f` notation.
 
+Square brackets `[...]` are interchangeable with parentheses `(...)` for
+lists, calls, bindings, and parameter lists. Each pair must match: mixed
+nesting such as `([x 10])` is valid, but `(x]` is a parse error. Brackets do
+not introduce a new value type; output still uses parentheses.
+
+```lisp
+(let ([x 20] [y 22])
+  [+ x y])                 ; => 42
+'[a (b c) d]               ; => (a (b c) d)
+```
+
 ```lisp
 (if 0 'yes 'no)    ; => yes
 (if () 'yes 'no)   ; => no

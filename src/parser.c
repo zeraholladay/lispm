@@ -127,6 +127,47 @@ parser_report_error (ParserContext *context, SourceLocation location,
   fputc ('\n', stderr);
 }
 
+bool
+parser_delimiter (ParserContext *context, SourceLocation location,
+                  char delimiter)
+{
+  // Preserve only delimiter types: the grammar still builds the same AST for
+  // either spelling. The stack belongs to this parse, including on failure.
+  if (delimiter == '(' || delimiter == '[')
+    {
+      if (context->delimiter_count == context->delimiter_capacity)
+        {
+          context->delimiter_capacity = context->delimiter_capacity
+                                            ? context->delimiter_capacity * 2
+                                            : 32;
+          context->delimiters
+              = xrealloc (context->delimiters, context->delimiter_capacity);
+        }
+      context->delimiters[context->delimiter_count++] = delimiter;
+      return true;
+    }
+
+  char message[80];
+  if (context->delimiter_count == 0)
+    snprintf (message, sizeof (message), "syntax error, unexpected '%c'",
+              delimiter);
+  else
+    {
+      char opening  = context->delimiters[context->delimiter_count - 1];
+      char expected = opening == '[' ? ']' : ')';
+      if (delimiter == expected)
+        {
+          --context->delimiter_count;
+          return true;
+        }
+      snprintf (message, sizeof (message),
+                "Mismatched delimiter '%c', expecting '%c'", delimiter,
+                expected);
+    }
+  parser_report_error (context, location, message);
+  return false;
+}
+
 static bool
 parse_source (const char *name, const char *source, size_t length,
               Cell **ast_head, LM *lm)
@@ -145,6 +186,7 @@ parse_source (const char *name, const char *source, size_t length,
   yy_scan_bytes (source, (int)length);
   int status = yyparse (ast_head, lm, &context);
   yylex_destroy ();
+  free (context.delimiters);
   if (status != 0 || context.has_error)
     {
       *ast_head = NIL;
