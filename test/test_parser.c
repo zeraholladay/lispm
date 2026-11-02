@@ -226,6 +226,80 @@ START_TEST (test_buffered_stream_boundaries_and_control_bytes)
 }
 END_TEST
 
+START_TEST (test_brackets_evaluate_like_parentheses)
+{
+  const char *sources[] = { "[+ 20 22]",
+                            "(let ([x 20] [y 22]) [+ x y])",
+                            "[[lambda [x y] [+ x y]] 20 22]",
+                            "[define [f x . rest] [+ x (car rest)]] [f 20 22]",
+                            "[car '[42 . ignored]]",
+                            "[car '[42 (ignored)]]",
+                            "[if [] 0 42]",
+                            "[let [] [define x 20] [set! x [+ x 22]] x]",
+                            "[+ 20 ; ignored delimiters: [ ) ] (\n 22]" };
+  for (size_t i = 0; i < sizeof (sources) / sizeof (sources[0]); ++i)
+    {
+      ck_assert (capture_parse ("brackets.scm", sources[i],
+                                strlen (sources[i]), i % 2));
+      ck_assert_str_eq (diagnostic, "");
+      EvaluationResult result = lm_evaluate (lm, parsed);
+      ck_assert (result.success);
+      ck_assert (cell_has_type (result.value, CELL_TYPE_INTEGER));
+      ck_assert_int_eq (result.value->integer, 42);
+    }
+}
+END_TEST
+
+START_TEST (test_bracket_mismatches_and_recovery)
+{
+  ck_assert (!parse_buffer ("brackets.scm", "(a b]"));
+  ck_assert_ptr_nonnull (strstr (
+      diagnostic,
+      "brackets.scm:1:5: error: Mismatched delimiter ']', expecting ')'"));
+  ck_assert_ptr_nonnull (strstr (diagnostic, "  (a b]\n      ^\n"));
+  assert_single_diagnostic ();
+  ck_assert (!parse_stream ("brackets.scm", "[a (b] c)"));
+  ck_assert_ptr_nonnull (strstr (
+      diagnostic,
+      "brackets.scm:1:6: error: Mismatched delimiter ']', expecting ')'"));
+  assert_single_diagnostic ();
+  ck_assert (!parse_buffer ("brackets.scm", "[a b)"));
+  ck_assert_ptr_nonnull (strstr (
+      diagnostic,
+      "brackets.scm:1:5: error: Mismatched delimiter ')', expecting ']'"));
+  assert_single_diagnostic ();
+  ck_assert (!parse_buffer ("brackets.scm", "]"));
+  ck_assert_ptr_nonnull (strstr (
+      diagnostic, "brackets.scm:1:1: error: syntax error, unexpected ']'"));
+  assert_single_diagnostic ();
+  ck_assert (!parse_stream ("brackets.scm", "[\n  + 1 2"));
+  ck_assert_ptr_nonnull (
+      strstr (diagnostic, "brackets.scm:2:8: error: syntax error, unexpected "
+                          "end of file, expecting ']'"));
+  assert_single_diagnostic ();
+  // Grammar errors and lexical errors also leave open delimiters behind.
+  ck_assert (!parse_buffer ("brackets.scm", "[lambda 42 x]"));
+  ck_assert (!parse_buffer ("brackets.scm", "[(@"));
+  ck_assert (parse_buffer ("recovered.scm", "[+ 20 22]"));
+  ck_assert_str_eq (diagnostic, "");
+}
+END_TEST
+
+START_TEST (test_deep_mixed_delimiters)
+{
+  char source[194];
+  for (size_t i = 0; i < 96; ++i)
+    {
+      source[i]       = i % 2 ? '[' : '(';
+      source[192 - i] = i % 2 ? ']' : ')';
+    }
+  source[96]  = '0';
+  source[193] = '\0';
+  ck_assert (parse_stream ("nested.scm", source));
+  ck_assert_str_eq (diagnostic, "");
+}
+END_TEST
+
 Suite *
 parser_suite (void)
 {
@@ -241,6 +315,9 @@ parser_suite (void)
   tcase_add_test (tc, test_crlf_and_comments);
   tcase_add_test (tc, test_location_reset_across_buffers_and_streams);
   tcase_add_test (tc, test_buffered_stream_boundaries_and_control_bytes);
+  tcase_add_test (tc, test_brackets_evaluate_like_parentheses);
+  tcase_add_test (tc, test_bracket_mismatches_and_recovery);
+  tcase_add_test (tc, test_deep_mixed_delimiters);
   suite_add_tcase (suite, tc);
   return suite;
 }

@@ -35,10 +35,14 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
   "'"             {
                     return '\'';
                   }
-  "("             {
+  "("|"["         {
+                    if (!parser_delimiter (context, yylloc, yytext[0]))
+                      return ERROR;
                     return '(';
                   }
-  ")"             {
+  ")"|"]"         {
+                    if (!parser_delimiter (context, yylloc, yytext[0]))
+                      return ERROR;
                     return ')';
                   }
   "."             {
@@ -124,6 +128,10 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                   }
   <<EOF>>         {
                     parser_at_eof (context, &yylloc);
+                    if (context->delimiter_count
+                        && context->delimiters[context->delimiter_count - 1] == '[')
+                      parser_report_error (context, yylloc,
+                                           "syntax error, unexpected end of file, expecting ']'");
                     return 0;
                   }
 }
