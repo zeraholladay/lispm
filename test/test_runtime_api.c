@@ -102,6 +102,58 @@ START_TEST (test_string_take_ownership_and_gc)
 }
 END_TEST
 
+static void
+assert_reset_and_recover (EvaluationResult result)
+{
+  ck_assert (!result.success);
+  ck_assert_ptr_eq (result.value, NIL);
+  ck_assert_uint_eq (lm->ctl.sp, 0);
+  ck_assert_uint_eq (lm->stk.sp, 0);
+  ck_assert_ptr_eq (lm->env.current, lm->env.global);
+  ck_assert (!lm->has_error);
+  Cell *forms = NULL;
+  ck_assert (parser_buf ("(+ 20 22)", &forms, lm));
+  result = lm_evaluate (lm, forms);
+  ck_assert (result.success);
+  ck_assert_int_eq (result.value->integer, 42);
+}
+
+START_TEST (test_non_tail_recursion_overflow_recovers)
+{
+  Cell *forms = NULL;
+  ck_assert (
+      parser_buf ("(define (grow n) (if (= n 0) 0 (+ 1 (grow (- n 1)))))"
+                  "(grow 100000)",
+                  &forms, lm));
+  EvaluationResult result = lm_evaluate (lm, forms);
+  ck_assert_uint_eq (lm->ctl.high_water, LISPM_CTL_MAX);
+  assert_reset_and_recover (result);
+  ck_assert (parser_buf ("(grow 10)", &forms, lm));
+  result = lm_evaluate (lm, forms);
+  ck_assert (result.success);
+  ck_assert_int_eq (result.value->integer, 10);
+}
+END_TEST
+
+START_TEST (test_full_value_stack_recovers)
+{
+  // Exercise the embedder-facing boundary without relying on a particular
+  // expression to fill every value slot. All occupied slots are valid roots.
+  for (size_t i = 0; i < LISPM_STK_MAX; ++i)
+    lm->stk.cells[lm->stk.sp++] = T;
+  Cell *forms = cell_list1 (lm, T);
+  assert_reset_and_recover (lm_evaluate (lm, forms));
+}
+END_TEST
+
+START_TEST (test_full_control_stack_rejects_evaluation_and_recovers)
+{
+  // Admission fails before any pending instruction can run or be collected.
+  lm->ctl.sp = LISPM_CTL_MAX;
+  assert_reset_and_recover (lm_evaluate (lm, NIL));
+}
+END_TEST
+
 Suite *
 runtime_api_suite (void)
 {
@@ -112,6 +164,9 @@ runtime_api_suite (void)
   tcase_add_test (tc, test_builtin_objects_have_canonical_identity);
   tcase_add_test (tc, test_checked_evaluation_distinguishes_nil_and_error);
   tcase_add_test (tc, test_string_take_ownership_and_gc);
+  tcase_add_test (tc, test_non_tail_recursion_overflow_recovers);
+  tcase_add_test (tc, test_full_value_stack_recovers);
+  tcase_add_test (tc, test_full_control_stack_rejects_evaluation_and_recovers);
   suite_add_tcase (suite, tc);
   return suite;
 }

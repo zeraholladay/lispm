@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "builtins.h"
 #include "lm.h"
 #include "lm_gc.h"
+#include "lm_states.h"
 #include "parser.h"
 #include "prims.h"
 
@@ -122,6 +124,65 @@ START_TEST (test_budget_adapts_to_live_cells_and_reserved_capacity)
 }
 END_TEST
 
+START_TEST (test_pending_state_payloads_are_gc_roots)
+{
+  // These states are normally short-lived. Collect deterministically while
+  // each is pending, with its payload as the ONLY root of a private graph.
+  for (int kind = 0; kind < 5; ++kind)
+    {
+      Cell  *value   = cell_make_string_copy (lm, "retained through state");
+      Cell  *forms   = cell_list1 (lm, value);
+      Cell  *kept[4] = { forms, value };
+      size_t count   = 2;
+      State  state;
+      switch (kind)
+        {
+        case 0:
+          {
+            Cell *environment   = cell_make_environment (lm, NULL);
+            Cell *closure       = cell_make_lambda (lm, NIL, forms);
+            closure->lambda.env = environment;
+            state               = enter_closure (closure);
+            kept[count++]       = closure;
+            kept[count++]       = environment;
+            break;
+          }
+        case 1:
+          state = eval_if (forms);
+          break;
+        case 2:
+          state = eval_special_form (builtin_value (BUILTIN_IF), forms);
+          break;
+        case 3:
+          kept[count++] = cell_make_integer (lm, 99);
+          state         = resume_body (forms, kept[count - 1]);
+          break;
+        default:
+          // A pending set must retain the symbol itself, not just its text.
+          kept[0] = cell_make_symbol (lm, "state-binding", 13);
+          count   = 1;
+          state   = set_from_stack (kept[0]);
+          break;
+        }
+      lm->ctl.states[lm->ctl.sp++] = state;
+      lm_gc (lm);
+      for (size_t i = 0; i < count; ++i)
+        ck_assert_msg (!pool_gc_is_free (kept[i]), "state %d lost payload %zu",
+                       kind, i);
+      if (kind != 4)
+        ck_assert_str_eq (value->string, "retained through state");
+      else
+        ck_assert_str_eq (kept[0]->symbol.str, "state-binding");
+
+      --lm->ctl.sp;
+      lm_gc (lm);
+      for (size_t i = 0; i < count; ++i)
+        ck_assert_msg (pool_gc_is_free (kept[i]),
+                       "state %d leaked payload %zu after removal", kind, i);
+    }
+}
+END_TEST
+
 Suite *
 gc_suite (void)
 {
@@ -132,6 +193,7 @@ gc_suite (void)
   tcase_add_test (tc, test_pressure_accumulates_across_evaluations);
   tcase_add_test (tc, test_parser_pressure_waits_for_rooted_evaluation);
   tcase_add_test (tc, test_budget_adapts_to_live_cells_and_reserved_capacity);
+  tcase_add_test (tc, test_pending_state_payloads_are_gc_roots);
   suite_add_tcase (suite, tc);
   return suite;
 }

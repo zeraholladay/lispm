@@ -23,6 +23,7 @@ extern Suite *syntax_suite (void);
 extern Suite *runtime_api_suite (void);
 extern Suite *parser_suite (void);
 extern Suite *gc_suite (void);
+extern Suite *fmt_suite (void);
 
 int
 main (void)
@@ -50,6 +51,8 @@ main (void)
   srunner_add_suite (sr, runtime_api_suite ());
   srunner_add_suite (sr, parser_suite ());
   srunner_add_suite (sr, gc_suite ());
+  srunner_add_suite (sr, env_suite ());
+  srunner_add_suite (sr, fmt_suite ());
 
   srunner_run_all (sr, CK_NORMAL);
   int failed = srunner_ntests_failed (sr);
