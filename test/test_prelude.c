@@ -247,6 +247,106 @@ START_TEST (test_folds_and_callback_order)
 }
 END_TEST
 
+START_TEST (test_sort_values_and_indirect_calls)
+{
+  expect ("(sort < '(4 1 3 2))", "(1 2 3 4)");
+  expect ("(sort > '(4 1 3 2))", "(4 3 2 1)");
+  expect ("(sort < '(3 1 3 2 1))", "(1 1 2 3 3)");
+  expect ("(sort < '(1 2 3 4 5))", "(1 2 3 4 5)");
+  expect ("(sort < '(5 4 3 2 1))", "(1 2 3 4 5)");
+  expect ("(sort < '(2.5 -1 0.5 2))", "(-1 0.500000 2 2.500000)");
+  // A callable comparator need not accept two arguments unless it is called.
+  expect ("(sort error NIL)", "nil");
+  expect ("(sort error '(42))", "(42)");
+  expect ("(apply sort (list < '(3 1 2)))", "(1 2 3)");
+  expect ("(funcall sort > '(1 3 2))", "(3 2 1)");
+  // Comparator truth follows the dialect's rules, not literal-T identity.
+  expect ("(sort (lambda (a b) (if (< a b) 0 NIL)) '(3 1 2))", "(1 2 3)");
+}
+END_TEST
+
+START_TEST (test_sort_stability_identity_and_nonmutation)
+{
+  evaluate ("(define records '((alice 30) (bob 20) (carol 30)"
+            "                  (dave 20) (erin 30)))"
+            "(define original-tail (cdr records))"
+            "(define sorted"
+            " (sort (lambda (a b) (< (cadr a) (cadr b))) records))");
+  expect ("sorted", "((bob 20) (dave 20) (alice 30) (carol 30) (erin 30))");
+  expect ("(list (equal? records '((alice 30) (bob 20) (carol 30)"
+          "                         (dave 20) (erin 30)))"
+          " (eq (cdr records) original-tail)"
+          " (eq (car sorted) (cadr records))"
+          " (eq (caddr sorted) (car records)))",
+          "(t t t t)");
+  // Equivalent keys spanning both halves must keep their complete input order.
+  expect ("(equal? (sort (lambda (a b) NIL) records) records)", "t");
+  lm_gc (lm);
+  expect ("(caar sorted)", "bob");
+  expect ("(procedure? sort)", "t");
+  expect ("(set! sort (lambda (before? xs) 42)) (sort < NIL)", "42");
+}
+END_TEST
+
+static void
+expect_sort_error (const char *source)
+{
+  Cell *forms = NULL;
+  ck_assert (parser_buf (source, &forms, lm));
+  EvaluationResult result = lm_evaluate (lm, forms);
+  ck_assert_msg (!result.success, "%s should fail", source);
+  ck_assert_ptr_eq (result.value, NIL);
+}
+
+START_TEST (test_sort_argument_validation_and_comparator_errors)
+{
+  const char *invalid[]
+      = { "(sort)",
+          "(sort <)",
+          "(sort < NIL NIL)",
+          "(sort 42 NIL)",
+          "(sort < 42)",
+          "(sort < '(1 . 2))",
+          "(sort (lambda (x) x) '(2 1))",
+          "(sort < '(1 a))",
+          "(sort (lambda (a b) (error 'bad-comparison)) '(2 1))" };
+  for (size_t i = 0; i < sizeof (invalid) / sizeof (invalid[0]); ++i)
+    expect_sort_error (invalid[i]);
+  evaluate ("(define visits 0)"
+            "(define (before a b) (set! visits (+ visits 1)) (< a b))");
+  expect_sort_error ("(sort before '(3 2 1 . 0))");
+  expect ("visits", "0");
+  Cell *cycle = evaluate ("(define cycle (list 3 2 1))");
+  cell_set_cdr (CDDR (cycle), cycle);
+  expect_sort_error ("(sort before cycle)");
+  expect ("visits", "0");
+  expect ("(sort < '(2 1))", "(1 2)");
+}
+END_TEST
+
+START_TEST (test_sort_large_list_control_bounds_and_gc)
+{
+  evaluate ("(define (build n acc)"
+            " (if (= n 0) acc (build (- n 1) (cons n acc))))"
+            "(define descending (reverse (build 4096 NIL)))");
+  size_t collections = lm->gc.collections;
+  evaluate ("(define sorted (sort < descending))");
+  ck_assert_uint_lt (lm->ctl.high_water, 512);
+  ck_assert_uint_gt (lm->gc.collections, collections);
+  lm_gc (lm);
+  Cell *remaining = evaluate ("sorted");
+  for (int i = 1; i <= 4096; ++i)
+    {
+      ck_assert (cell_is_pair (remaining));
+      ck_assert (cell_has_type (CAR (remaining), CELL_TYPE_INTEGER));
+      ck_assert_int_eq (CAR (remaining)->integer, i);
+      remaining = CDR (remaining);
+    }
+  ck_assert_ptr_eq (remaining, NIL);
+  expect ("(list (car descending) (car (last descending)))", "(4096 1)");
+}
+END_TEST
+
 START_TEST (test_filter_and_find)
 {
   expect ("(filter positive? '(-1 0 2 3 -4 5))", "(2 3 5)");
@@ -483,6 +583,10 @@ prelude_suite (void)
   tcase_add_test (tc, test_accessors);
   tcase_add_test (tc, test_list_shape_and_structural_equality);
   tcase_add_test (tc, test_folds_and_callback_order);
+  tcase_add_test (tc, test_sort_values_and_indirect_calls);
+  tcase_add_test (tc, test_sort_stability_identity_and_nonmutation);
+  tcase_add_test (tc, test_sort_argument_validation_and_comparator_errors);
+  tcase_add_test (tc, test_sort_large_list_control_bounds_and_gc);
   tcase_add_test (tc, test_filter_and_find);
   tcase_add_test (tc, test_short_circuiting_and_for_each);
   tcase_add_test (tc, test_membership_and_associations);

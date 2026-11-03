@@ -762,6 +762,29 @@ Results have a fresh list spine, and input spines are not mutated.
 (apply map (list + '(1 2) '(10 20)))  ; => (11 22)
 ```
 
+#### `sort`
+
+`(sort before? xs)` stably sorts a proper list using a strict "comes before"
+predicate, such as `<` or `>`. Elements for which neither precedes the other
+retain their original relative order; use `<`, not `<=`, for stable numeric
+ascending order.
+
+```lisp
+(sort < '(4 1 3 2))       ; => (1 2 3 4)
+(sort > '(4 1 3 2))       ; => (4 3 2 1)
+(sort < '(3 1 3 2 1))     ; => (1 1 2 3 3)
+(sort < NIL)              ; => nil
+(sort (lambda (a b) (< (cadr a) (cadr b)))
+      '((alice 30) (bob 20) (carol 30)))
+; => ((bob 20) (alice 30) (carol 30))
+```
+
+The comparator and proper-list input are validated before comparisons begin.
+Empty and singleton lists require no comparator calls. The input is not
+mutated; elements and unchanged list tails may be shared with the result.
+This Scheme merge sort uses O(n log n) comparisons and O(log n) control-stack
+depth, excluding work performed by the comparator.
+
 ### Folds
 
 Both folds take `(f initial xs)`, validate `f` and the proper list, and return

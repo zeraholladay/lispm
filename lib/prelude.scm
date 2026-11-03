@@ -264,6 +264,64 @@
         (walk (cdr remaining) (cons (car remaining) reversed))))
   (walk xs NIL))
 
+;;; Stable list sorting
+;;; -------------------
+
+;; sort takes a strict "comes before" procedure and one proper list:
+;;   (sort < '(4 1 3 2)) => (1 2 3 4)
+;;   (sort > '(4 1 3 2)) => (4 3 2 1)
+;; Validate once before comparisons, including for empty/singleton inputs.
+;; Elements are shared, and unchanged tails may be shared too; no input pair
+;; is mutated. Empty/singleton lists need no comparisons and are returned as-is.
+;;
+;; Merge sort performs O(n log n) comparisons. Splitting and merging use
+;; tail-recursive walkers; only the balanced sort recursion retains pending
+;; work, with O(log n) control depth (excluding the user's comparator).
+(define (sort before? xs)
+  (_prelude-require-procedure before?)
+  (_prelude-require-list xs)
+
+  ;; Reverse an accumulator onto a tail without revalidating its suffixes.
+  (define (prepend-reversed reversed tail)
+    (if (null? reversed)
+        tail
+        (prepend-reversed (cdr reversed)
+                          (cons (car reversed) tail))))
+
+  ;; Return a PAIR of contiguous halves, not a two-element list. Alternating
+  ;; elements between halves would lose stability when equivalent keys merge.
+  (define (split slow fast left-reversed)
+    (if (or (null? fast) (null? (cdr fast)))
+        (cons (prepend-reversed left-reversed NIL) slow)
+        (split (cdr slow)
+               (cddr fast)
+               (cons (car slow) left-reversed))))
+
+  ;; Choose right only when it strictly precedes left. Taking left on ties
+  ;; preserves the original order of elements equivalent under before?.
+  (define (merge left right reversed)
+    (if (null? left)
+        (prepend-reversed reversed right)
+        (if (null? right)
+            (prepend-reversed reversed left)
+            (if (before? (car right) (car left))
+                (merge left
+                       (cdr right)
+                       (cons (car right) reversed))
+                (merge (cdr left)
+                       right
+                       (cons (car left) reversed))))))
+
+  (define (sort-list items)
+    (if (or (null? items) (null? (cdr items)))
+        items
+        (let ((halves (split items items NIL)))
+          (merge (sort-list (car halves))
+                 (sort-list (cdr halves))
+                 NIL))))
+
+  (sort-list xs))
+
 ;;; Selecting, searching, and visiting
 ;;; ---------------------------------
 ;; The procedures in this section take one proper list and a unary procedure.
