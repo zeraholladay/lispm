@@ -73,6 +73,19 @@ START_TEST (test_eq)
   eval_result = run_eval_progn ("(eq rest rest)");
   ck_assert_ptr_eq (eval_result, T);
 
+  eval_result = run_eval_progn ("(eq 1.5 1.5)");
+  ck_assert_ptr_eq (eval_result, T);
+
+  eval_result = run_eval_progn ("(memq 1.5 '(1 1.5))");
+  ck_assert (!cell_is_nil (eval_result));
+
+  // Static symbols are not interned by the reader but are still eq.
+  eval_result = run_eval_progn ("(eq 't t)");
+  ck_assert_ptr_eq (eval_result, T);
+
+  eval_result = run_eval_progn ("(eq 'quote (car ''x))");
+  ck_assert_ptr_eq (eval_result, T);
+
   // False statements
   eval_result = run_eval_progn ("(eq T NIL)");
   ck_assert (cell_is_nil (eval_result));
@@ -84,6 +97,9 @@ START_TEST (test_eq)
   ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq -42 42)");
+  ck_assert (cell_is_nil (eval_result));
+
+  eval_result = run_eval_progn ("(eq 1.5 2.5)");
   ck_assert (cell_is_nil (eval_result));
 
   eval_result = run_eval_progn ("(eq '() '(1))");

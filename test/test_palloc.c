@@ -40,7 +40,9 @@ START_TEST (test_single_slot_pool)
 {
   ck_assert_ptr_null (pool_init (0, sizeof (Cell)));
   Pool *pool = pool_init (1, sizeof (Cell));
+  ck_assert_uint_eq (pool->allocated_count, 0);
   Cell *slot = pool_xalloc (pool);
+  ck_assert_uint_eq (pool->allocated_count, 1);
   ck_assert (!pool_gc_is_free (slot));
   pool_gc_mark (slot);
   visited = 0;
@@ -48,9 +50,14 @@ START_TEST (test_single_slot_pool)
   ck_assert_int_eq (visited, 1);
   ck_assert (pool_gc_is_free (slot));
   ck_assert (!pool_gc_is_marked (slot));
+  ck_assert_uint_eq (pool->allocated_count, 0);
+  pool_free (pool, slot);
+  ck_assert_uint_eq (pool->allocated_count, 0);
   ck_assert_ptr_eq (pool_xalloc (pool), slot);
+  ck_assert_uint_eq (pool->allocated_count, 1);
   pool_reset_all (pool);
   ck_assert (pool_gc_is_free (slot));
+  ck_assert_uint_eq (pool->allocated_count, 0);
   pool_destroy (&pool);
 }
 END_TEST
@@ -71,6 +78,10 @@ START_TEST (test_palloc_hier)
         }
     }
 
+  size_t allocated = 0;
+  for (Pool *p = pool; p; p = p->next)
+    allocated += p->allocated_count;
+  ck_assert_uint_eq (allocated, 100 * (count + 1));
   pool_destroy_hier (&pool);
   ck_assert (pool == NULL);
 }

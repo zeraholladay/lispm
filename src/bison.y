@@ -37,7 +37,7 @@ static bool valid_formals (Cell *params);
 %token ERROR "invalid token" LAMBDA "lambda" QUOTE "quote"
 %token <integer> INTEGER "integer"
 %token <floating> FLOAT "float"
-%token <symbol> IF "if" DEFINE "define" LET "let" SET "set" SYMBOL "identifier"
+%token <symbol> IF "if" DEFINE "define" LET "let" SYMBOL "identifier"
 
 %type <cell>
   program
@@ -46,7 +46,6 @@ static bool valid_formals (Cell *params);
   if_
   define
   let
-  set
   symbol
   formal_tail
   param_list
@@ -98,10 +97,6 @@ form
         $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $4, body));
       }
     | '(' let form forms ')'
-      {
-        $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $3, $4));
-      }
-    | '(' set symbol forms ')'
       {
         $$ = cell_make_pair (lm, $2, cell_make_pair (lm, $3, $4));
       }
@@ -197,13 +192,6 @@ define
 
 let
   : LET
-    {
-      $$ = cell_make_symbol (lm, $1.str, $1.len);
-    }
-  ;
-
-set
-  : SET
     {
       $$ = cell_make_symbol (lm, $1.str, $1.len);
     }

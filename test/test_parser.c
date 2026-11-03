@@ -171,6 +171,19 @@ START_TEST (test_numeric_errors_have_token_spans)
       strstr (diagnostic,
               "numbers.scm:1:3: error: Floating-point literal out of range"));
   assert_single_diagnostic ();
+
+  // A number must end at a delimiter rather than splitting into two tokens.
+  const char *glued[] = { "(+ 1-2)", "1e3", "'(1.5.5)", "3abc", "1." };
+  for (size_t i = 0; i < sizeof (glued) / sizeof (glued[0]); ++i)
+    {
+      ck_assert (!parse_buffer ("numbers.scm", glued[i]));
+      ck_assert_ptr_nonnull (strstr (diagnostic, "Invalid numeric literal"));
+      assert_single_diagnostic ();
+    }
+  ck_assert (!parse_buffer ("numbers.scm", "(+ 1-2)"));
+  ck_assert_ptr_nonnull (strstr (diagnostic, "numbers.scm:1:4:"));
+  ck_assert_ptr_nonnull (strstr (diagnostic, "   ^~~\n"));
+  ck_assert (parse_buffer ("numbers.scm", "(+ 1 -2) '(1 . 2.5)[3];x\n4"));
 }
 END_TEST
 

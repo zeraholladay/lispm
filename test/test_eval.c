@@ -6,6 +6,7 @@
 #include "fmt.h"
 #include "lm.h"
 #include "lm_gc.h"
+#include "lm_states.h"
 #include "palloc.h"
 #include "parser.h"
 #include "prims.h"
@@ -554,10 +555,29 @@ START_TEST (test_nested_let_lexical_scope)
 {
   // inner let shouldn't override outer
   const char *prog = "(define x 100) "
-                     "(let ((x 1) (x 2)) x) "
+                     "(let ((x 1) (y 2)) x) "
                      "x";
   Cell       *r    = run_eval_progn (prog);
   ck_assert_int_eq (r->integer, 100);
+}
+END_TEST
+
+START_TEST (test_eval_calls_closure_value)
+{
+  // A closure in operator position is called with its arguments, in the
+  // environment it captured rather than the caller's.
+  Cell *r = run_eval_progn ("(define f (lambda (x) (* x 10))) "
+                            "(eval (list f 5))");
+  ck_assert_int_eq (r->integer, 50);
+
+  r = run_eval_progn ("(define (adder y) (lambda (x) (+ x y))) "
+                      "(define add7 (adder 7)) "
+                      "(define y 1000) "
+                      "(eval (list add7 1))");
+  ck_assert_int_eq (r->integer, 8);
+
+  r = run_eval_progn ("(eval (list f))");
+  ck_assert_ptr_eq (r, NIL);
 }
 END_TEST
 
@@ -595,6 +615,29 @@ START_TEST (test_gc_reclaims_unreachable_cells)
   lm_gc (lm);
   ck_assert (!pool_gc_is_free (floating));
   ck_assert_float_eq (floating->floating, 42.0);
+}
+END_TEST
+
+START_TEST (test_gc_null_child_does_not_hide_pending_children)
+{
+  Cell *child = cell_make_integer (lm, 42);
+  // Exercise the collector's defensive handling of a sparse C-created graph.
+  // CDR is queued before CAR: a NULL CAR must not terminate traversal while
+  // the live CDR is still waiting on the mark stack.
+  Cell *root = cell_make_pair (lm, NULL, child);
+  // Control states are marked after stack/environment roots. Make this the
+  // final root, so another traversal cannot accidentally drain leftover work
+  // and hide the bug. The state roots the graph but is never executed.
+  lm->ctl.states[lm->ctl.sp++] = eval_expr (root);
+  lm_gc (lm);
+  ck_assert (!pool_gc_is_free (root));
+  ck_assert (!pool_gc_is_free (child));
+  ck_assert_int_eq (child->integer, 42);
+
+  --lm->ctl.sp;
+  lm_gc (lm);
+  ck_assert (pool_gc_is_free (root));
+  ck_assert (pool_gc_is_free (child));
 }
 END_TEST
 
@@ -779,9 +822,11 @@ eval_suite (void)
   tcase_add_test (tc, test_map_edge_cases);
   tcase_add_test (tc, test_error_arity);
   tcase_add_test (tc, test_nested_let_lexical_scope);
+  tcase_add_test (tc, test_eval_calls_closure_value);
   tcase_add_test (tc, test_invalid_let_bindings);
   tcase_add_test (tc, test_parser_errors);
   tcase_add_test (tc, test_gc_reclaims_unreachable_cells);
+  tcase_add_test (tc, test_gc_null_child_does_not_hide_pending_children);
   tcase_add_test (tc, test_quote_edge);
   tcase_add_test (tc, test_closure_shared_locations);
   tcase_add_test (tc, test_gc_collects_closure_cycles);

@@ -28,6 +28,7 @@ WS       [ \t]+
 NUM      -?[0-9]+
 FLOAT    -?[0-9]+\.[0-9]+
 ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
+BADNUM   -?[0-9]+(\.[0-9]+)?[^ \t\r\n()\[\]';]+
 
 %%
 
@@ -86,6 +87,13 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     yylval.floating = value;
                     return FLOAT;
                   }
+  {BADNUM}        {
+                    // A number must end at a delimiter: 1-2, 1e3, 1.5.5 and
+                    // 3abc are single invalid tokens. Listed after NUM and
+                    // FLOAT so that equal-length valid literals win.
+                    parser_report_error (context, yylloc, "Invalid numeric literal");
+                    return ERROR;
+                  }
   {ID}            {
                     // special types: not symbols
                     if (!strncasecmp ("LAMBDA", yytext, yyleng + 1))
@@ -96,13 +104,12 @@ ID       [a-zA-Z_][a-zA-Z0-9\-_!?]*
                     yylval.symbol.len = yyleng;
                     yylval.symbol.str = str_intern (yytext, yyleng);
 
-                    // special forms but still a symbol
+                    // special forms but still a symbol; set! has no token
+                    // and is an ordinary symbol bound to the native form.
                     if (!strncasecmp ("DEFINE", yytext, yyleng + 1))
                       return DEFINE;
                     if (!strncasecmp ("LET", yytext, yyleng + 1))
                       return LET;
-                    if (!strncasecmp ("SET", yytext, yyleng + 1))
-                      return SET;
                     if (!strncasecmp ("IF", yytext, yyleng + 1))
                       return IF;
 

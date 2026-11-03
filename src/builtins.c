@@ -98,8 +98,17 @@ builtin_eq (LM *lm, Cell *fn, Cell *arglist)
     case CELL_TYPE_INTEGER:
       return (a->integer == b->integer) ? T : NIL;
 
+    case CELL_TYPE_FLOAT:
+      return (a->floating == b->floating) ? T : NIL;
+
     case CELL_TYPE_SYMBOL:
-      return (a->symbol.str == b->symbol.str) ? T : NIL;
+      // Reader symbols are interned, but static symbols such as T and QUOTE
+      // are not; compare text when the pointers differ.
+      return (a->symbol.str == b->symbol.str
+              || (a->symbol.len == b->symbol.len
+                  && memcmp (a->symbol.str, b->symbol.str, a->symbol.len) == 0))
+                 ? T
+                 : NIL;
 
     case CELL_TYPE_STRING:
       return (strcmp (a->string, b->string) == 0) ? T : NIL;

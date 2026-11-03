@@ -83,6 +83,15 @@ multiline examples below in a file, or enter each complete expression on one
 line. Program files can contain multiple expressions and multiline definitions.
 File execution does not automatically print expression results; use `print`.
 
+Tab completes built-in names, prelude functions, and current environment
+bindings, including names defined in earlier submissions or loaded files.
+For example, `fold-l<Tab>` completes to `fold-left`; after defining `square`,
+`squ<Tab>` completes to `square`. Ambiguous matches are sorted and deduplicated.
+Parentheses, brackets, and quote delimit names, while `-`, `?`, and `!` remain
+part of a name. User-defined names match case-sensitively, as in evaluation;
+built-in names retain their case-insensitive matching. Completion uses existing
+bindings; it does not infer local names inside an unfinished `let` or `lambda`.
+
 In examples, `; => ...` describes the result as the interpreter prints it.
 The built-in true and false values are printed as `t` and `nil`.
 
@@ -139,7 +148,9 @@ NIL               ; => nil
 Integers use C `long long` (signed 64-bit on the current builds); floats use C
 `double`. Literals accept decimal digits with an optional leading minus;
 floating-point literals require digits on both sides of the decimal point.
-Scientific notation, fractions, and complex numbers are not supported.
+Scientific notation, fractions, and complex numbers are not supported. A
+number must be followed by whitespace, a parenthesis or bracket, a quote, a
+comment, or the end of input: `1-2`, `1e3`, `1.5.5` and `3abc` are parse errors.
 Literal overflow, reported floating-point underflow, and non-finite float
 conversions are parse errors.
 
@@ -160,8 +171,8 @@ example.scm:1:8: error: syntax error, unexpected ')'
 ```
 
 Unexpected tokens use readable names and expected-token information where
-available. Unknown characters, out-of-range numeric literals, and invalid
-parameter specifications are located too. Incomplete expressions point at the
+available. Unknown characters, out-of-range or malformed numeric literals, and
+invalid parameter specifications are located too. Incomplete expressions point at the
 next input position (EOF). Tabs are expanded at eight-column stops in excerpts;
 reported columns still count source bytes. Multiline spans underline the first
 source line.
@@ -309,9 +320,9 @@ At least one body expression is required.
 x                          ; => 10
 ```
 
-The C lowerer turns `let` into a lambda application. Unlike lambda parameter
-lists, duplicate `let` binding names are currently accepted; the last binding
-wins. Prefer distinct names.
+The C lowerer turns `let` into a lambda application. As with lambda parameter
+lists, binding names must be distinct and must not be reserved names such as
+`car` or `if`; violations are reported when the `let` is evaluated.
 
 #### `and` — C-supported derived syntax
 
@@ -508,14 +519,15 @@ instead of first rounding every integer to a float. One number returns `T`.
 
 #### `eq`
 
-`(eq left right)` is type-sensitive. Integers compare by numeric value, symbols
-by interned identity, strings by text contents, and pairs/procedures by object
-identity. Different types compare false. Two floating-point operands are not
-supported by `eq`; use numeric `=` for numbers and prelude `equal?` for structure.
+`(eq left right)` is type-sensitive. Integers and floats compare by numeric
+value, symbols by name, strings by text contents, and pairs/procedures by object
+identity. Different types compare false, so use numeric `=` to compare an
+integer with a float, and prelude `equal?` for structure.
 
 ```lisp
 (eq 'a 'a)                   ; => t
 (eq 2 2.0)                   ; => nil
+(eq 1.5 1.5)                 ; => t
 (eq '(a) '(a))               ; => nil
 (let ((xs '(a))) (eq xs xs))  ; => t
 (eq + add)                   ; => t
@@ -930,6 +942,17 @@ failure. `lm_evaluate()` returns an `EvaluationResult` with separate `success`
 and `value` fields, so failure and successful `NIL` are distinguishable.
 `lm_progn()` is the value-only compatibility entry point. Call `lm_destroy()`
 to release the interpreter's pools and owned payloads.
+
+Garbage collection is driven by cell allocations rather than a fixed VM-step
+interval. After collection, the next allocation budget is the maximum of the
+surviving cell count, half the reserved pool capacity, and
+`LM_GC_MIN_ALLOCATIONS` (4096 cells by default). Accounting for reserved capacity
+also amortizes scans after a temporary heap spike, because empty pools remain
+allocated. Pressure persists across parses and evaluations; collection runs
+after completed VM steps, once temporary values have been rooted, including
+when parsing or one VM step exceeds the budget. Allocation itself never
+triggers collection. This remains a stop-the-world collector, and the budget
+counts cells rather than separately allocated string/dictionary bytes.
 
 `parser_buf_named(source_name, input, ...)` and
 `parser_stream_named(source_name, stream, ...)` provide diagnostic source names.

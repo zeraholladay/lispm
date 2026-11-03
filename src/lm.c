@@ -152,8 +152,9 @@ ctl_eval:
     if (cell_has_type (expr, CELL_TYPE_SYMBOL))
       return stk_push (lm, lm_env_lookup (lm, expr));
 
-    // Named definitions contain a bare lambda AST; anonymous lambdas are
-    // wrapped.
+    // An uncaptured lambda AST evaluates to a closure over the current
+    // environment. The parser wraps lambdas, so this is reached through the
+    // wrapper's operator position below.
     if (cell_has_type (expr, CELL_TYPE_LAMBDA)
         && cell_is_nil (expr->lambda.env))
       return stk_push (lm, lambda_capture (lm, expr));
@@ -183,8 +184,10 @@ ctl_eval:
             return stk_push (lm, CAR (cdr));
           }
 
-        // Lambda is an AST-type.
-        if (cell_has_type (car, CELL_TYPE_LAMBDA))
+        // The parser's (<lambda-ast>) wrapper. A closure in operator
+        // position, e.g. from (eval (list f 5)), is an ordinary call.
+        if (cell_has_type (car, CELL_TYPE_LAMBDA)
+            && cell_is_nil (car->lambda.env) && cell_is_nil (cdr))
           return stk_push (lm, lambda_capture (lm, car));
 
         return ctl_push_state (lm, eval_call (car, cdr));
@@ -542,19 +545,14 @@ ctl_if_cont:
         return ctl_push_state (lm, eval_expr (CAR (form)));
       }
 
-    Cell *else_form = CAR (CDR (form));
-
-    if (else_form)
-      return ctl_push_state (lm, eval_expr (else_form));
-    else
-      return stk_push (lm, NIL);
+    // A missing alternative is CAR (NIL), which evaluates to NIL.
+    return ctl_push_state (lm, eval_expr (CAR (CDR (form))));
   }
 }
 
 static EvaluationResult
 lm_eval (LM *lm)
 {
-  size_t steps    = 0;
   size_t base_ptr = lm->ctl.sp;
   State  state;
 
@@ -570,13 +568,11 @@ lm_eval (LM *lm)
           return (EvaluationResult){ .success = false, .value = NIL };
         }
 
-      // Collect only between VM steps, after temporary values have been
-      // rooted.
-      if (++steps >= 256)
-        {
-          lm_gc (lm);
-          steps = 0;
-        }
+      // Allocation records pressure; collect only between VM steps, after
+      // temporary values have been rooted. A step may overshoot the budget
+      // while constructing a graph, so check >= rather than exact equality.
+      if (lm->gc.allocations_since_collection >= lm->gc.allocation_budget)
+        lm_gc (lm);
     }
   while (base_ptr <= lm->ctl.sp);
 
@@ -593,7 +589,8 @@ LM *
 lm_create (void)
 {
   // Zeros out stack pointers
-  LM *lm = xcalloc (1, sizeof *(lm));
+  LM *lm                   = xcalloc (1, sizeof *(lm));
+  lm->gc.allocation_budget = LM_GC_MIN_ALLOCATIONS;
 
   // Allocate pool
   lm->pool       = pool_init (LM_CAP_PER_POOL, sizeof (Cell));
@@ -628,6 +625,7 @@ lm_destroy (LM *lm)
 Cell *
 lm_alloc_cell (LM *lm)
 {
+  ++lm->gc.allocations_since_collection;
   return pool_xalloc_hier (&lm->pool);
 }
 
