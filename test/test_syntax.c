@@ -23,12 +23,18 @@ teardown (void)
   lm_destroy (lm);
 }
 
-static Cell *
-evaluate (const char *source)
+static EvaluationResult
+evaluate_checked (const char *source)
 {
   Cell *forms = NULL;
   ck_assert (parser_buf (source, &forms, lm));
-  return lm_progn (lm, forms);
+  return lm_evaluate (lm, forms);
+}
+
+static Cell *
+evaluate (const char *source)
+{
+  return evaluate_checked (source).value;
 }
 
 static void
@@ -81,12 +87,43 @@ START_TEST (test_let_parallel_initializers_and_order)
           "(let ((a (bump 1)) (b (bump 2))) (list a b sequence))",
           "(1 2 12)");
   expect ("(let () (define local 7) local)", "7");
-  // Preserve this dialect's existing duplicate-let-binding behavior.
-  expect ("(let ((x 1) (x 2)) x)", "2");
-  expect ("(define touched 0)"
-          "(let ((x (set! touched 1)) (broken)) x)",
-          "nil");
-  expect ("touched", "0");
+}
+END_TEST
+
+START_TEST (test_invalid_let_bindings_fail_before_initializers)
+{
+  const char *invalid[]
+      = { "(let ((x 1) (x 2)) x)",
+          "(let ((car 1)) car)",
+          "(let ((x 1) (y 2) (x 3)) x)",
+          "(let ((x (set! touched 1)) (x (set! touched 2))) NIL)",
+          "(let ((x (set! touched 1)) (y (set! touched 2)) (x 3)) NIL)",
+          "(let ((car (set! touched 1))) NIL)",
+          "(let ((x (set! touched 1)) (car (set! touched 2))) NIL)",
+          "(let ((x (set! touched 1)) (broken)) NIL)" };
+  ck_assert (evaluate_checked ("(define touched 0)").success);
+  for (size_t i = 0; i < sizeof (invalid) / sizeof (invalid[0]); ++i)
+    {
+      EvaluationResult result = evaluate_checked (invalid[i]);
+      ck_assert_msg (!result.success, "%s should fail", invalid[i]);
+      ck_assert_ptr_eq (result.value, NIL);
+      expect ("touched", "0");
+    }
+
+  // A valid NIL-valued let must remain distinguishable from those failures.
+  EvaluationResult result = evaluate_checked ("(let ((x 1)) NIL)");
+  ck_assert (result.success);
+  ck_assert_ptr_eq (result.value, NIL);
+}
+END_TEST
+
+START_TEST (test_set_is_an_ordinary_name)
+{
+  // Only set! is the assignment form; set is free for user bindings.
+  expect ("(define counter 1) (set! counter 41) (+ counter 1)", "42");
+  expect ("(define (set a) (* a 2)) (set 21)", "42");
+  expect ("(procedure? set!)", "t");
+  expect ("'(set! a b)", "(set! a b)");
 }
 END_TEST
 
@@ -158,6 +195,8 @@ syntax_suite (void)
   tcase_add_test (tc, test_short_circuit_values_evaluated_once);
   tcase_add_test (tc, test_lowering_preserves_binding_scope);
   tcase_add_test (tc, test_let_parallel_initializers_and_order);
+  tcase_add_test (tc, test_invalid_let_bindings_fail_before_initializers);
+  tcase_add_test (tc, test_set_is_an_ordinary_name);
   tcase_add_test (tc, test_quote_and_eval_keep_source_data_intact);
   tcase_add_test (tc, test_lowering_does_not_depend_on_prelude_bindings);
   tcase_add_test (tc, test_apply_preserves_fixed_and_final_lists);

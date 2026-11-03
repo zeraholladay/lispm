@@ -1,5 +1,8 @@
+#include <string.h>
+
 #include "syntax.h"
 #include "builtins.h"
+#include "keywords.h"
 #include "lm_err.h"
 #include "prims.h"
 
@@ -46,7 +49,21 @@ syntax_lower (LM *lm, BuiltinId form, Cell *arguments)
               || !cell_has_type (CAR (binding), CELL_TYPE_SYMBOL))
             return lm_fail_pointer (lm, ERR_INVALID_ARG,
                                     "let: expected (name value)");
-          names  = cell_make_pair (lm, CAR (binding), names);
+          // Match lambda parameter rules: names are distinct and not
+          // reserved, so the lowered lambda cannot fail later in define.
+          Cell *name = CAR (binding);
+          if (keyword_lookup (name->symbol.str, name->symbol.len))
+            return lm_fail_pointer (lm, ERR_INVALID_ARG,
+                                    "let: reserved binding name: %s",
+                                    name->symbol.str);
+          for (Cell *q = names; cell_is_pair (q); q = CDR (q))
+            if (CAR (q)->symbol.len == name->symbol.len
+                && !memcmp (CAR (q)->symbol.str, name->symbol.str,
+                            name->symbol.len))
+              return lm_fail_pointer (lm, ERR_INVALID_ARG,
+                                      "let: duplicate binding name: %s",
+                                      name->symbol.str);
+          names  = cell_make_pair (lm, name, names);
           values = cell_make_pair (lm, CADR (binding), values);
         }
 

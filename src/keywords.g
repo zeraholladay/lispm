@@ -24,7 +24,6 @@ struct Keyword;
 "nil",     NIL
 "t",       T
 "quote",   QUOTE
-"'",       QUOTE
 "and",     &builtin_cells[BUILTIN_AND].ptr
 "apply",   &builtin_cells[BUILTIN_APPLY].ptr
 "car",     &builtin_cells[BUILTIN_CAR].ptr

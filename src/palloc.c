@@ -64,6 +64,7 @@ pool_xalloc (Pool *p)
   PallocWrapper *wrapper = p->free_list;
   p->free_list           = wrapper->next_free;
   wrapper->free          = 0;
+  ++p->allocated_count;
 
   return &wrapper->ptr;
 }
@@ -100,6 +101,7 @@ pool_free (Pool *p, void *ptr)
   p->free_list       = wrapper;
   wrapper->free      = 1;
   wrapper->gc_mark   = 0;
+  --p->allocated_count;
 }
 
 void
@@ -116,7 +118,8 @@ pool_reset_all (Pool *p)
       cur->gc_mark   = 0;
     }
 
-  p->free_list = INDEX (p->pool, 0, stride);
+  p->free_list       = INDEX (p->pool, 0, stride);
+  p->allocated_count = 0;
 }
 
 bool

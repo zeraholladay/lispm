@@ -22,7 +22,10 @@ struct pool
 {
   PallocWrapper *free_list, *pool;
   size_t         count, stride, size;
-  Pool          *prev, *next;
+  // Occupied slots, maintained by allocation/free/reset. Lets the collector
+  // measure survivors without an additional full walk of every pool slot.
+  size_t allocated_count;
+  Pool  *prev, *next;
 };
 
 Pool *pool_init (size_t count, size_t size);

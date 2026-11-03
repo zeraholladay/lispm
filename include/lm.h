@@ -19,6 +19,10 @@
 #define LM_CAP_PER_POOL 4096
 #endif
 
+#ifndef LM_GC_MIN_ALLOCATIONS
+#define LM_GC_MIN_ALLOCATIONS 4096
+#endif
+
 // forward decls
 typedef struct cell Cell;
 typedef struct lm   LM;
@@ -74,6 +78,17 @@ typedef struct lm
     size_t high_water;
     State  states[LISPM_CTL_MAX];
   } ctl;
+  struct
+  {
+    // Pressure accumulates through parsing and across evaluations. Allocation
+    // never collects: temporary C locals are safe until the next VM safe
+    // point.
+    size_t allocations_since_collection;
+    size_t allocation_budget;
+    // Collection statistics, including explicit lm_gc calls.
+    size_t collections;
+    size_t live_cells;
+  } gc;
   Pool *pool;
   bool  has_error;
 } LM;

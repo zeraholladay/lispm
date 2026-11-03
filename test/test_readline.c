@@ -159,6 +159,9 @@ START_TEST (test_completion_keywords_and_operators)
     }
   for (size_t i = 2; matches[i]; ++i)
     ck_assert_int_lt (strcmp (matches[i - 1], matches[i]), 0);
+  // Reader syntax is not a name and must not be offered.
+  for (size_t i = 1; matches[i]; ++i)
+    ck_assert_str_ne (matches[i], "'");
   free_matches (matches);
   assert_unique_match (NULL, "SET!", "set!");
   assert_unique_match (NULL, "pair?", "pair?");
